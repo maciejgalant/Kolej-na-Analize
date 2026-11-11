@@ -1,0 +1,28 @@
+# sekrety i konfiguracja lokalna
+.env
+.env.*
+!.env.example
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# dane zewnętrzne i zrzuty (nie commitować bez sprawdzenia licencji)
+data/raw/
+data/cache/
+*.dump
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

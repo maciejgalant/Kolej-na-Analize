@@ -4,7 +4,7 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **projektowanie / specyfikacja, bez gotowej implementacji**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Status: **szkielet infrastruktury (RSA-002), bez danych i analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
@@ -14,9 +14,29 @@ Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Ap
 - [Frontend i system wizualny](docs/FRONTEND_DESIGN.md)
 - [Backlog i harmonogram](docs/BACKLOG.md)
 
-## Planowane uruchomienie
-`docker compose up -d --build` → `http://localhost:8080`.
-To **kontrakt docelowy**, nie obecnie działające polecenie.
+## Uruchomienie lokalne
+Wymagany Docker z Compose v2.
+
+```bash
+cp .env.example .env        # ustaw POSTGRES_PASSWORD
+docker compose up -d --build
+docker compose ps           # wszystkie usługi powinny być "healthy"
+```
+
+| Usługa | Adres (tylko 127.0.0.1) |
+|---|---|
+| Frontend | http://localhost:8080 |
+| Backend, healthcheck | http://localhost:8765/api/v1/health |
+| Backend, OpenAPI | http://localhost:8765/api/v1/docs |
+| PostGIS | localhost:55432 (zmienna `POSTGIS_HOST_PORT`) |
+
+Przy pierwszym uruchomieniu usługa `ollama-pull` pobiera model (`OLLAMA_MODEL`, kilka GB). Do tego czasu healthcheck zwraca `degraded`, a mapa i backend działają normalnie. Worker: `docker compose run --rm worker`.
+
+Na tym etapie aplikacja pokazuje tylko mapę podkładową i stan usług — ewidencja przejazdów, ranking i asystent AI są w kolejnych zadaniach [backlogu](docs/BACKLOG.md).
+
+### Praca nad kodem
+- Backend: `cd backend && pip install -r requirements-dev.txt && ruff check . && pytest`
+- Frontend: `cd frontend && npm ci && npm run dev` (proxy `/api` → `127.0.0.1:8765`)
 
 ## Wykorzystanie istniejących projektów
 - [GeoGraph Demo 3](https://github.com/maciejgalant/GeoGraph-demo-03): inspiracja dla FastAPI/PostGIS/Ollama, selektora analiz i Docker Compose.
