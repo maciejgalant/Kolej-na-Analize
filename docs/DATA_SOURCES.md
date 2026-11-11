@@ -14,6 +14,24 @@
 | Pociągi towarowe | Kompletność ruchu | Dane zarządcy | Brak potwierdzonego pełnego publicznego API |
 | Incydenty i wypadki | Walidacja ryzyka | PKBWK / PLK / SEWiK | Dokładna lokalizacja, definicja zdarzenia, zgodność czasowa |
 
+## Ewidencja przejazdów — ustalenia RSA-004 (2026-11-11)
+**BDOT10k nie zawiera przejazdów.** W sieci komunikacyjnej nie ma klasy przejazdu ani atrybutów kategorii czy zabezpieczeń; OT_OIKM_P obejmuje tylko stacje/przystanki i przejścia graniczne. Przydatne są tory (OT_SKTR_L: numer linii, liczba torów, położenie względem gruntu) i drogi.
+
+**Źródło podstawowe: warstwa „Przejazdy kolejowe” UTK w Geoportalu.** Dane zarządców infrastruktury przekazywane przez UTK do GUGiK; usługa WMS `https://mapy.geoportal.gov.pl/wss/service/sdi/Przejazdy/get`.
+- Dostępne atrybuty: numer identyfikacyjny (z żółtej naklejki), kategoria A–F, typ szlakowy/stacyjny, zarządca, telefony.
+- Usługa to wyłącznie WMS: nie zwraca współrzędnych. Import odczytuje położenie ze środka symbolu na obrazie 1 m/px (dokładność rzędu kilku metrów), a atrybuty z GetFeatureInfo w tym punkcie.
+- Brak szczegółów urządzeń, widoczności i pomiarów ruchu — te są w metryce przejazdu u zarządcy (niepublikowanej).
+- Usługa nie deklaruje warunków ponownego wykorzystania; w `system.licenses` pozostaje to oznaczone jako niezweryfikowane. Danych z usługi nie commitujemy do repozytorium.
+- Znane osobliwości: kategoria bywa zapisana małą literą; dla niektórych prostokątów serwer zwraca wyjątek zamiast obrazu (import przesuwa okno o kilka metrów).
+
+**Kontrola krzyżowa: OpenStreetMap (Overpass API).** Punkty `railway=level_crossing` i `railway=crossing` leżące na torach kolejowych. Dają niezależne potwierdzenie, że w danym miejscu jest skrzyżowanie w poziomie szyn, oraz tagi urządzeń (`crossing:barrier`, `crossing:light`, `crossing:bell`) tam, gdzie je wprowadzono. Licencja ODbL, wymagana atrybucja.
+
+**Reguła weryfikacji.** Obiekt z rejestru UTK dostaje status `verified`, gdy jego wzajemnie najbliższy punkt OSM leży nie dalej niż 40 m. Pozostałe zostają `unverified` z flagą `no_osm_confirmation` do ręcznego przeglądu. Statusów `rejected_*` nadanych ręcznie import nie nadpisuje. Przejścia kategorii E są importowane jak pozostałe; o ich udziale w rankingu zdecyduje metoda (RSA-010).
+
+**Zakres przestrzenny.** Import obejmuje prostokąt wokół Warszawy; przypisanie do dzielnic i odcięcie obiektów spoza miasta należy do RSA-005.
+
+Uruchomienie i raport: `docker compose run --rm worker python -m app.worker import-crossings` → `reports/DATA_AUDIT_crossings.md`.
+
 ## Zasady jakości
 1. Nie zakładać, że przecięcie linii na mapie jest przejazdem w jednym poziomie.
 2. Nie utożsamiać liczby rozkładowych pociągów z faktycznie zrealizowanymi wszystkimi kursami; towarowe mogą nie być pokryte.

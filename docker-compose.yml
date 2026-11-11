@@ -111,7 +111,8 @@ services:
       retries: 5
     networks: [railsafe]
 
-  # Potoki importu/analiz uruchamiane ręcznie: docker compose run --rm worker
+  # Potoki importu/analiz uruchamiane ręcznie, np.:
+  #   docker compose run --rm worker python -m app.worker import-crossings
   worker:
     build: ./backend
     profiles: ["jobs"]
@@ -120,6 +121,9 @@ services:
         condition: service_healthy
     environment: *backend-env
     command: ["python", "-m", "app.worker"]
+    volumes:
+      # Raporty audytu danych generowane przez zadania importu.
+      - ./reports:/reports
     networks: [railsafe]
 
 networks:

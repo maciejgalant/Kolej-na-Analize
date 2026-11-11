@@ -36,7 +36,7 @@ Uszczegółowienie sekcji „Schematy PostGIS” z [ARCHITECTURE.md](ARCHITECTUR
 
 ## Decyzje do potwierdzenia
 Poniższe szczegóły nie wynikały wprost z dokumentacji i zostały przyjęte przy implementacji:
-- Kategorie przejazdów `A`–`F` jako jedyne dopuszczalne wartości — zweryfikować z aktualnym rozporządzeniem w RSA-004.
+- ~~Kategorie przejazdów `A`–`F`~~ — potwierdzone w RSA-004: rozporządzenie z 20.10.2015 r. (§ 5) i rejestr UTK używają dokładnie tych liter.
 - `safety.crossing_attributes` w układzie klucz–wartość (`attribute_code`, `value_text`/`value_num`), bo lista cech zabezpieczeń nie jest jeszcze znana.
 - `rail.*_events` wskazują stację tekstem (`station_ref`) i opcjonalnie odcinek; osobna tabela stacji powstanie, jeśli okaże się potrzebna w RSA-006.
 - Reguła przypisania przejazdu na granicy dzielnic nie jest zaszyta w schemacie — `district_id` ustawia import (RSA-005) według jednej udokumentowanej reguły.

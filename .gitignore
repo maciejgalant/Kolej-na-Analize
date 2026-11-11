@@ -18,6 +18,7 @@ frontend/dist/
 
 # dane zewnętrzne i zrzuty (nie commitować bez sprawdzenia licencji)
 data/raw/
+reports/
 data/cache/
 *.dump
 
