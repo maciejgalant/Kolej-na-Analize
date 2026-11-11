@@ -22,6 +22,8 @@ ServiceState = Literal["ok", "unavailable"]
 class DatabaseHealth(BaseModel):
     status: ServiceState
     postgis_version: str | None = None
+    # Rewizja migracji Alembic; None = migracje jeszcze nie były uruchomione.
+    schema_revision: str | None = None
 
 
 class OllamaHealth(BaseModel):
@@ -46,7 +48,13 @@ def check_database(settings: Settings) -> DatabaseHealth:
     try:
         with psycopg.connect(**settings.database_connect_kwargs) as conn:
             row = conn.execute("SELECT PostGIS_Lib_Version()").fetchone()
-        return DatabaseHealth(status="ok", postgis_version=row[0] if row else None)
+            revision = None
+            if conn.execute("SELECT to_regclass('public.alembic_version')").fetchone()[0]:
+                found = conn.execute("SELECT version_num FROM public.alembic_version").fetchone()
+                revision = found[0] if found else None
+        return DatabaseHealth(
+            status="ok", postgis_version=row[0] if row else None, schema_revision=revision
+        )
     except psycopg.Error:
         return DatabaseHealth(status="unavailable")
 

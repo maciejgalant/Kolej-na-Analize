@@ -5,7 +5,11 @@ export interface Health {
   version: string;
   demo_mode: boolean;
   services: {
-    database: { status: ServiceState; postgis_version: string | null };
+    database: {
+      status: ServiceState;
+      postgis_version: string | null;
+      schema_revision: string | null;
+    };
     ollama: { status: ServiceState; model: string; model_available: boolean };
   };
 }

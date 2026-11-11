@@ -3,6 +3,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 APP_VERSION = "0.1.0"
 
@@ -32,6 +33,17 @@ class Settings(BaseSettings):
             "password": self.postgres_password,
             "connect_timeout": max(1, round(self.healthcheck_timeout_s)),
         }
+
+    @property
+    def sqlalchemy_url(self) -> URL:
+        return URL.create(
+            "postgresql+psycopg",
+            username=self.postgres_user,
+            password=self.postgres_password,
+            host=self.postgres_host,
+            port=self.postgres_port,
+            database=self.postgres_db,
+        )
 
 
 @lru_cache

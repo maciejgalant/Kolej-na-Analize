@@ -57,7 +57,11 @@ function ServiceStatus({ state }: { state: HealthState }) {
       <StatusRow
         label="PostGIS"
         ok={database.status === "ok"}
-        detail={database.postgis_version ? `PostGIS ${database.postgis_version}` : "brak połączenia"}
+        detail={
+          database.postgis_version
+            ? `PostGIS ${database.postgis_version}, schemat ${database.schema_revision ?? "bez migracji"}`
+            : "brak połączenia"
+        }
       />
       <StatusRow
         label="Ollama"
