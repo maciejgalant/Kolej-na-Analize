@@ -34,7 +34,7 @@ EXPECTED_TABLES = {
     },
     "system": {"import_jobs", "licenses", "quality_flags", "sources"},
 }
-HEAD = "0004"
+HEAD = "0005"
 
 
 @pytest.fixture(scope="module")
