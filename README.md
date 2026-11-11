@@ -4,12 +4,13 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **szkielet infrastruktury (RSA-002), bez danych i analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Status: **infrastruktura i schemat bazy (RSA-002, RSA-003), bez danych i analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
 - [Architektura i model danych](docs/ARCHITECTURE.md)
 - [Źródła danych, jakość i licencje](docs/DATA_SOURCES.md)
+- [Kontrakt danych i migracje](docs/DATA_CONTRACT.md)
 - [Metodyka oceny i walidacja](docs/ANALYSIS_METHOD.md)
 - [Frontend i system wizualny](docs/FRONTEND_DESIGN.md)
 - [Backlog i harmonogram](docs/BACKLOG.md)
@@ -32,10 +33,13 @@ docker compose ps           # wszystkie usługi powinny być "healthy"
 
 Przy pierwszym uruchomieniu usługa `ollama-pull` pobiera model (`OLLAMA_MODEL`, kilka GB). Do tego czasu healthcheck zwraca `degraded`, a mapa i backend działają normalnie. Worker: `docker compose run --rm worker`.
 
+Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
+
 Na tym etapie aplikacja pokazuje tylko mapę podkładową i stan usług — ewidencja przejazdów, ranking i asystent AI są w kolejnych zadaniach [backlogu](docs/BACKLOG.md).
 
 ### Praca nad kodem
 - Backend: `cd backend && pip install -r requirements-dev.txt && ruff check . && pytest`
+- Testy migracji wymagają PostGIS i bazy o nazwie kończącej się na `_test`: `RAILSAFE_TEST_DB=1 POSTGRES_HOST=… POSTGRES_DB=railsafe_test pytest` (bez tej zmiennej są pomijane)
 - Frontend: `cd frontend && npm ci && npm run dev` (proxy `/api` → `127.0.0.1:8765`)
 
 ## Wykorzystanie istniejących projektów

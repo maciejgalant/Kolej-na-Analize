@@ -61,12 +61,26 @@ services:
     entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen3:4b}"]
     networks: [railsafe]
 
+  # Jednorazowo doprowadza schemat do najnowszej rewizji (tylko "upgrade", nigdy "downgrade").
+  # Cofanie migracji wyłącznie ręcznie: docker compose run --rm migrate alembic downgrade -1
+  migrate:
+    build: ./backend
+    restart: "no"
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment: *backend-env
+    command: ["alembic", "upgrade", "head"]
+    networks: [railsafe]
+
   backend:
     build: ./backend
     restart: unless-stopped
     depends_on:
       postgis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment: *backend-env
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-8765}:8000"
