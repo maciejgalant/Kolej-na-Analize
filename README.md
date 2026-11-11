@@ -37,7 +37,7 @@ Przy pierwszym uruchomieniu usługa `ollama-pull` pobiera model (`OLLAMA_MODEL`,
 ```bash
 docker compose run --rm worker python -m app.worker import-crossings
 ```
-Zadanie odczytuje przejazdy z warstwy UTK w Geoportalu, porównuje je z OpenStreetMap, zapisuje do PostGIS i tworzy raport `reports/DATA_AUDIT_crossings.md`. Wymaga dostępu do internetu; trwa kilka minut (kilkaset zapytań z krótkimi przerwami). Można je uruchamiać wielokrotnie. Szczegóły: [DATA_SOURCES.md](docs/DATA_SOURCES.md).
+Zadanie odczytuje przejazdy z warstwy UTK w Geoportalu, porównuje je z OpenStreetMap, zapisuje do PostGIS i tworzy raport `reports/DATA_AUDIT_crossings.md`. Wymaga dostępu do internetu; trwa kilka minut (kilkaset zapytań z krótkimi przerwami). Można je uruchamiać wielokrotnie. Jeśli serwery Overpass są niedostępne z kontenera, zadanie wypisze zapytanie do ręcznego wykonania na overpass-turbo.eu; zapisany wynik podaje się opcją `--osm-file /reports/osm.json`. Szczegóły: [DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 

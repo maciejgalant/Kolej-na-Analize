@@ -5,10 +5,10 @@ docker compose run --rm worker python -m app.worker import-crossings  # RSA-004
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-import httpx
 import psycopg
 
 from app.api.health import check_database
@@ -34,7 +34,12 @@ def import_crossings_command(args: argparse.Namespace) -> int:
     from app.etl.crossing_import import bbox_to_wgs84, import_crossings
     from app.etl.crossing_report import build_report
     from app.etl.crossing_scan import Bbox, scan_crossings
-    from app.etl.overpass import fetch_osm_crossings
+    from app.etl.overpass import (
+        OverpassUnavailable,
+        build_query,
+        fetch_osm_crossings,
+        parse_overpass,
+    )
     from app.etl.utk_wms import UtkWmsClient
 
     def log(message: str) -> None:
@@ -50,12 +55,22 @@ def import_crossings_command(args: argparse.Namespace) -> int:
         log(f"odczytano {len(scan.crossings)} obiektów, zapytań WMS: {wms.requests_made}")
 
         osm = None
-        if not args.skip_osm:
+        if args.osm_file is not None:
+            osm = parse_overpass(json.loads(args.osm_file.read_text(encoding="utf-8")))
+            log(f"OSM z pliku {args.osm_file}: {len(osm)} punktów")
+        elif not args.skip_osm:
+            area = bbox_to_wgs84(conn, bbox)
             try:
-                osm = fetch_osm_crossings(*bbox_to_wgs84(conn, bbox))
+                osm = fetch_osm_crossings(*area)
                 log(f"OSM: {len(osm)} punktów")
-            except (httpx.HTTPError, ValueError) as error:
-                log(f"OSM niedostępne ({error}); import bez kontroli krzyżowej")
+            except OverpassUnavailable as error:
+                log(f"OSM niedostępne; import bez kontroli krzyżowej. Szczegóły: {error}")
+                log(
+                    "Obejście: wykonaj poniższe zapytanie na https://overpass-turbo.eu "
+                    "(Eksport -> surowe dane OSM/JSON), zapisz jako reports/osm.json i uruchom "
+                    "import z opcją --osm-file /reports/osm.json"
+                )
+                print(build_query(*area), file=sys.stderr)
 
         summary = import_crossings(conn, scan, osm, bbox, wms.requests_made)
         report = build_report(conn, scan, summary)
@@ -83,6 +98,9 @@ def main(argv: list[str] | None = None) -> int:
         help="obszar w EPSG:2180",
     )
     crossings.add_argument("--skip-osm", action="store_true", help="bez kontroli w OSM")
+    crossings.add_argument(
+        "--osm-file", type=Path, default=None, help="odpowiedź Overpass (JSON) pobrana ręcznie"
+    )
     crossings.add_argument(
         "--report",
         type=Path,

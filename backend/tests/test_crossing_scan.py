@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from app.etl.crossing_scan import Bbox, coarse_windows, scan_crossings
-from app.etl.overpass import parse_overpass
+from app.etl.overpass import OverpassUnavailable, build_query, fetch_osm_crossings, parse_overpass
 from app.etl.symbols import find_blobs
 from app.etl.utk_wms import UtkWmsClient, Window, WmsFeature, WmsRenderError, parse_feature_info
 from tests.fake_wms import FakeWms
@@ -216,3 +216,46 @@ def test_client_retries_on_http_error():
     client = UtkWmsClient(delay_s=0, transport=httpx.MockTransport(handler))
     assert len(client.get_feature_info(Window(630000, 480000, 512, 512), 1, 1)) == 2
     assert len(calls) == 3
+
+
+OVERPASS_PAYLOAD = {
+    "elements": [
+        {"type": "node", "id": 7, "lat": 52.2, "lon": 21.0, "tags": {"railway": "crossing"}}
+    ]
+}
+
+
+def test_overpass_falls_back_to_next_server():
+    asked = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        asked.append(request.url.host)
+        if request.url.host == "first.example":
+            raise httpx.ConnectError("[Errno 101] Network is unreachable")
+        assert b"level_crossing" in request.content
+        return httpx.Response(200, json=OVERPASS_PAYLOAD)
+
+    found = fetch_osm_crossings(
+        52.1, 20.8, 52.4, 21.3,
+        urls=("https://first.example/api", "https://second.example/api"),
+        transports=[httpx.MockTransport(handler)],
+    )  # fmt: skip
+    assert [node.node_id for node in found] == [7]
+    assert asked == ["first.example", "second.example"]
+
+
+def test_overpass_reports_every_failed_server():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(504)
+
+    with pytest.raises(OverpassUnavailable) as raised:
+        fetch_osm_crossings(
+            52.1, 20.8, 52.4, 21.3,
+            urls=("https://a.example/api", "https://b.example/api"),
+            transports=[httpx.MockTransport(handler)],
+        )  # fmt: skip
+    assert "a.example" in str(raised.value) and "b.example" in str(raised.value)
+
+
+def test_overpass_query_uses_south_west_north_east_order():
+    assert "(52.1,20.8,52.4,21.3)" in build_query(52.1, 20.8, 52.4, 21.3)

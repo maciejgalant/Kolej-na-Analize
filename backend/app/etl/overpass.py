@@ -6,7 +6,11 @@ import httpx
 
 from app.etl.utk_wms import USER_AGENT
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+)
 QUERY = """
 [out:json][timeout:90];
 way["railway"~"^(rail|light_rail|narrow_gauge)$"]({south},{west},{north},{east})->.tracks;
@@ -49,12 +53,40 @@ def parse_overpass(payload: dict) -> list[OsmCrossing]:
     return crossings
 
 
+class OverpassUnavailable(RuntimeError):
+    """Żaden serwer Overpass nie odpowiedział."""
+
+
+def build_query(south: float, west: float, north: float, east: float) -> str:
+    return QUERY.format(south=south, west=west, north=north, east=east).strip()
+
+
+def _default_transports() -> list[httpx.BaseTransport | None]:
+    # Najpierw wymuszone IPv4: w kontenerach Dockera bez trasy IPv6 połączenie
+    # z adresem AAAA kończy się błędem "Network is unreachable".
+    return [httpx.HTTPTransport(local_address="0.0.0.0", retries=1), None]
+
+
 def fetch_osm_crossings(
-    south: float, west: float, north: float, east: float, url: str = OVERPASS_URL
+    south: float,
+    west: float,
+    north: float,
+    east: float,
+    urls: tuple[str, ...] = OVERPASS_URLS,
+    transports: list[httpx.BaseTransport | None] | None = None,
 ) -> list[OsmCrossing]:
-    query = QUERY.format(south=south, west=west, north=north, east=east)
-    response = httpx.post(
-        url, data={"data": query}, timeout=120.0, headers={"User-Agent": USER_AGENT}
-    )
-    response.raise_for_status()
-    return parse_overpass(response.json())
+    """Pobiera punkty z pierwszego działającego serwera Overpass."""
+    query = build_query(south, west, north, east)
+    errors = []
+    for url in urls:
+        for transport in transports if transports is not None else _default_transports():
+            try:
+                with httpx.Client(
+                    transport=transport, timeout=120.0, headers={"User-Agent": USER_AGENT}
+                ) as client:
+                    response = client.post(url, data={"data": query})
+                    response.raise_for_status()
+                    return parse_overpass(response.json())
+            except (httpx.HTTPError, ValueError, OSError) as error:
+                errors.append(f"{url}: {error}")
+    raise OverpassUnavailable("; ".join(errors))
