@@ -72,5 +72,10 @@ jobs:
           curl -fsS http://127.0.0.1:8080/api/v1/health | tee health.json
           grep -q '"database":{"status":"ok"' health.json
           grep -q '"schema_revision":"0004"' health.json
+      - name: Worker korzysta z tego samego obrazu co backend
+        run: |
+          docker compose run --rm worker | tee worker.txt
+          grep -q "import-crossings" worker.txt
+          test "$(docker compose --profile jobs config --images | sort -u | grep -c railsafe-backend)" = "1"
       - if: always()
         run: docker compose logs --no-color && docker compose down -v

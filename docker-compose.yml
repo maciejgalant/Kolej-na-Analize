@@ -4,6 +4,8 @@
 
 name: ${COMPOSE_PROJECT_NAME:-railsafe}
 
+# backend, migrate i worker dzielą jeden obraz (railsafe-backend:local), żeby
+# `up --build` odświeżał także workera uruchamianego przez `docker compose run`.
 x-backend-env: &backend-env
   POSTGRES_HOST: postgis
   POSTGRES_PORT: 5432
@@ -65,6 +67,7 @@ services:
   # Cofanie migracji wyłącznie ręcznie: docker compose run --rm migrate alembic downgrade -1
   migrate:
     build: ./backend
+    image: railsafe-backend:local
     restart: "no"
     depends_on:
       postgis:
@@ -75,6 +78,7 @@ services:
 
   backend:
     build: ./backend
+    image: railsafe-backend:local
     restart: unless-stopped
     depends_on:
       postgis:
@@ -115,6 +119,7 @@ services:
   #   docker compose run --rm worker python -m app.worker import-crossings
   worker:
     build: ./backend
+    image: railsafe-backend:local
     profiles: ["jobs"]
     depends_on:
       postgis:
