@@ -4,7 +4,7 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **infrastruktura i schemat bazy (RSA-002, RSA-003), bez danych i analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Status: **infrastruktura, schemat bazy i import ewidencji przejazdów (RSA-002–004), bez analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
@@ -32,6 +32,12 @@ docker compose ps           # wszystkie usługi powinny być "healthy"
 | PostGIS | localhost:55432 (zmienna `POSTGIS_HOST_PORT`) |
 
 Przy pierwszym uruchomieniu usługa `ollama-pull` pobiera model (`OLLAMA_MODEL`, kilka GB). Do tego czasu healthcheck zwraca `degraded`, a mapa i backend działają normalnie. Worker: `docker compose run --rm worker`.
+
+### Import ewidencji przejazdów (RSA-004)
+```bash
+docker compose run --rm worker python -m app.worker import-crossings
+```
+Zadanie odczytuje przejazdy z warstwy UTK w Geoportalu, porównuje je z OpenStreetMap, zapisuje do PostGIS i tworzy raport `reports/DATA_AUDIT_crossings.md`. Wymaga dostępu do internetu; trwa kilka minut (kilkaset zapytań z krótkimi przerwami). Można je uruchamiać wielokrotnie. Szczegóły: [DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 
