@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from app.api import health
+from app.api import crossings, health
 from app.config import APP_VERSION
 
 app = FastAPI(
@@ -18,3 +18,4 @@ app = FastAPI(
 )
 
 app.include_router(health.router, prefix="/api/v1")
+app.include_router(crossings.router, prefix="/api/v1")
