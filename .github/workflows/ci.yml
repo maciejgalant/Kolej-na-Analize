@@ -71,7 +71,7 @@ jobs:
           docker compose up -d --wait postgis backend frontend
           curl -fsS http://127.0.0.1:8080/api/v1/health | tee health.json
           grep -q '"database":{"status":"ok"' health.json
-          grep -q '"schema_revision":"0004"' health.json
+          grep -q '"schema_revision":"0005"' health.json
       - name: Worker korzysta z tego samego obrazu co backend
         run: |
           docker compose run --rm worker | tee worker.txt

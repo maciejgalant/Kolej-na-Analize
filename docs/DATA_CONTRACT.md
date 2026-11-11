@@ -39,7 +39,7 @@ Poniższe szczegóły nie wynikały wprost z dokumentacji i zostały przyjęte p
 - ~~Kategorie przejazdów `A`–`F`~~ — potwierdzone w RSA-004: rozporządzenie z 20.10.2015 r. (§ 5) i rejestr UTK używają dokładnie tych liter.
 - `safety.crossing_attributes` w układzie klucz–wartość (`attribute_code`, `value_text`/`value_num`), bo lista cech zabezpieczeń nie jest jeszcze znana.
 - `rail.*_events` wskazują stację tekstem (`station_ref`) i opcjonalnie odcinek; osobna tabela stacji powstanie, jeśli okaże się potrzebna w RSA-006.
-- Reguła przypisania przejazdu na granicy dzielnic nie jest zaszyta w schemacie — `district_id` ustawia import (RSA-005) według jednej udokumentowanej reguły.
+- ~~Reguła przypisania przejazdu na granicy dzielnic~~ — ustalona w RSA-005: punkt w poligonie, na granicy niższy kod TERYT, flaga do 10 m od granicy (szczegóły w DATA_SOURCES.md).
 
 ## Migracje
 - Narzędzie: Alembic, migracje pisane jawnie w SQL, bez autogeneracji.
@@ -54,3 +54,4 @@ Poniższe szczegóły nie wynikały wprost z dokumentacji i zostały przyjęte p
 | 0002 | `spatial`: districts, crossings, rail/road_segments, relacje M:N |
 | 0003 | `rail`: schedule_events, operation_events, crossing_flow; `road`: measurements, live_flow |
 | 0004 | `safety`: crossing_attributes, incidents; `analysis`: runs, risk_scores, components |
+| 0005 | `spatial.rail_segments` / `road_segments`: położenie względem gruntu, stan, funkcja toru, liczba torów, kategoria zarządzania, numer drogi |

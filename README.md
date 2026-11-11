@@ -4,7 +4,7 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **infrastruktura, schemat bazy i import ewidencji przejazdów (RSA-002–004), bez analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Status: **infrastruktura, schemat bazy i import przejazdów, dzielnic, torów i dróg (RSA-002–005), bez analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
@@ -38,6 +38,12 @@ Przy pierwszym uruchomieniu usługa `ollama-pull` pobiera model (`OLLAMA_MODEL`,
 docker compose run --rm worker python -m app.worker import-crossings
 ```
 Zadanie odczytuje przejazdy z warstwy UTK w Geoportalu, porównuje je z OpenStreetMap, zapisuje do PostGIS i tworzy raport `reports/DATA_AUDIT_crossings.md`. Wymaga dostępu do internetu; trwa kilka minut (kilkaset zapytań z krótkimi przerwami). Można je uruchamiać wielokrotnie. Jeśli serwery Overpass są niedostępne z kontenera, zadanie wypisze zapytanie do ręcznego wykonania na overpass-turbo.eu; zapisany wynik podaje się opcją `--osm-file /reports/osm.json`. Szczegóły: [DATA_SOURCES.md](docs/DATA_SOURCES.md).
+
+### Import dzielnic, torów i dróg (RSA-005)
+```bash
+docker compose run --rm worker python -m app.worker import-topology
+```
+Uruchamiać po imporcie przejazdów. Pobiera granice dzielnic z PRG oraz tory i jezdnie z BDOT10k, przypisuje przejazdy do dzielnic, weryfikuje je geometrycznie i tworzy raport `reports/DATA_AUDIT_topology.md`.
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 

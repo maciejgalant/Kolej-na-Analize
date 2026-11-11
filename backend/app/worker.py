@@ -25,7 +25,7 @@ def status() -> int:
         return 1
     print(
         f"worker: PostGIS {database.postgis_version}, schemat {database.schema_revision}; "
-        "dostępne zadania: import-crossings"
+        "dostępne zadania: import-crossings, import-topology"
     )
     return 0
 
@@ -74,14 +74,90 @@ def import_crossings_command(args: argparse.Namespace) -> int:
 
         summary = import_crossings(conn, scan, osm, bbox, wms.requests_made)
         report = build_report(conn, scan, summary)
+    _write_report(report, args.report, log)
+    log(f"zapisano {summary.written} przejazdów, potwierdzonych w OSM: {summary.matched}")
+    return 0
+
+
+def _write_report(report: str, path: Path, log) -> None:
     try:
-        args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(report, encoding="utf-8")
-        log(f"raport zapisany: {args.report}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(report, encoding="utf-8")
+        log(f"raport zapisany: {path}")
     except OSError as error:
         log(f"nie udało się zapisać raportu ({error}); wypisuję na standardowe wyjście")
         print(report)
-    log(f"zapisano {summary.written} przejazdów, potwierdzonych w OSM: {summary.matched}")
+
+
+def import_topology_command(args: argparse.Namespace) -> int:
+    import httpx
+
+    from app.etl import topology_import as topo
+    from app.etl.bdot10k import (
+        BDOT_URL,
+        RAILWAY_VEHICLE,
+        find_member,
+        iter_segments,
+        near_any_point,
+    )
+    from app.etl.prg import fetch_districts
+    from app.etl.remote_zip import open_remote_zip
+    from app.etl.topology_report import build_topology_report
+    from app.etl.utk_wms import USER_AGENT
+
+    def log(message: str) -> None:
+        print(f"import-topology: {message}", file=sys.stderr, flush=True)
+
+    e_min, n_min, e_max, n_max = args.bbox
+    with (
+        psycopg.connect(**get_settings().database_connect_kwargs) as conn,
+        httpx.Client(timeout=180.0, headers={"User-Agent": USER_AGENT}) as http,
+    ):
+        points = topo.crossing_points(conn)
+        if not points:
+            log("brak przejazdów w bazie — najpierw uruchom import-crossings")
+            return 1
+        districts = fetch_districts(e_min, n_min, e_max, n_max, http)
+        log(f"PRG: {len(districts)} dzielnic")
+        archive, raw = open_remote_zip(http, BDOT_URL)
+        names = archive.namelist()
+        with archive.open(find_member(names, "OT_SKTR_L.xml")) as stream:
+            rails = [
+                s
+                for s in iter_segments(stream, "OT_SKTR_L")
+                if s.attributes.get("rodzajPojazduSzynowego") == RAILWAY_VEHICLE
+            ]
+        log(f"BDOT10k: {len(rails)} odcinków torów kolejowych")
+        near = near_any_point(points, topo.ROAD_PREFILTER_M)
+        with archive.open(find_member(names, "OT_SKJZ_L.xml")) as stream:
+            roads = [s for s in iter_segments(stream, "OT_SKJZ_L") if near(s)]
+        log(
+            f"BDOT10k: {len(roads)} odcinków jezdni przy przejazdach "
+            f"(zapytań HTTP: {raw.requests_made}, wydanie paczki: {raw.last_modified})"
+        )
+
+        with conn.transaction():
+            prg_id, bdot_id = topo.ensure_sources(conn)
+            summary = topo.TopologySummary(
+                job_id=topo.start_job(
+                    conn,
+                    bdot_id,
+                    {
+                        "bbox_2180": list(args.bbox),
+                        "bdot_last_modified": raw.last_modified,
+                        "rail_radius_m": topo.RAIL_RADIUS_M,
+                        "road_radius_m": topo.ROAD_RADIUS_M,
+                    },
+                )
+            )
+            summary.districts = topo.load_districts(conn, districts, prg_id)
+            summary.rail_segments = topo.load_rail_segments(conn, rails, bdot_id)
+            summary.road_segments = topo.load_road_segments(conn, roads, bdot_id)
+            topo.verify_crossings(conn, summary)
+            topo.finish_job(conn, summary)
+        report = build_topology_report(conn, summary)
+    _write_report(report, args.report, log)
+    log(f"nowo zweryfikowanych przejazdów: {summary.newly_verified}; flagi: {summary.flags}")
     return 0
 
 
@@ -107,9 +183,26 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("/reports/DATA_AUDIT_crossings.md"),
         help="ścieżka raportu Markdown",
     )
+    topology = commands.add_parser("import-topology", help="dzielnice, tory, drogi (RSA-005)")
+    topology.add_argument(
+        "--bbox",
+        type=float,
+        nargs=4,
+        default=WARSAW_BBOX,
+        metavar=("E_MIN", "N_MIN", "E_MAX", "N_MAX"),
+        help="obszar w EPSG:2180",
+    )
+    topology.add_argument(
+        "--report",
+        type=Path,
+        default=Path("/reports/DATA_AUDIT_topology.md"),
+        help="ścieżka raportu Markdown",
+    )
     args = parser.parse_args(argv)
     if args.command == "import-crossings":
         return import_crossings_command(args)
+    if args.command == "import-topology":
+        return import_topology_command(args)
     return status()
 
 

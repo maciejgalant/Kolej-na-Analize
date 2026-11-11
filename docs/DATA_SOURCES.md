@@ -32,6 +32,23 @@
 
 Uruchomienie i raport: `docker compose run --rm worker python -m app.worker import-crossings` → `reports/DATA_AUDIT_crossings.md`.
 
+## Dzielnice, tory i drogi — ustalenia RSA-005 (2026-11-11)
+**Dzielnice: Państwowy Rejestr Granic (PRG), WFS GUGiK.** Warstwa `A05_Granice_jednostek_ewidencyjnych`; dzielnice Warszawy to jednostki o kodach `1465xx_8`. Usługa deklaruje brak opłat. Współrzędne przychodzą w kolejności północ–wschód i są zamieniane przy imporcie.
+
+**Tory i jezdnie: BDOT10k, paczka GML powiatu 1465.** `https://opendata.geoportal.gov.pl/bdot10k/schemat2021/14/1465_GML.zip` (ok. 90 MB). Import czyta z archiwum tylko dwa pliki przez zapytania o zakres bajtów:
+- `OT_SKTR_L` — tory; brane są tylko obiekty `rodzajPojazduSzynowego = kolej` (bez tramwaju i metra), z położeniem względem gruntu, stanem (eksploatowany/nieczynny), funkcją toru i numerem linii, jeśli jest podany;
+- `OT_SKJZ_L` — jezdnie; zapisywane są tylko odcinki w pobliżu przejazdów (do ok. 100 m), z klasą drogi, kategorią zarządzania, nazwą ulicy i położeniem.
+
+**Reguła weryfikacji przejazdu (zastępuje kontrolę w OSM jako podstawową).** Obiekt z rejestru UTK leżący w granicach dzielnic dostaje status `verified`, gdy do 15 m jest tor kolejowy na poziomie gruntu, a dla kategorii innych niż E także jezdnia na poziomie gruntu do 30 m. Gdy najbliższy tor lub jezdnia leży poza poziomem gruntu, obiekt dostaje flagę `grade_separation_suspected` i zostaje do ręcznego przeglądu. Import tylko podnosi status `unverified` → `verified`. Kontrola w OSM pozostaje dodatkowym potwierdzeniem i źródłem tagów urządzeń.
+
+**Reguła dzielnicy.** Punkt w poligonie; punkt dokładnie na granicy trafia do dzielnicy o niższym kodzie TERYT; obiekty bliżej niż 10 m od granicy mają flagę `near_district_boundary`. Obiekty poza granicami dzielnic zostają w ewidencji bez dzielnicy (flaga `outside_warsaw`) i nie wchodzą do analiz.
+
+**Powiązania przejazd ↔ odcinek** zapisywane są jako `proximity_candidate` z pewnością malejącą z odległością — to kandydaci z geometrii, nie potwierdzona topologia.
+
+**Sprawdzenie metody.** Dla sześciu przejazdów z rejestru UTK położenie odczytane z symbolu WMS leżało 0–3 m od osi toru w BDOT10k.
+
+Uruchomienie (po `import-crossings`): `docker compose run --rm worker python -m app.worker import-topology` → `reports/DATA_AUDIT_topology.md`.
+
 ## Zasady jakości
 1. Nie zakładać, że przecięcie linii na mapie jest przejazdem w jednym poziomie.
 2. Nie utożsamiać liczby rozkładowych pociągów z faktycznie zrealizowanymi wszystkimi kursami; towarowe mogą nie być pokryte.
