@@ -4,7 +4,7 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **infrastruktura, schemat bazy i import przejazdów, dzielnic, torów i dróg (RSA-002–005), bez analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Status: **infrastruktura, schemat bazy i ewidencja przejazdów z mapą i API (RSA-002–005, podstawy RSA-011/012), bez analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
@@ -47,7 +47,9 @@ Uruchamiać po imporcie przejazdów. Pobiera granice dzielnic z PRG oraz tory i 
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 
-Na tym etapie aplikacja pokazuje tylko mapę podkładową i stan usług — ewidencja przejazdów, ranking i asystent AI są w kolejnych zadaniach [backlogu](docs/BACKLOG.md).
+Po wykonaniu obu importów (niżej) aplikacja pokazuje ewidencję przejazdów: mapę z kategoriami, granice dzielnic, filtry, listę i kartę przejazdu. Dane o ruchu, ranking i asystent AI są w kolejnych zadaniach [backlogu](docs/BACKLOG.md).
+
+API ewidencji: `GET /api/v1/districts`, `GET /api/v1/crossings` (filtry `district_id`, `bbox`, `verification_status`, `category`, `limit`, `offset`) i `GET /api/v1/crossings/{id}`. Geometrie są zwracane jako GeoJSON w WGS84; domyślnie tylko przejazdy zweryfikowane w granicach Warszawy.
 
 ### Praca nad kodem
 - Backend: `cd backend && pip install -r requirements-dev.txt && ruff check . && pytest`
