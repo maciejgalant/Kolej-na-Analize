@@ -17,6 +17,9 @@ export const STATUS_LABEL: Record<VerificationStatus, string> = {
 };
 
 export const FLAG_LABEL: Record<string, string> = {
+  train_count_sensitive: "Liczba pociągów niepewna",
+  train_count_extended: "Liczba pociągów z rozszerzonego progu",
+  outside_warsaw: "Poza granicami Warszawy",
   no_road_nearby: "Brak jezdni w pobliżu",
   no_track_nearby: "Brak toru w pobliżu",
   grade_separation_suspected: "Możliwe skrzyżowanie bezkolizyjne",
