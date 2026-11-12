@@ -52,9 +52,13 @@ Uruchomienie (po `import-crossings`): `docker compose run --rm worker python -m 
 ## Planowy ruch pociągów — ustalenia RSA-006/009 (2026-11-12)
 **Źródło: Polish Trains GTFS** (`https://mkuran.pl/gtfs/polish_trains.zip`, ok. 26 MB, aktualizowany codziennie). Zbiór opracowany przez M. Kuranowskiego na podstawie otwartych danych PKP PLK i Kolei Mazowieckich; nie wymaga klucza. Obejmuje pociągi pasażerskie wszystkich przewoźników, z geometrią tras (`shapes.txt`) i kalendarzem w `calendar_dates.txt`. Licencja: warunki ponownego wykorzystywania informacji sektora publicznego PLK i KM — do przeczytania i potwierdzenia (w `system.licenses` oznaczone jako niezweryfikowane).
 
+**Drugi zbiór: WKD GTFS** (`https://mkuran.pl/gtfs/wkd.zip`, licencja CC0 według autora). Warszawska Kolej Dojazdowa nie korzysta z sieci PKP PLK i nie występuje w zbiorze ogólnopolskim; bez tego zbioru przejazdy na linii WKD miałyby błędne zero. Oba zbiory są łączone, a tydzień odniesienia musi mieścić się we wspólnym zakresie dat.
+
 **Metoda (`gtfs-shape-1`).** Kurs kolejowy (`route_type = 2`) jest liczony dla przejazdu, gdy geometria jego trasy przebiega do 20 m od punktu przejazdu. Wynik to liczba kursów na każdy dzień tygodnia odniesienia (najbliższy pełny tydzień pon.–niedz. w zakresie zbioru), zapisana w `rail.crossing_flow` jako `evidence_type = planned`, jednostka `passenger_trains/day`.
 
 **Kontrola wrażliwości.** Liczba kursów jest liczona także dla progów 10 m i 50 m; różnica powyżej 10% daje flagę `train_count_sensitive` (linie równoległe, rozjazdy).
+
+**Pierwszy pełny przebieg (2026-11-12, tylko zbiór ogólnopolski).** 62 przejazdy w Warszawie: 37 z kursami pasażerskimi, 25 bez, 7 wrażliwych na próg. Przejazd `007 012 635` dostał zero przy trasie odległej o 27 m — prawdopodobne zaniżenie na szerokiej grupie torów; raport pokazuje teraz liczby dla progów 10/20/50 m do ręcznej oceny.
 
 **Sprawdzenie metody.** Dla ośmiu przejazdów z rejestru UTK trasy z GTFS przebiegały 2–8 m od punktu przejazdu, a liczba kursów była identyczna dla progów 10–50 m. Przejazdy na liniach bez ruchu pasażerskiego (linia 503, bocznice) miały zero tras w promieniu 200 m.
 

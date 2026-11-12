@@ -8,7 +8,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from app.etl.gtfs import read_feed, reference_week, trips_on
+from app.etl.gtfs import merge_feeds, read_feed, reference_week, trips_on
 from app.etl.train_flow import build_flow_report, import_train_flow
 from app.main import app
 from tests.test_topology_import import conn, run_import  # noqa: F401  (fixture)
@@ -203,3 +203,40 @@ def test_api_flow_is_null_before_schedule_import(conn):  # noqa: F811
     assert (
         client.get(f"/api/v1/crossings/{listing['features'][0]['id']}").json()["rail_flow"] is None
     )
+
+
+def test_feed_without_date_range_uses_calendar_extent():
+    archive = gtfs_zip(
+        SIMPLE_SHAPES, SIMPLE_TRIPS, SERVICES,
+        {"feed_info.txt": "feed_publisher_name,feed_version\r\nT,2026-08-22T09:08:14\r\n"},
+    )  # fmt: skip
+    feed = read_feed(archive, *WORLD)
+    assert (feed.start, feed.end) == (WEEK[0], WEEK[5])
+
+
+def test_merge_feeds_prefixes_ids_and_intersects_date_ranges():
+    main = read_feed(gtfs_zip(SIMPLE_SHAPES, SIMPLE_TRIPS, SERVICES), *WORLD)
+    wkd = read_feed(
+        gtfs_zip({"S1": [(20.9, 52.2), (20.95, 52.2)]}, [("RAIL", "A", "S1")] * 5,
+                 {"A": [SATURDAY]},
+                 {"feed_info.txt": "feed_publisher_name,feed_version\r\nT,v2\r\n"}),
+        *WORLD,
+    )  # fmt: skip
+    merged = merge_feeds({"PL": main, "WKD": wkd})
+    assert set(merged.shapes) == {"PL:S1", "PL:FAR", "WKD:S1"}  # ten sam shape_id nie koliduje
+    assert trips_on(merged, ["PL:S1"], WEEK[0]) == 2
+    assert trips_on(merged, ["WKD:S1"], WEEK[0]) == 0
+    assert trips_on(merged, ["WKD:S1", "PL:S1"], WEEK[5]) == 6
+    assert (merged.start, merged.end) == (WEEK[5], WEEK[5])  # część wspólna zakresów
+    assert merged.rail_trips == main.rail_trips + 5
+    with pytest.raises(RuntimeError, match="pełnego tygodnia"):
+        reference_week(merged, date(2026, 11, 11))
+
+
+@DB
+def test_report_lists_threshold_counts_for_sensitive_crossings(conn):  # noqa: F811
+    run_import(conn)
+    feed = city_feed(conn, parallel=True)
+    report = build_flow_report(conn, feed, import_train_flow(conn, feed, WEEK))
+    assert "## Przejazdy wrażliwe na próg" in report
+    assert "| ok | 16 | 16 | 26 | 2.0 |" in report
