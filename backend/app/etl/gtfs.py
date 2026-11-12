@@ -1,0 +1,110 @@
+"""Otwarty rozkład pociągów pasażerskich w formacie GTFS (mkuran.pl, dane PKP PLK i KM).
+
+Czytane są tylko pliki potrzebne do policzenia kursów: trasy (shapes), kursy (trips),
+linie (routes) i kalendarz (calendar_dates). Geometrie tras pochodzą z odręcznie
+utrzymywanej mapy autora zbioru, a nie z pomiaru geodezyjnego.
+"""
+
+import csv
+import io
+import zipfile
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta
+
+GTFS_URL = "https://mkuran.pl/gtfs/polish_trains.zip"
+RAIL_ROUTE_TYPE = "2"
+
+
+@dataclass
+class Feed:
+    version: str
+    start: date
+    end: date
+    # shape_id -> [(lon, lat), ...] tylko dla tras kolejowych przecinających obszar
+    shapes: dict[str, list[tuple[float, float]]] = field(default_factory=dict)
+    # shape_id -> lista service_id kursów kolejowych jadących tą trasą
+    trips_by_shape: dict[str, list[str]] = field(default_factory=dict)
+    # service_id -> dni kursowania
+    service_dates: dict[str, set[date]] = field(default_factory=dict)
+    rail_trips: int = 0
+
+
+def _rows(archive: zipfile.ZipFile, name: str):
+    with archive.open(name) as raw:
+        yield from csv.DictReader(io.TextIOWrapper(raw, encoding="utf-8-sig", newline=""))
+
+
+def _day(text: str) -> date:
+    return datetime.strptime(text.strip(), "%Y%m%d").date()
+
+
+def read_feed(
+    archive: zipfile.ZipFile, west: float, south: float, east: float, north: float
+) -> Feed:
+    names = set(archive.namelist())
+    required = {"feed_info.txt", "routes.txt", "trips.txt", "shapes.txt", "calendar_dates.txt"}
+    if missing := required - names:
+        raise RuntimeError(f"W zbiorze GTFS brakuje plików: {sorted(missing)}")
+    if "calendar.txt" in names and any(True for _ in _rows(archive, "calendar.txt")):
+        raise RuntimeError("Zbiór używa calendar.txt — import obsługuje tylko calendar_dates.txt")
+
+    info = next(_rows(archive, "feed_info.txt"))
+    feed = Feed(
+        version=info.get("feed_version", ""),
+        start=_day(info["feed_start_date"]),
+        end=_day(info["feed_end_date"]),
+    )
+    rail_routes = {
+        row["route_id"] for row in _rows(archive, "routes.txt")
+        if row["route_type"].strip() == RAIL_ROUTE_TYPE
+    }  # fmt: skip
+    trips_by_shape: dict[str, list[str]] = defaultdict(list)
+    for row in _rows(archive, "trips.txt"):
+        if row["route_id"] in rail_routes and row.get("shape_id"):
+            trips_by_shape[row["shape_id"]].append(row["service_id"])
+            feed.rail_trips += 1
+
+    points: dict[str, list[tuple[int, float, float]]] = defaultdict(list)
+    for row in _rows(archive, "shapes.txt"):
+        if row["shape_id"] in trips_by_shape:
+            points[row["shape_id"]].append(
+                (int(row["shape_pt_sequence"]), float(row["shape_pt_lon"]),
+                 float(row["shape_pt_lat"]))
+            )  # fmt: skip
+    for shape_id, rows in points.items():
+        if any(west <= lon <= east and south <= lat <= north for _seq, lon, lat in rows):
+            rows.sort()
+            line = [(lon, lat) for _seq, lon, lat in rows]
+            if len(line) >= 2:
+                feed.shapes[shape_id] = line
+                feed.trips_by_shape[shape_id] = trips_by_shape[shape_id]
+
+    wanted = {service for services in feed.trips_by_shape.values() for service in services}
+    dates: dict[str, set[date]] = defaultdict(set)
+    for row in _rows(archive, "calendar_dates.txt"):
+        if row["service_id"] in wanted and row["exception_type"].strip() == "1":
+            dates[row["service_id"]].add(_day(row["date"]))
+    feed.service_dates = dict(dates)
+    return feed
+
+
+def reference_week(feed: Feed, today: date) -> list[date]:
+    """Pierwszy pełny tydzień pon.–niedz. w zakresie zbioru, nie wcześniej niż dziś."""
+    start = max(feed.start, today)
+    start += timedelta(days=(7 - start.weekday()) % 7)
+    week = [start + timedelta(days=offset) for offset in range(7)]
+    if week[-1] > feed.end:
+        raise RuntimeError(
+            f"Zbiór GTFS ({feed.start}–{feed.end}) nie obejmuje pełnego tygodnia od {start}."
+        )
+    return week
+
+
+def trips_on(feed: Feed, shape_ids: list[str], day: date) -> int:
+    return sum(
+        1
+        for shape_id in shape_ids
+        for service in feed.trips_by_shape.get(shape_id, [])
+        if day in feed.service_dates.get(service, ())
+    )

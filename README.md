@@ -45,6 +45,12 @@ docker compose run --rm worker python -m app.worker import-topology
 ```
 Uruchamiać po imporcie przejazdów. Pobiera granice dzielnic z PRG oraz tory i jezdnie z BDOT10k, przypisuje przejazdy do dzielnic, weryfikuje je geometrycznie i tworzy raport `reports/DATA_AUDIT_topology.md`.
 
+### Import planowego ruchu pociągów (RSA-006/009)
+```bash
+docker compose run --rm worker python -m app.worker import-schedule
+```
+Uruchamiać po imporcie dzielnic i torów. Pobiera otwarty rozkład GTFS (bez klucza), liczy planowe pociągi pasażerskie na każdy przejazd w tygodniu odniesienia i tworzy raport `reports/DATA_AUDIT_trains.md`.
+
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 
 Po wykonaniu obu importów (niżej) aplikacja pokazuje ewidencję przejazdów: mapę z kategoriami, granice dzielnic, filtry, listę i kartę przejazdu. Dane o ruchu, ranking i asystent AI są w kolejnych zadaniach [backlogu](docs/BACKLOG.md).

@@ -118,18 +118,28 @@ export function App() {
   const [showPedestrian, setShowPedestrian] = useState(true);
   const [showUnverified, setShowUnverified] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<"name" | "trains">("name");
 
   const districts = data.kind === "ready" ? data.districts : [];
   const visible = useMemo(() => {
     if (data.kind !== "ready") return [];
-    return data.crossings.filter((c) => {
+    const filtered = data.crossings.filter((c) => {
       const p = c.properties;
       if (districtId !== null && p.district_id !== districtId) return false;
       if (p.is_pedestrian ? !showPedestrian : !showRoad) return false;
       if (p.verification_status.startsWith("rejected")) return false;
       return showUnverified || p.verification_status === "verified";
     });
-  }, [data, districtId, showRoad, showPedestrian, showUnverified]);
+    if (sortBy === "trains") {
+      // Obiekty bez danych rozkładowych trafiają na koniec, nie są traktowane jak zero.
+      return [...filtered].sort(
+        (a, b) => (b.properties.trains_weekday ?? -1) - (a.properties.trains_weekday ?? -1),
+      );
+    }
+    return filtered;
+  }, [data, districtId, showRoad, showPedestrian, showUnverified, sortBy]);
+  const hasTrainData =
+    data.kind === "ready" && data.crossings.some((c) => c.properties.trains_weekday !== null);
 
   // Wybrany przejazd znika z karty, gdy filtr go ukryje.
   useEffect(() => {
@@ -176,7 +186,7 @@ export function App() {
       {demoMode && (
         <div className="demo-bar" role="status">
           Tryb bez zewnętrznych API. Ewidencja przejazdów pochodzi z danych urzędowych; dane o
-          ruchu i ranking nie są jeszcze dostępne.
+          ruchu drogowym i ranking nie są jeszcze dostępne.
         </div>
       )}
 
@@ -229,6 +239,19 @@ export function App() {
             </label>
           </fieldset>
 
+          <label className="field" htmlFor="sort">
+            Kolejność
+          </label>
+          <select
+            id="sort"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "name" | "trains")}
+            disabled={!hasTrainData}
+          >
+            <option value="name">według dzielnicy i numeru</option>
+            <option value="trains">według liczby pociągów (plan)</option>
+          </select>
+
           {data.kind === "loading" && <p className="muted">Wczytywanie ewidencji…</p>}
           {data.kind === "error" && (
             <div className="alert" role="alert">
@@ -247,8 +270,8 @@ export function App() {
           {data.kind === "ready" && data.crossings.length > 0 && (
             <>
               <p className="count" aria-live="polite">
-                Pokazano <strong>{visible.length}</strong> {objectsLabel(visible.length)}. Kolejność alfabetyczna — ranking
-                priorytetów pojawi się po zadaniu RSA-010.
+                Pokazano <strong>{visible.length}</strong> {objectsLabel(visible.length)}. To nie jest
+                ranking priorytetów — ten pojawi się po zadaniu RSA-010.
               </p>
               {visible.length === 0 ? (
                 <p className="muted">Żaden obiekt nie spełnia wybranych filtrów.</p>
@@ -279,6 +302,9 @@ export function App() {
                           <span className="item-sub">
                             kat. {c.properties.category ?? "nieznana"} ·{" "}
                             {c.properties.district_name}
+                            {c.properties.trains_weekday !== null
+                              ? ` · ${c.properties.trains_weekday} poc./dobę`
+                              : ""}
                             {c.properties.warnings > 0 ? " · ! ostrzeżenie" : ""}
                           </span>
                         </span>

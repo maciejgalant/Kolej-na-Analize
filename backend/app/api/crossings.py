@@ -73,6 +73,20 @@ class SourceInfo(BaseModel):
     license_verified: bool
 
 
+class RailFlow(BaseModel):
+    """Planowa liczba pociągów pasażerskich w tygodniu odniesienia."""
+
+    weekday_avg: float
+    saturday: int | None
+    sunday: int | None
+    period_start: str
+    period_end: str
+    unit: str
+    evidence_type: str
+    method_version: str
+    source: str | None
+
+
 class CrossingDetail(BaseModel):
     crossing_id: int
     official_id: str | None
@@ -90,6 +104,7 @@ class CrossingDetail(BaseModel):
     roads: list[LinkedRoad]
     tracks: list[LinkedTrack]
     sources: list[SourceInfo]
+    rail_flow: RailFlow | None
 
 
 @router.get("/districts", response_model=FeatureCollection)
@@ -176,6 +191,10 @@ def crossings(
                  WHERE f.entity_schema = 'spatial' AND f.entity_table = 'crossings'
                    AND f.entity_id = c.crossing_id::text AND f.resolved_at IS NULL
                    AND f.severity <> 'info') AS warnings,
+               (SELECT round(avg(f.train_count))::int FROM rail.crossing_flow f
+                 WHERE f.crossing_id = c.crossing_id AND f.evidence_type = 'planned'
+                   AND extract(isodow FROM f.period_start AT TIME ZONE 'Europe/Warsaw') < 6
+               ) AS trains_weekday,
                ST_AsGeoJSON(ST_Transform(c.geom, 4326), 6)::json AS geometry
         FROM spatial.crossings c
         JOIN spatial.districts d ON d.district_id = c.district_id
@@ -271,8 +290,34 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
         """,
         {"id": crossing_id},
     ).fetchall()
+    flow = conn.execute(
+        """
+        SELECT round(avg(f.train_count) FILTER (WHERE dow < 6)::numeric, 1)::float
+                   AS weekday_avg,
+               max(f.train_count) FILTER (WHERE dow = 6) AS saturday,
+               max(f.train_count) FILTER (WHERE dow = 7) AS sunday,
+               to_char(min(local_start), 'YYYY-MM-DD') AS period_start,
+               to_char(max(local_start), 'YYYY-MM-DD') AS period_end,
+               min(f.unit) AS unit, min(f.evidence_type) AS evidence_type,
+               min(f.method_version) AS method_version
+        FROM (SELECT *, period_start AT TIME ZONE 'Europe/Warsaw' AS local_start,
+                     extract(isodow FROM period_start AT TIME ZONE 'Europe/Warsaw') AS dow
+              FROM rail.crossing_flow
+              WHERE crossing_id = %s AND evidence_type = 'planned') f
+        HAVING count(*) FILTER (WHERE dow < 6) > 0
+        """,
+        (crossing_id,),
+    ).fetchone()
+    if flow is not None:
+        flow["source"] = (
+            conn.execute(
+                "SELECT name FROM system.sources WHERE code = 'gtfs_polish_trains'"
+            ).fetchone()
+            or {}
+        ).get("name")
     return CrossingDetail(
         **row,
+        rail_flow=flow,
         attributes=attributes,
         quality_flags=flags,
         roads=roads,

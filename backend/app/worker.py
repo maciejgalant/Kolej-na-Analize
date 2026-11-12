@@ -18,6 +18,15 @@ from app.config import get_settings
 WARSAW_BBOX = (625500.0, 470500.0, 656500.0, 503500.0)
 
 
+def _iso_date(text: str):
+    from datetime import date
+
+    value = date.fromisoformat(text)
+    if value.weekday() != 0:
+        raise argparse.ArgumentTypeError("tydzień odniesienia musi zaczynać się w poniedziałek")
+    return value
+
+
 def status() -> int:
     database = check_database(get_settings())
     if database.status != "ok":
@@ -25,7 +34,7 @@ def status() -> int:
         return 1
     print(
         f"worker: PostGIS {database.postgis_version}, schemat {database.schema_revision}; "
-        "dostępne zadania: import-crossings, import-topology"
+        "dostępne zadania: import-crossings, import-topology, import-schedule"
     )
     return 0
 
@@ -161,6 +170,54 @@ def import_topology_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def import_schedule_command(args: argparse.Namespace) -> int:
+    from datetime import date, timedelta
+
+    import httpx
+
+    from app.etl.crossing_import import bbox_to_wgs84
+    from app.etl.crossing_scan import Bbox
+    from app.etl.gtfs import GTFS_URL, read_feed, reference_week
+    from app.etl.remote_zip import open_remote_zip
+    from app.etl.train_flow import build_flow_report, import_train_flow
+    from app.etl.utk_wms import USER_AGENT
+
+    def log(message: str) -> None:
+        print(f"import-schedule: {message}", file=sys.stderr, flush=True)
+
+    with (
+        psycopg.connect(**get_settings().database_connect_kwargs) as conn,
+        httpx.Client(timeout=180.0, headers={"User-Agent": USER_AGENT}) as http,
+    ):
+        in_city = conn.execute(
+            "SELECT count(*) FROM spatial.crossings WHERE district_id IS NOT NULL"
+        ).fetchone()[0]
+        if in_city == 0:
+            log("brak przejazdów z dzielnicą — najpierw import-crossings i import-topology")
+            return 1
+        south, west, north, east = bbox_to_wgs84(conn, Bbox(*args.bbox))
+        archive, raw = open_remote_zip(http, GTFS_URL)
+        feed = read_feed(archive, west, south, east, north)
+        log(
+            f"GTFS {feed.version}: {len(feed.shapes)} tras kolejowych w obszarze, "
+            f"{feed.rail_trips} kursów kolejowych (zapytań HTTP: {raw.requests_made})"
+        )
+        week = (
+            [args.week_start + timedelta(days=i) for i in range(7)]
+            if args.week_start
+            else reference_week(feed, date.today())
+        )
+        log(f"tydzień odniesienia: {week[0]} – {week[-1]}")
+        summary = import_train_flow(conn, feed, week, raw.last_modified)
+        report = build_flow_report(conn, feed, summary)
+    _write_report(report, args.report, log)
+    log(
+        f"przejazdów: {summary.crossings}, z kursami pasażerskimi: {summary.with_trains}, "
+        f"wrażliwych na próg: {summary.sensitive}"
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.worker")
     commands = parser.add_subparsers(dest="command")
@@ -198,7 +255,30 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("/reports/DATA_AUDIT_topology.md"),
         help="ścieżka raportu Markdown",
     )
+    schedule = commands.add_parser("import-schedule", help="planowe pociągi z GTFS (RSA-006)")
+    schedule.add_argument(
+        "--bbox",
+        type=float,
+        nargs=4,
+        default=WARSAW_BBOX,
+        metavar=("E_MIN", "N_MIN", "E_MAX", "N_MAX"),
+        help="obszar w EPSG:2180",
+    )
+    schedule.add_argument(
+        "--week-start",
+        type=_iso_date,
+        default=None,
+        help="poniedziałek tygodnia odniesienia (RRRR-MM-DD); domyślnie najbliższy pełny tydzień",
+    )
+    schedule.add_argument(
+        "--report",
+        type=Path,
+        default=Path("/reports/DATA_AUDIT_trains.md"),
+        help="ścieżka raportu Markdown",
+    )
     args = parser.parse_args(argv)
+    if args.command == "import-schedule":
+        return import_schedule_command(args)
     if args.command == "import-crossings":
         return import_crossings_command(args)
     if args.command == "import-topology":
