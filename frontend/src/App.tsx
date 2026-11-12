@@ -10,6 +10,7 @@ import {
   fetchLatestAnalysis,
   type Health,
 } from "./api";
+import { Assistant } from "./Assistant";
 import { CrossingCard } from "./CrossingCard";
 import { crossingTitle, objectsLabel } from "./labels";
 import { MapView } from "./MapView";
@@ -377,18 +378,13 @@ export function App() {
         </section>
       </main>
 
-      <footer className="assistant">
-        <label htmlFor="assistant-input">Asystent AI</label>
-        <input
-          id="assistant-input"
-          type="text"
-          placeholder="Asystent będzie dostępny po zadaniu RSA-013"
-          disabled
-        />
-        <button type="button" disabled aria-label="Wyślij pytanie">
-          →
-        </button>
-      </footer>
+      <Assistant
+        modelReady={
+          health.kind === "ready" &&
+          health.health.services.ollama.status === "ok" &&
+          health.health.services.ollama.model_available
+        }
+      />
     </div>
   );
 }

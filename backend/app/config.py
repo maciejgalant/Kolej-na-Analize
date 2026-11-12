@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
     demo_mode: bool = True
     healthcheck_timeout_s: float = 2.0
+    # Model 4b na CPU potrafi odpowiadać kilkadziesiąt sekund, a pętla ma kilka rund.
+    assistant_timeout_s: float = 240.0
 
     @property
     def database_connect_kwargs(self) -> dict[str, str | int]:

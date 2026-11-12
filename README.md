@@ -4,7 +4,7 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **ewidencja przejazdów, planowy ruch pociągów i eksperymentalny ranking RPS z mapą; bez asystenta AI**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Status: **ewidencja przejazdów, planowy ruch pociągów, eksperymentalny ranking RPS z mapą i asystent AI na lokalnym modelu**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
@@ -56,6 +56,9 @@ Uruchamiać po imporcie dzielnic i torów. Pobiera otwarty rozkład GTFS (bez kl
 docker compose run --rm worker python -m app.worker run-analysis
 ```
 Uruchamiać po imporcie rozkładu. Liczy eksperymentalny wskaźnik RPS dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/RPS_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
+
+### Asystent AI (RSA-013)
+Pole na dole aplikacji wysyła pytania do lokalnego modelu Qwen (Ollama). Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez pięć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Bez karty graficznej odpowiedź może trwać minutę lub dłużej. Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 
