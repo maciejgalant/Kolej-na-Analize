@@ -54,11 +54,15 @@ Uruchomienie (po `import-crossings`): `docker compose run --rm worker python -m 
 
 **Drugi zbiór: WKD GTFS** (`https://mkuran.pl/gtfs/wkd.zip`, licencja CC0 według autora). Warszawska Kolej Dojazdowa nie korzysta z sieci PKP PLK i nie występuje w zbiorze ogólnopolskim; bez tego zbioru przejazdy na linii WKD miałyby błędne zero. Oba zbiory są łączone, a tydzień odniesienia musi mieścić się we wspólnym zakresie dat.
 
-**Metoda (`gtfs-shape-1`).** Kurs kolejowy (`route_type = 2`) jest liczony dla przejazdu, gdy geometria jego trasy przebiega do 20 m od punktu przejazdu. Wynik to liczba kursów na każdy dzień tygodnia odniesienia (najbliższy pełny tydzień pon.–niedz. w zakresie zbioru), zapisana w `rail.crossing_flow` jako `evidence_type = planned`, jednostka `passenger_trains/day`.
+**Metoda (`gtfs-shape-2`).**
+1. *Zbiór według zarządcy.* Obiekty PKP PLK są liczone tylko z rozkładu ogólnopolskiego, obiekty WKD tylko z rozkładu WKD; bocznice innych zarządców nie mają kursów pasażerskich. Rejestr UTK dzieli jedno fizyczne skrzyżowanie na osobne obiekty zarządców (np. `447 004 508` PLK i `WK 0474050` WKD przy ul. Mszczonowskiej), więc pociągów jednego zarządcy nie wolno doliczać obiektowi drugiego.
+2. *Próg podstawowy.* Kurs kolejowy (`route_type = 2`) jest liczony, gdy geometria jego trasy przebiega do 20 m od punktu przejazdu.
+3. *Próg rozszerzony 50 m* stosuje się (a) dla obiektów WKD — to jedna linia, a położenie obiektu bywa wspólne z sąsiednim obiektem PLK — oraz (b) dla obiektów PLK, których punkt leży na torach innej linii niż wynika z numeru przejazdu i które przy 20 m nie mają żadnego kursu (np. `007 012 635` leży na torach linii 506, a pociągi linii 7 jadą 27 m obok). Każde takie rozszerzenie ma flagę `train_count_extended`.
+4. *Wynik:* liczba kursów na każdy dzień tygodnia odniesienia (najbliższy pełny tydzień pon.–niedz. we wspólnym zakresie zbiorów), zapisana w `rail.crossing_flow` jako `evidence_type = planned`, jednostka `passenger_trains/day`.
 
-**Kontrola wrażliwości.** Liczba kursów jest liczona także dla progów 10 m i 50 m; różnica powyżej 10% daje flagę `train_count_sensitive` (linie równoległe, rozjazdy).
+**Kontrola wrażliwości.** Jeśli do 50 m przebiega ponad 10% więcej kursów niż przyjęto, obiekt dostaje flagę `train_count_sensitive` (możliwa linia równoległa); raport pokazuje liczby dla progów 10/20/50 m.
 
-**Pierwszy pełny przebieg (2026-11-12, tylko zbiór ogólnopolski).** 62 przejazdy w Warszawie: 37 z kursami pasażerskimi, 25 bez, 7 wrażliwych na próg. Przejazd `007 012 635` dostał zero przy trasie odległej o 27 m — prawdopodobne zaniżenie na szerokiej grupie torów; raport pokazuje teraz liczby dla progów 10/20/50 m do ręcznej oceny.
+**Przebiegi z 2026-11-12 (metoda `gtfs-shape-1`).** 62 przejazdy w Warszawie, 38 z kursami pasażerskimi. Ujawniły trzy wady metody, poprawione w `gtfs-shape-2`: przejazdy WKD bez rozkładu WKD miały zero; `WK 0474050` miał zero, bo trasa WKD biegnie 20–50 m od wspólnego punktu z obiektem PLK; `007 012 635` miał zero przy trasie odległej o 27 m.
 
 **Sprawdzenie metody.** Dla ośmiu przejazdów z rejestru UTK trasy z GTFS przebiegały 2–8 m od punktu przejazdu, a liczba kursów była identyczna dla progów 10–50 m. Przejazdy na liniach bez ruchu pasażerskiego (linia 503, bocznice) miały zero tras w promieniu 200 m.
 

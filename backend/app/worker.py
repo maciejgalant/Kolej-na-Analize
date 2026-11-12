@@ -218,7 +218,7 @@ def import_schedule_command(args: argparse.Namespace) -> int:
     _write_report(report, args.report, log)
     log(
         f"przejazdów: {summary.crossings}, z kursami pasażerskimi: {summary.with_trains}, "
-        f"wrażliwych na próg: {summary.sensitive}"
+        f"z progiem rozszerzonym: {summary.extended}, wrażliwych: {summary.sensitive}"
     )
     return 0
 
