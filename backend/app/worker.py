@@ -282,6 +282,23 @@ def main(argv: list[str] | None = None) -> int:
         help="ścieżka raportu Markdown",
     )
     args = parser.parse_args(argv)
+    try:
+        return _dispatch(args)
+    except _network_errors() as error:
+        # Zewnętrzne serwery bywają chwilowo niedostępne; baza pozostaje bez zmian.
+        print(f"{args.command}: przerwano — {error}", file=sys.stderr)
+        return 2
+
+
+def _network_errors() -> tuple[type[Exception], ...]:
+    import httpx
+
+    from app.etl.remote_zip import RemoteFileUnavailable
+
+    return (RemoteFileUnavailable, httpx.TransportError, httpx.HTTPStatusError)
+
+
+def _dispatch(args: argparse.Namespace) -> int:
     if args.command == "import-schedule":
         return import_schedule_command(args)
     if args.command == "import-crossings":
