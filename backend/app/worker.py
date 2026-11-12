@@ -177,7 +177,7 @@ def import_schedule_command(args: argparse.Namespace) -> int:
 
     from app.etl.crossing_import import bbox_to_wgs84
     from app.etl.crossing_scan import Bbox
-    from app.etl.gtfs import GTFS_URL, read_feed, reference_week
+    from app.etl.gtfs import GTFS_URL, WKD_GTFS_URL, merge_feeds, read_feed, reference_week
     from app.etl.remote_zip import open_remote_zip
     from app.etl.train_flow import build_flow_report, import_train_flow
     from app.etl.utk_wms import USER_AGENT
@@ -196,19 +196,24 @@ def import_schedule_command(args: argparse.Namespace) -> int:
             log("brak przejazdów z dzielnicą — najpierw import-crossings i import-topology")
             return 1
         south, west, north, east = bbox_to_wgs84(conn, Bbox(*args.bbox))
-        archive, raw = open_remote_zip(http, GTFS_URL)
-        feed = read_feed(archive, west, south, east, north)
-        log(
-            f"GTFS {feed.version}: {len(feed.shapes)} tras kolejowych w obszarze, "
-            f"{feed.rail_trips} kursów kolejowych (zapytań HTTP: {raw.requests_made})"
-        )
+        feeds, modified = {}, {}
+        for name, url in (("PL", GTFS_URL), ("WKD", WKD_GTFS_URL)):
+            archive, raw = open_remote_zip(http, url)
+            feeds[name] = read_feed(archive, west, south, east, north)
+            modified[name] = raw.last_modified
+            log(
+                f"GTFS {name} {feeds[name].version}: {len(feeds[name].shapes)} tras kolejowych "
+                f"w obszarze, {feeds[name].rail_trips} kursów, zakres {feeds[name].start} – "
+                f"{feeds[name].end} (zapytań HTTP: {raw.requests_made})"
+            )
+        feed = merge_feeds(feeds)
         week = (
             [args.week_start + timedelta(days=i) for i in range(7)]
             if args.week_start
             else reference_week(feed, date.today())
         )
         log(f"tydzień odniesienia: {week[0]} – {week[-1]}")
-        summary = import_train_flow(conn, feed, week, raw.last_modified)
+        summary = import_train_flow(conn, feed, week, json.dumps(modified))
         report = build_flow_report(conn, feed, summary)
     _write_report(report, args.report, log)
     log(

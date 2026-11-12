@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 
-from app.etl.gtfs import GTFS_URL, Feed, trips_on
+from app.etl.gtfs import GTFS_URL, WKD_GTFS_URL, Feed, trips_on
 
 MATCH_M = 20.0
 NEAR_M = 10.0
@@ -23,6 +23,7 @@ FAR_M = 50.0
 METHOD_VERSION = "gtfs-shape-1"
 UNIT = "passenger_trains/day"
 GTFS_SOURCE = "gtfs_polish_trains"
+WKD_SOURCE = "gtfs_wkd"
 SENSITIVE_FLAG = "train_count_sensitive"
 WARSAW_TZ = ZoneInfo("Europe/Warsaw")
 
@@ -48,6 +49,27 @@ def ensure_source(conn: psycopg.Connection) -> int:
                 NULL, NULL, 'Warunki ponownego wykorzystania do przeczytania i potwierdzenia.')
         ON CONFLICT (code) DO NOTHING
         """
+    )
+    conn.execute(
+        """
+        INSERT INTO system.licenses (code, name, url, attribution_text,
+                                     allows_storage, allows_derivatives, notes)
+        VALUES ('cc0-1.0', 'Creative Commons Zero 1.0', 
+                'https://creativecommons.org/publicdomain/zero/1.0/',
+                'WKD GTFS: M. Kuranowski (CC0)', true, true,
+                'Licencja podana przez autora zbioru na mkuran.pl/gtfs.')
+        ON CONFLICT (code) DO NOTHING
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO system.sources (code, name, provider, url, license_id)
+        SELECT %s, 'WKD GTFS - rozkład Warszawskiej Kolei Dojazdowej',
+               'WKD; opracowanie M. Kuranowski', %s, license_id
+        FROM system.licenses WHERE code = 'cc0-1.0'
+        ON CONFLICT (code) DO UPDATE SET url = EXCLUDED.url
+        """,
+        (WKD_SOURCE, WKD_GTFS_URL),
     )
     return conn.execute(
         """
@@ -159,7 +181,7 @@ def import_train_flow(
             summary.with_trains += any(daily)
             summary.rows.append(
                 {"crossing_id": crossing_id, "daily": daily, "nearest_m": nearest,
-                 "sensitive": sensitive}
+                 "sensitive": sensitive, "week_near": near, "week_far": far}
             )  # fmt: skip
         with conn.cursor() as cursor:
             cursor.executemany(
@@ -201,8 +223,8 @@ def build_flow_report(conn: psycopg.Connection, feed: Feed, summary: FlowSummary
         f"Zadanie importu nr {summary.job_id}. Raport tworzony automatycznie przez "
         "`worker import-schedule`.",
         "## Źródło i metoda",
-        f"- Zbiór: Polish Trains GTFS (mkuran.pl), wersja `{feed.version}`, zakres "
-        f"{feed.start} – {feed.end}; dane rozkładowe PKP PLK i Kolei Mazowieckich.",
+        f"- Zbiory GTFS z mkuran.pl: ogólnopolski (dane PKP PLK i Kolei Mazowieckich) oraz WKD. "
+        f"Wersje: `{feed.version}`; wspólny zakres dat {feed.start} – {feed.end}.",
         f"- Tydzień odniesienia: {week[0]} (pon.) – {week[-1]} (niedz.).",
         f"- Kurs liczony dla przejazdu, gdy trasa kursu przebiega do {MATCH_M:.0f} m od niego. "
         f"Kontrola wrażliwości: progi {NEAR_M:.0f} m i {FAR_M:.0f} m.",
@@ -226,6 +248,7 @@ def build_flow_report(conn: psycopg.Connection, feed: Feed, summary: FlowSummary
             ],
             rows,
         ),  # fmt: skip
+        *_sensitive_section(summary, info),
         "## Ograniczenia",
         "- Tylko pociągi pasażerskie z rozkładu; ruch towarowy, służbowy i manewry nie są "
         "ujęte. Zero oznacza brak kursów pasażerskich, a nie brak ruchu na torze.",
@@ -238,3 +261,36 @@ def build_flow_report(conn: psycopg.Connection, feed: Feed, summary: FlowSummary
         "- Warunki ponownego wykorzystania danych PLK/KM nie zostały jeszcze potwierdzone.",
     ]
     return "\n\n".join(parts) + "\n"
+
+
+def _sensitive_section(summary: FlowSummary, info: dict) -> list[str]:
+    from app.etl.crossing_report import _table
+
+    rows = [
+        [
+            info[row["crossing_id"]][0],
+            row["week_near"],
+            sum(row["daily"]),
+            row["week_far"],
+            "—" if row["nearest_m"] is None else f"{row['nearest_m']:.1f}",
+        ]
+        for row in summary.rows
+        if row["sensitive"]
+    ]
+    if not rows:
+        return []
+    return [
+        "## Przejazdy wrażliwe na próg (do ręcznej oceny)",
+        "Liczba kursów w całym tygodniu dla trzech progów. Duża różnica między 20 m a 50 m "
+        "oznacza linię równoległą albo przejazd przez szeroką grupę torów.",
+        _table(
+            [
+                "Numer",
+                f"do {NEAR_M:.0f} m",
+                f"do {MATCH_M:.0f} m (przyjęte)",
+                f"do {FAR_M:.0f} m",
+                "Najbliższa trasa [m]",
+            ],
+            sorted(rows, key=lambda r: -r[3]),
+        ),
+    ]

@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
 GTFS_URL = "https://mkuran.pl/gtfs/polish_trains.zip"
+# WKD nie korzysta z sieci PKP PLK, więc nie ma jej w zbiorze ogólnopolskim.
+WKD_GTFS_URL = "https://mkuran.pl/gtfs/wkd.zip"
 RAIL_ROUTE_TYPE = "2"
 
 
@@ -50,11 +52,18 @@ def read_feed(
         raise RuntimeError("Zbiór używa calendar.txt — import obsługuje tylko calendar_dates.txt")
 
     info = next(_rows(archive, "feed_info.txt"))
-    feed = Feed(
-        version=info.get("feed_version", ""),
-        start=_day(info["feed_start_date"]),
-        end=_day(info["feed_end_date"]),
-    )
+    if info.get("feed_start_date") and info.get("feed_end_date"):
+        start, end = _day(info["feed_start_date"]), _day(info["feed_end_date"])
+    else:  # część zbiorów nie podaje zakresu: przyjmujemy skrajne daty kalendarza
+        days = [
+            _day(row["date"])
+            for row in _rows(archive, "calendar_dates.txt")
+            if row["exception_type"].strip() == "1"
+        ]
+        if not days:
+            raise RuntimeError("Zbiór GTFS nie ma ani zakresu dat, ani dni kursowania.")
+        start, end = min(days), max(days)
+    feed = Feed(version=info.get("feed_version", ""), start=start, end=end)
     rail_routes = {
         row["route_id"] for row in _rows(archive, "routes.txt")
         if row["route_type"].strip() == RAIL_ROUTE_TYPE
@@ -108,3 +117,26 @@ def trips_on(feed: Feed, shape_ids: list[str], day: date) -> int:
         for service in feed.trips_by_shape.get(shape_id, [])
         if day in feed.service_dates.get(service, ())
     )
+
+
+def merge_feeds(feeds: dict[str, Feed]) -> Feed:
+    """Łączy zbiory; identyfikatory dostają przedrostek, a zakres dat to część wspólna.
+
+    Część wspólna jest konieczna: dzień spoza zakresu któregoś zbioru dałby dla jego
+    linii zero kursów, którego nie da się odróżnić od prawdziwego zera.
+    """
+    merged = Feed(
+        version="; ".join(f"{name}={feed.version}" for name, feed in feeds.items()),
+        start=max(feed.start for feed in feeds.values()),
+        end=min(feed.end for feed in feeds.values()),
+    )
+    for name, feed in feeds.items():
+        for shape_id, line in feed.shapes.items():
+            merged.shapes[f"{name}:{shape_id}"] = line
+            merged.trips_by_shape[f"{name}:{shape_id}"] = [
+                f"{name}:{service}" for service in feed.trips_by_shape[shape_id]
+            ]
+        for service, days in feed.service_dates.items():
+            merged.service_dates[f"{name}:{service}"] = days
+        merged.rail_trips += feed.rail_trips
+    return merged
