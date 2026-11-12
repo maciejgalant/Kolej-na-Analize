@@ -34,7 +34,7 @@ def status() -> int:
         return 1
     print(
         f"worker: PostGIS {database.postgis_version}, schemat {database.schema_revision}; "
-        "dostępne zadania: import-crossings, import-topology, import-schedule"
+        "dostępne zadania: import-crossings, import-topology, import-schedule, run-analysis"
     )
     return 0
 
@@ -281,6 +281,13 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("/reports/DATA_AUDIT_trains.md"),
         help="ścieżka raportu Markdown",
     )
+    analysis = commands.add_parser("run-analysis", help="wskaźnik RPS i ranking (RSA-010)")
+    analysis.add_argument(
+        "--report",
+        type=Path,
+        default=Path("/reports/RPS_report.md"),
+        help="ścieżka raportu Markdown",
+    )
     args = parser.parse_args(argv)
     try:
         return _dispatch(args)
@@ -288,6 +295,24 @@ def main(argv: list[str] | None = None) -> int:
         # Zewnętrzne serwery bywają chwilowo niedostępne; baza pozostaje bez zmian.
         print(f"{args.command}: przerwano — {error}", file=sys.stderr)
         return 2
+
+
+def run_analysis_command(args: argparse.Namespace) -> int:
+    from app.analysis.run import build_run_report, run_analysis
+
+    def log(message: str) -> None:
+        print(f"run-analysis: {message}", file=sys.stderr, flush=True)
+
+    with psycopg.connect(**get_settings().database_connect_kwargs) as conn:
+        try:
+            summary = run_analysis(conn)
+        except RuntimeError as error:
+            log(str(error))
+            return 1
+        report = build_run_report(conn, summary)
+    _write_report(report, args.report, log)
+    log(f"przebieg {summary.run_id}: ocenionych {summary.scored}, z pozycją {summary.ranked}")
+    return 0
 
 
 def _network_errors() -> tuple[type[Exception], ...]:
@@ -299,6 +324,8 @@ def _network_errors() -> tuple[type[Exception], ...]:
 
 
 def _dispatch(args: argparse.Namespace) -> int:
+    if args.command == "run-analysis":
+        return run_analysis_command(args)
     if args.command == "import-schedule":
         return import_schedule_command(args)
     if args.command == "import-crossings":

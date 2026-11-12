@@ -4,6 +4,8 @@ import { type CrossingDetail, fetchCrossingDetail } from "./api";
 import {
   attributeLabel,
   CATEGORY_DESCRIPTION,
+  COMPONENT_LABEL,
+  COMPONENT_STATUS,
   crossingTitle,
   FLAG_LABEL,
   STATUS_LABEL,
@@ -20,6 +22,99 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <dt>{label}</dt>
       <dd>{children}</dd>
     </div>
+  );
+}
+
+function componentNote(c: NonNullable<CrossingDetail["priority"]>["components"][number]): string {
+  const detail = c.detail as Record<string, string | number | null>;
+  if (c.value === null) return String(detail.reason ?? "brak danych");
+  if (c.component === "T")
+    return `${Math.round(Number(detail.trains_per_day))} poc. × ok. ${Number(
+      detail.vehicles_per_day_model,
+    ).toLocaleString("pl-PL")} poj./dobę (model z klasy drogi)`;
+  if (c.component === "P") return `kategoria ${detail.category}`;
+  if (c.component === "G")
+    return `torów: ${detail.tracks}${
+      detail.angle_deg !== null && detail.angle_deg !== undefined
+        ? `, kąt ${Math.round(Number(detail.angle_deg))}°`
+        : ""
+    }`;
+  return "";
+}
+
+function PriorityBlock({ detail }: { detail: CrossingDetail }) {
+  const p = detail.priority;
+  if (detail.is_pedestrian)
+    return (
+      <p className="muted small">Przejścia dla pieszych nie są objęte rankingiem priorytetów.</p>
+    );
+  if (p === null)
+    return (
+      <p className="muted small">
+        Brak wyniku priorytetu: analiza nie była jeszcze uruchomiona albo obiekt jest poza jej
+        zakresem.
+      </p>
+    );
+  return (
+    <section className="priority" aria-label="Priorytet do dalszej oceny">
+      <h4>Priorytet do dalszej oceny</h4>
+      {p.rps === null ? (
+        <p className="priority-none">
+          <strong>Bez pozycji w rankingu</strong> — brakuje kluczowych danych (kompletność{" "}
+          {Math.round(p.completeness_pct)}%).
+        </p>
+      ) : (
+        <p className="priority-head">
+          <span className="priority-score">{p.rps.toFixed(1)}</span>
+          <span>
+            <strong>
+              pozycja {p.rank} z {p.ranked_total}
+            </strong>
+            <br />
+            <span className="muted small">
+              przy zmianie wag o ±20%: {p.rank_best}–{p.rank_worst} · kompletność{" "}
+              {Math.round(p.completeness_pct)}%
+            </span>
+          </span>
+        </p>
+      )}
+      <ul className="components">
+        {p.components.map((c) => (
+          <li key={c.component}>
+            <div className="component-head">
+              <span>
+                {COMPONENT_LABEL[c.component]}{" "}
+                <span className="muted">(waga {Math.round(c.weight * 100)}%)</span>
+              </span>
+              <span>{c.value === null ? "—" : Math.round(c.value)}</span>
+            </div>
+            <div
+              className="bar"
+              role="img"
+              aria-label={
+                c.value === null
+                  ? `${COMPONENT_LABEL[c.component]}: brak danych`
+                  : `${COMPONENT_LABEL[c.component]}: ${Math.round(c.value)} na 100`
+              }
+            >
+              {c.value !== null && (
+                <span
+                  className={c.status === "modelled" ? "bar-fill bar-modelled" : "bar-fill"}
+                  style={{ width: `${c.value}%` }}
+                />
+              )}
+            </div>
+            <div className="muted small">
+              {COMPONENT_STATUS[c.status] ?? c.status}: {componentNote(c)}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="muted small">
+        To nie jest prognoza wypadków ani urzędowa klasyfikacja. Metoda {p.method_version}, wagi
+        eksperymentalne.
+      </p>
+    </section>
   );
 }
 
@@ -76,6 +171,8 @@ export function CrossingCard({ crossingId }: { crossingId: number }) {
           ))}
         </ul>
       )}
+
+      <PriorityBlock detail={d} />
 
       <dl>
         <Row label="Dzielnica">{d.district_name ?? "poza Warszawą"}</Row>
@@ -152,11 +249,6 @@ export function CrossingCard({ crossingId }: { crossingId: number }) {
         </>
       )}
 
-      <h4>Ruch drogowy i priorytet</h4>
-      <p className="muted small">
-        Brak danych: natężenie ruchu drogowego i wskaźnik priorytetu pojawią się po kolejnych
-        zadaniach (RSA-007 – RSA-010).
-      </p>
 
       {notes.length > 0 && (
         <>
