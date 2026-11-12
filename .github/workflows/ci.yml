@@ -74,6 +74,14 @@ jobs:
           grep -q '"schema_revision":"0005"' health.json
           curl -fsS http://127.0.0.1:8080/api/v1/districts | grep -q '"type":"FeatureCollection"'
           curl -fsS "http://127.0.0.1:8080/api/v1/crossings?limit=1" | grep -q '"total":0'
+      - name: Frontend trafia w backend także po jego odtworzeniu (nowy adres IP)
+        run: |
+          docker compose up -d --force-recreate --no-deps backend
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8080/api/v1/health | grep -q '"version"'
       - name: Worker korzysta z tego samego obrazu co backend
         run: |
           docker compose run --rm worker | tee worker.txt
