@@ -6,7 +6,7 @@ import pytest
 
 from app.etl.bdot10k import find_member, iter_segments, near_any_point
 from app.etl.prg import fetch_districts, parse_districts
-from app.etl.remote_zip import open_remote_zip
+from app.etl.remote_zip import RemoteFileUnavailable, open_remote_zip
 
 # Skrócone prawdziwe odpowiedzi usług (struktura i kolejność osi jak w oryginale).
 PRG_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -144,3 +144,35 @@ def test_remote_zip_rejects_server_without_range_support():
 
     with pytest.raises(RuntimeError, match="zakres"):
         open_remote_zip(httpx.Client(transport=httpx.MockTransport(handler)), "https://e.test/z")
+
+
+def test_remote_zip_retries_transient_failures():
+    payload = _zip_bytes()
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ConnectError("[Errno 111] Connection refused")
+        if calls["n"] == 2:
+            return httpx.Response(503)
+        if request.method == "HEAD":
+            return httpx.Response(
+                200, headers={"accept-ranges": "bytes", "content-length": str(len(payload))}
+            )
+        start, end = (int(v) for v in request.headers["range"].removeprefix("bytes=").split("-"))
+        return httpx.Response(206, content=payload[start : end + 1])
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    archive, raw = open_remote_zip(client, "https://example.test/p.zip", retry_delays_s=(0, 0))
+    assert len(archive.namelist()) == 2
+    assert raw.requests_made >= 4  # dwa nieudane HEAD, udany HEAD i odczyt
+
+
+def test_remote_zip_gives_clear_error_when_server_stays_down():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("[Errno 111] Connection refused")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(RemoteFileUnavailable, match="Spróbuj ponownie"):
+        open_remote_zip(client, "https://example.test/p.zip", retry_delays_s=(0,))
