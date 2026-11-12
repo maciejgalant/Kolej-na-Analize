@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  type AnalysisRun,
   type CrossingFeature,
   type DistrictFeature,
   fetchCrossings,
   fetchDistricts,
   fetchHealth,
+  fetchLatestAnalysis,
   type Health,
 } from "./api";
 import { CrossingCard } from "./CrossingCard";
@@ -20,7 +22,12 @@ type HealthState =
 type DataState =
   | { kind: "loading" }
   | { kind: "error" }
-  | { kind: "ready"; districts: DistrictFeature[]; crossings: CrossingFeature[] };
+  | {
+      kind: "ready";
+      districts: DistrictFeature[];
+      crossings: CrossingFeature[];
+      analysis: AnalysisRun | null;
+    };
 
 function useHealth(): HealthState {
   const [state, setState] = useState<HealthState>({ kind: "loading" });
@@ -51,8 +58,14 @@ function useInventory(): [DataState, () => void] {
   useEffect(() => {
     const controller = new AbortController();
     setState({ kind: "loading" });
-    Promise.all([fetchDistricts(controller.signal), fetchCrossings(controller.signal)])
-      .then(([districts, crossings]) => setState({ kind: "ready", districts, crossings }))
+    Promise.all([
+      fetchDistricts(controller.signal),
+      fetchCrossings(controller.signal),
+      fetchLatestAnalysis(controller.signal),
+    ])
+      .then(([districts, crossings, analysis]) =>
+        setState({ kind: "ready", districts, crossings, analysis }),
+      )
       .catch(() => {
         if (!controller.signal.aborted) setState({ kind: "error" });
       });
@@ -118,9 +131,10 @@ export function App() {
   const [showPedestrian, setShowPedestrian] = useState(true);
   const [showUnverified, setShowUnverified] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"name" | "trains">("name");
+  const [sortBy, setSortBy] = useState<"priority" | "name" | "trains">("priority");
 
   const districts = data.kind === "ready" ? data.districts : [];
+  const analysis = data.kind === "ready" ? data.analysis : null;
   const visible = useMemo(() => {
     if (data.kind !== "ready") return [];
     const filtered = data.crossings.filter((c) => {
@@ -130,6 +144,12 @@ export function App() {
       if (p.verification_status.startsWith("rejected")) return false;
       return showUnverified || p.verification_status === "verified";
     });
+    if (sortBy === "priority") {
+      // Najpierw obiekty z pozycją, potem pozostałe w kolejności z API.
+      return [...filtered].sort(
+        (a, b) => (a.properties.rank ?? Infinity) - (b.properties.rank ?? Infinity),
+      );
+    }
     if (sortBy === "trains") {
       // Obiekty bez danych rozkładowych trafiają na koniec, nie są traktowane jak zero.
       return [...filtered].sort(
@@ -185,8 +205,8 @@ export function App() {
 
       {demoMode && (
         <div className="demo-bar" role="status">
-          Tryb bez zewnętrznych API. Ewidencja przejazdów pochodzi z danych urzędowych; dane o
-          ruchu drogowym i ranking nie są jeszcze dostępne.
+          Tryb bez zewnętrznych API. Ranking to eksperymentalny priorytet do dalszej oceny, a nie
+          prognoza wypadków; natężenie ruchu drogowego jest szacowane z klasy drogi.
         </div>
       )}
 
@@ -245,11 +265,16 @@ export function App() {
           <select
             id="sort"
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "name" | "trains")}
-            disabled={!hasTrainData}
+            onChange={(e) => setSortBy(e.target.value as "priority" | "name" | "trains")}
+            disabled={data.kind !== "ready"}
           >
+            <option value="priority" disabled={analysis === null}>
+              według priorytetu (RPS)
+            </option>
             <option value="name">według dzielnicy i numeru</option>
-            <option value="trains">według liczby pociągów (plan)</option>
+            <option value="trains" disabled={!hasTrainData}>
+              według liczby pociągów (plan)
+            </option>
           </select>
 
           {data.kind === "loading" && <p className="muted">Wczytywanie ewidencji…</p>}
@@ -270,8 +295,10 @@ export function App() {
           {data.kind === "ready" && data.crossings.length > 0 && (
             <>
               <p className="count" aria-live="polite">
-                Pokazano <strong>{visible.length}</strong> {objectsLabel(visible.length)}. To nie jest
-                ranking priorytetów — ten pojawi się po zadaniu RSA-010.
+                Pokazano <strong>{visible.length}</strong> {objectsLabel(visible.length)}.{" "}
+                {analysis === null
+                  ? "Ranking priorytetów pojawi się po uruchomieniu analizy (run-analysis)."
+                  : `Ranking: ${analysis.ranked} z ${analysis.scored} przejazdów drogowych ma pozycję; dane o ruchu ${analysis.period_start} – ${analysis.period_end}.`}
               </p>
               {visible.length === 0 ? (
                 <p className="muted">Żaden obiekt nie spełnia wybranych filtrów.</p>
@@ -299,6 +326,11 @@ export function App() {
                         </span>
                         <span className="item-text">
                           <span className="item-name">{crossingTitle(c.properties)}</span>
+                          {c.properties.rank !== null && c.properties.rps !== null && (
+                            <span className="item-rank">
+                              poz. {c.properties.rank} · RPS {c.properties.rps.toFixed(1)}
+                            </span>
+                          )}
                           <span className="item-sub">
                             kat. {c.properties.category ?? "nieznana"} ·{" "}
                             {c.properties.district_name}

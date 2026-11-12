@@ -14,6 +14,15 @@ from app.db import get_connection
 
 router = APIRouter(tags=["ewidencja"])
 
+LATEST_RUN_SQL = (
+    "SELECT run_id FROM analysis.runs WHERE status = 'completed' "
+    "ORDER BY finished_at DESC, run_id DESC LIMIT 1"
+)
+DISCLAIMER = (
+    "RPS to autorski priorytet do dalszej oceny, a nie prognoza wypadków ani urzędowa "
+    "klasyfikacja przejazdów. Wagi i tabele punktowe są eksperymentalne i niezwalidowane."
+)
+
 Connection = Annotated[psycopg.Connection, Depends(get_connection)]
 Category = Literal["A", "B", "C", "D", "E", "F"]
 StatusFilter = Literal[
@@ -87,6 +96,42 @@ class RailFlow(BaseModel):
     source: str | None
 
 
+class PriorityComponent(BaseModel):
+    component: Literal["T", "P", "G", "H"]
+    value: float | None
+    weight: float
+    status: str
+    detail: dict[str, Any]
+
+
+class Priority(BaseModel):
+    """Wynik RPS z ostatniego zakończonego przebiegu; to priorytet oceny, nie prognoza."""
+
+    run_id: int
+    method_version: str
+    rps: float | None
+    rank: int | None
+    rank_best: int | None
+    rank_worst: int | None
+    ranked_total: int
+    completeness_pct: float
+    quality_status: str
+    components: list[PriorityComponent]
+
+
+class AnalysisRun(BaseModel):
+    run_id: int
+    method_version: str
+    period_start: str
+    period_end: str
+    finished_at: str
+    is_demo: bool
+    weights: dict[str, float]
+    scored: int
+    ranked: int
+    disclaimer: str
+
+
 class CrossingDetail(BaseModel):
     crossing_id: int
     official_id: str | None
@@ -105,6 +150,7 @@ class CrossingDetail(BaseModel):
     tracks: list[LinkedTrack]
     sources: list[SourceInfo]
     rail_flow: RailFlow | None
+    priority: Priority | None
 
 
 @router.get("/districts", response_model=FeatureCollection)
@@ -195,9 +241,12 @@ def crossings(
                  WHERE f.crossing_id = c.crossing_id AND f.evidence_type = 'planned'
                    AND extract(isodow FROM f.period_start AT TIME ZONE 'Europe/Warsaw') < 6
                ) AS trains_weekday,
+               s.rank, s.rps::float AS rps,
                ST_AsGeoJSON(ST_Transform(c.geom, 4326), 6)::json AS geometry
         FROM spatial.crossings c
         JOIN spatial.districts d ON d.district_id = c.district_id
+        LEFT JOIN analysis.risk_scores s
+               ON s.crossing_id = c.crossing_id AND s.run_id = ({LATEST_RUN_SQL})
         WHERE {condition}
         ORDER BY d.name, c.name, c.crossing_id
         LIMIT %(limit)s OFFSET %(offset)s
@@ -315,8 +364,27 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
             ).fetchone()
             or {}
         ).get("name")
+    priority = conn.execute(
+        f"""
+        SELECT s.run_id, r.method_version, s.rps::float AS rps, s.rank, s.rank_best,
+               s.rank_worst, s.completeness_pct::float AS completeness_pct, s.quality_status,
+               (SELECT count(*) FROM analysis.risk_scores x
+                 WHERE x.run_id = s.run_id AND x.rank IS NOT NULL) AS ranked_total
+        FROM analysis.risk_scores s JOIN analysis.runs r USING (run_id)
+        WHERE s.crossing_id = %s AND s.run_id = ({LATEST_RUN_SQL})
+        """,
+        (crossing_id,),
+    ).fetchone()
+    if priority is not None:
+        priority["components"] = conn.execute(
+            "SELECT component, value::float AS value, weight::float AS weight, status, detail "
+            "FROM analysis.components WHERE run_id = %s AND crossing_id = %s "
+            "ORDER BY array_position(ARRAY['T', 'P', 'G', 'H'], component)",
+            (priority["run_id"], crossing_id),
+        ).fetchall()
     return CrossingDetail(
         **row,
+        priority=priority,
         rail_flow=flow,
         attributes=attributes,
         quality_flags=flags,
@@ -324,3 +392,24 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
         tracks=tracks,
         sources=sources,
     )
+
+
+@router.get("/analysis/latest", response_model=AnalysisRun)
+def latest_analysis(conn: Connection) -> AnalysisRun:
+    row = conn.execute(
+        f"""
+        SELECT r.run_id, r.method_version, r.is_demo, r.parameters -> 'weights' AS weights,
+               to_char(r.period_start AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD') AS period_start,
+               to_char(r.period_end AT TIME ZONE 'Europe/Warsaw' - interval '1 day',
+                       'YYYY-MM-DD') AS period_end,
+               to_char(r.finished_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                   AS finished_at,
+               (SELECT count(*) FROM analysis.risk_scores s WHERE s.run_id = r.run_id) AS scored,
+               (SELECT count(*) FROM analysis.risk_scores s
+                 WHERE s.run_id = r.run_id AND s.rank IS NOT NULL) AS ranked
+        FROM analysis.runs r WHERE r.run_id = ({LATEST_RUN_SQL})
+        """
+    ).fetchone()
+    if row is None:
+        raise HTTPException(404, "Nie ma jeszcze zakończonego przebiegu analizy.")
+    return AnalysisRun(**row, disclaimer=DISCLAIMER)

@@ -526,3 +526,85 @@ article {
     height: 440px;
   }
 }
+
+/* --- Priorytet RPS (RSA-010) --- */
+.item-rank {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-700);
+}
+
+.priority {
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.priority h4 {
+  margin-top: 0;
+}
+
+.priority-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.priority-score {
+  min-width: 64px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--navy-900);
+  color: var(--white);
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.priority-none {
+  margin: 8px 0;
+}
+
+.components {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.component-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bar {
+  height: 8px;
+  margin: 2px 0;
+  border-radius: 4px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--navy-700);
+}
+
+/* Szacunek odróżniony wzorem, nie tylko kolorem. */
+.bar-modelled {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--blue-500),
+    var(--blue-500) 4px,
+    #7fb3e0 4px,
+    #7fb3e0 8px
+  );
+}

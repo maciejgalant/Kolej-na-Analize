@@ -4,7 +4,7 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **infrastruktura, schemat bazy i ewidencja przejazdów z mapą i API (RSA-002–005, podstawy RSA-011/012), bez analiz**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Status: **ewidencja przejazdów, planowy ruch pociągów i eksperymentalny ranking RPS z mapą; bez asystenta AI**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
@@ -50,6 +50,12 @@ Uruchamiać po imporcie przejazdów. Pobiera granice dzielnic z PRG oraz tory i 
 docker compose run --rm worker python -m app.worker import-schedule
 ```
 Uruchamiać po imporcie dzielnic i torów. Pobiera otwarty rozkład GTFS (bez klucza), liczy planowe pociągi pasażerskie na każdy przejazd w tygodniu odniesienia i tworzy raport `reports/DATA_AUDIT_trains.md`.
+
+### Analiza priorytetów RPS (RSA-010)
+```bash
+docker compose run --rm worker python -m app.worker run-analysis
+```
+Uruchamiać po imporcie rozkładu. Liczy eksperymentalny wskaźnik RPS dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/RPS_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 

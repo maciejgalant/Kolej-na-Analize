@@ -50,6 +50,9 @@ export interface CrossingProperties {
   warnings: number;
   /** Średnia planowa liczba pociągów pasażerskich w dzień roboczy; null = brak danych. */
   trains_weekday: number | null;
+  /** Pozycja i wynik RPS z ostatniego przebiegu; null = poza rankingiem lub brak przebiegu. */
+  rank: number | null;
+  rps: number | null;
 }
 
 export interface CrossingFeature {
@@ -87,6 +90,24 @@ export interface CrossingDetail {
     distance_m: number;
   }[];
   sources: { name: string; attribution: string | null; license_verified: boolean }[];
+  priority: {
+    run_id: number;
+    method_version: string;
+    rps: number | null;
+    rank: number | null;
+    rank_best: number | null;
+    rank_worst: number | null;
+    ranked_total: number;
+    completeness_pct: number;
+    quality_status: string;
+    components: {
+      component: "T" | "P" | "G" | "H";
+      value: number | null;
+      weight: number;
+      status: "ok" | "modelled" | "unknown";
+      detail: Record<string, unknown>;
+    }[];
+  } | null;
   rail_flow: {
     weekday_avg: number;
     saturday: number | null;
@@ -119,3 +140,23 @@ export const fetchCrossings = (signal?: AbortSignal) =>
 
 export const fetchCrossingDetail = (id: number, signal?: AbortSignal) =>
   getJson<CrossingDetail>(`/api/v1/crossings/${id}`, signal);
+
+export interface AnalysisRun {
+  run_id: number;
+  method_version: string;
+  period_start: string;
+  period_end: string;
+  finished_at: string;
+  is_demo: boolean;
+  scored: number;
+  ranked: number;
+  disclaimer: string;
+}
+
+/** Zwraca null, gdy nie ma jeszcze żadnego zakończonego przebiegu analizy (HTTP 404). */
+export async function fetchLatestAnalysis(signal?: AbortSignal): Promise<AnalysisRun | null> {
+  const response = await fetch("/api/v1/analysis/latest", { signal });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as AnalysisRun;
+}

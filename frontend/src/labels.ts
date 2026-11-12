@@ -59,3 +59,16 @@ export function objectsLabel(count: number): string {
   if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return "obiekty";
   return "obiektów";
 }
+
+export const COMPONENT_LABEL: Record<"T" | "P" | "G" | "H", string> = {
+  T: "Ekspozycja na ruch",
+  P: "Zabezpieczenia",
+  G: "Geometria",
+  H: "Historia zdarzeń",
+};
+
+export const COMPONENT_STATUS: Record<string, string> = {
+  ok: "dane źródłowe",
+  modelled: "szacunek",
+  unknown: "brak danych",
+};

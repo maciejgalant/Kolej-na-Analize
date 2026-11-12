@@ -72,6 +72,13 @@ Uruchomienie (po `import-crossings`): `docker compose run --rm worker python -m 
 
 Uruchomienie (po `import-topology`): `docker compose run --rm worker python -m app.worker import-schedule` → `reports/DATA_AUDIT_trains.md`.
 
+## Ruch drogowy — ustalenia RSA-007 (2026-11-12)
+**Źródło: system Automatycznych Pomiarów Ruchu ZDM Warszawa.** Publiczny interfejs narzędzia „Analiza online ruchu na drogach": `https://zdm.waw.pl/apr/api/ccor/wpss/` (`getLocations.ccor` — lokalizacje ze współrzędnymi, ulicą, odcinkiem, klasą drogi; `generateReport.ccor` i `getReportProgress.ccor` — raporty natężenia; dane od 2024-01-01). Strona nie podaje warunków ponownego wykorzystania.
+
+**Pokrycie przejazdów: niewystarczające.** 254 lokalizacje w 128 punktach leżą głównie na trasach wylotowych, mostach i w centrum. Spośród 36 przejazdów drogowych punkt pomiarowy na tej samej ulicy ma trzy: `021 001 656` (Radzymińska, 75 m), `007 012 635` (Wydawnicza, 1,0 km) i `021 005 525` (Łodygowa, 1,2 km). Dla pozostałych najbliższy punkt leży na innej ulicy.
+
+**Decyzja.** Importu pomiarów ZDM nie budujemy na tym etapie. Ekspozycja drogowa w RPS jest szacowana z klasy drogi BDOT10k i oznaczana jako model (ANALYSIS_METHOD.md, sekcja 8). Pomiary ZDM pozostają źródłem do kalibracji tabeli klas i do walidacji trzech obiektów.
+
 ## Zasady jakości
 1. Nie zakładać, że przecięcie linii na mapie jest przejazdem w jednym poziomie.
 2. Nie utożsamiać liczby rozkładowych pociągów z faktycznie zrealizowanymi wszystkimi kursami; towarowe mogą nie być pokryte.

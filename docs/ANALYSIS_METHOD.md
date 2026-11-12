@@ -34,3 +34,27 @@ Grupy: T = ekspozycja na ruch; P = infrastruktura / zabezpieczenia; G = geometri
 
 ## 7. Przykładowa interpretacja dla użytkownika
 „Przejazd X ma wysoki *priorytet do dalszej oceny* z powodu wysokiego oszacowanego ruchu pociągów i kategorii zabezpieczeń. Dane o ruchu samochodowym są modelowe, a brak zweryfikowanej widoczności ogranicza pewność porównania. To nie jest prognoza liczby wypadków”.
+
+## 8. Implementacja `rps-0.2-exp` (RSA-010, 2026-11-12)
+Wersja eksperymentalna; wagi i tabele punktowe są założeniami autorskimi, niezwalidowanymi. Kod: `backend/app/analysis/rps.py`.
+
+**Zakres.** Zweryfikowane przejazdy drogowe (kategorie A–D i F) w granicach Warszawy. Przejścia dla pieszych (kategoria E) są w ewidencji i na mapie, ale poza rankingiem.
+
+**Składniki (0–100).**
+- **T — ekspozycja:** `100 · log10(1 + pociągi × pojazdy) / log10(1 + 12 000 000)`, obcięte do 100. Pociągi: średnia planowa liczba kursów pasażerskich w dzień roboczy (`rail.crossing_flow`). Pojazdy: szacunek z klasy drogi BDOT10k (tabela niżej). Poziom odniesienia 12 mln = 400 pociągów × 30 000 pojazdów. Status zawsze `modelled`.
+- **P — zabezpieczenia:** z kategorii przejazdu: A 15, B 30, C 55, D 100, F 60. Status `ok`.
+- **G — geometria:** `0,6 · tory + 0,4 · kąt`. Tory liczone na 30-metrowym przekroju prostopadłym do najbliższego toru (1 → 0, 2 → 40, 3 → 70, ≥4 → 100). Kąt ostry między osią jezdni a torem: ≥75° → 0, ≤30° → 100, liniowo pomiędzy. Status `modelled`; widoczność nie jest oceniana.
+- **H — historia zdarzeń:** brak danych, `unknown` dla wszystkich obiektów.
+
+**Szacunek ruchu drogowego z klasy drogi [pojazdy/dobę]:** wewnętrzna 300, dojazdowa 800, lokalna 2 500, zbiorcza 8 000, główna 18 000, główna ruchu przyśpieszonego 30 000. Brana jest jezdnia o najwyższej klasie do 15 m od punktu przejazdu. To założenie zastępcze: system pomiarowy ZDM (APR, 128 punktów) ma punkt na tej samej ulicy do 1,5 km tylko dla trzech obiektów (Radzymińska 75 m, Wydawnicza 1,0 km, Łodygowa 1,2 km), więc pomiar nie może być podstawą rankingu. Wartości wymagają kalibracji.
+
+**Wynik i braki.**
+- `RPS` to średnia ważona po dostępnych składnikach; `completeness_pct` to suma wag dostępnych składników (90% = brak tylko H).
+- Bez T lub P obiekt nie dostaje wyniku ani pozycji (`rps = NULL`, `quality_status = partial`). T jest nieznane, gdy rozkład nie ma kursów pasażerskich — ruch towarowy i manewrowy jest wtedy nieznany, a nie zerowy.
+- Skoro H brakuje wszystkim, wyniki są między sobą porównywalne, ale cały ranking ma status częściowego.
+
+**Analiza wrażliwości.** Każda waga jest osobno zmieniana o ±20% (z normalizacją pozostałych); `rank_best` i `rank_worst` to skrajne pozycje w tych ośmiu wariantach.
+
+**Każdy przebieg** zapisuje wersję metody, wagi, tabele, okres danych i liczbę obiektów w `analysis.runs`; API i interfejs pokazują ostatni zakończony przebieg.
+
+**Czego ta wersja nie robi:** nie liczy urzędowego iloczynu ruchu, nie używa wykonania kursów, pomiarów drogowych ani danych o zdarzeniach, nie ocenia widoczności.
