@@ -48,6 +48,8 @@ export interface CrossingProperties {
   district_name: string;
   manager: string | null;
   warnings: number;
+  /** Średnia planowa liczba pociągów pasażerskich w dzień roboczy; null = brak danych. */
+  trains_weekday: number | null;
 }
 
 export interface CrossingFeature {
@@ -85,6 +87,17 @@ export interface CrossingDetail {
     distance_m: number;
   }[];
   sources: { name: string; attribution: string | null; license_verified: boolean }[];
+  rail_flow: {
+    weekday_avg: number;
+    saturday: number | null;
+    sunday: number | null;
+    period_start: string;
+    period_end: string;
+    unit: string;
+    evidence_type: string;
+    method_version: string;
+    source: string | null;
+  } | null;
 }
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {

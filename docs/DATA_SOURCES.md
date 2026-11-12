@@ -49,6 +49,21 @@ Uruchomienie i raport: `docker compose run --rm worker python -m app.worker impo
 
 Uruchomienie (po `import-crossings`): `docker compose run --rm worker python -m app.worker import-topology` → `reports/DATA_AUDIT_topology.md`.
 
+## Planowy ruch pociągów — ustalenia RSA-006/009 (2026-11-12)
+**Źródło: Polish Trains GTFS** (`https://mkuran.pl/gtfs/polish_trains.zip`, ok. 26 MB, aktualizowany codziennie). Zbiór opracowany przez M. Kuranowskiego na podstawie otwartych danych PKP PLK i Kolei Mazowieckich; nie wymaga klucza. Obejmuje pociągi pasażerskie wszystkich przewoźników, z geometrią tras (`shapes.txt`) i kalendarzem w `calendar_dates.txt`. Licencja: warunki ponownego wykorzystywania informacji sektora publicznego PLK i KM — do przeczytania i potwierdzenia (w `system.licenses` oznaczone jako niezweryfikowane).
+
+**Metoda (`gtfs-shape-1`).** Kurs kolejowy (`route_type = 2`) jest liczony dla przejazdu, gdy geometria jego trasy przebiega do 20 m od punktu przejazdu. Wynik to liczba kursów na każdy dzień tygodnia odniesienia (najbliższy pełny tydzień pon.–niedz. w zakresie zbioru), zapisana w `rail.crossing_flow` jako `evidence_type = planned`, jednostka `passenger_trains/day`.
+
+**Kontrola wrażliwości.** Liczba kursów jest liczona także dla progów 10 m i 50 m; różnica powyżej 10% daje flagę `train_count_sensitive` (linie równoległe, rozjazdy).
+
+**Sprawdzenie metody.** Dla ośmiu przejazdów z rejestru UTK trasy z GTFS przebiegały 2–8 m od punktu przejazdu, a liczba kursów była identyczna dla progów 10–50 m. Przejazdy na liniach bez ruchu pasażerskiego (linia 503, bocznice) miały zero tras w promieniu 200 m.
+
+**Ograniczenia.** Tylko pociągi pasażerskie: ruch towarowy, służbowy i manewry nie są ujęte, więc `0` oznacza brak kursów pasażerskich, a nie brak ruchu na torze. To plan, nie wykonanie — odwołania i opóźnienia wymagają klucza do API PKP PLK (wniosek złożony 2026-11-11). Kursy liczone są według dnia kursowania z rozkładu.
+
+**API PKP PLK (po uzyskaniu klucza).** Dokumentacja: `https://pdp-api.plk-sa.pl/api-documentation`. Rozkład `/api/v1/schedules`, wykonanie `/api/v1/operations` (z `withPlanned` i przyrostowym `since`), słownik stacji ze współrzędnymi, nagłówek `X-API-Key`, limity Basic 100/h, Standard 500/h, Premium 2000/h.
+
+Uruchomienie (po `import-topology`): `docker compose run --rm worker python -m app.worker import-schedule` → `reports/DATA_AUDIT_trains.md`.
+
 ## Zasady jakości
 1. Nie zakładać, że przecięcie linii na mapie jest przejazdem w jednym poziomie.
 2. Nie utożsamiać liczby rozkładowych pociągów z faktycznie zrealizowanymi wszystkimi kursami; towarowe mogą nie być pokryte.

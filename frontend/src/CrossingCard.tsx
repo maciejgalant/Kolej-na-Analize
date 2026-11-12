@@ -130,10 +130,32 @@ export function CrossingCard({ crossingId }: { crossingId: number }) {
         </ul>
       )}
 
-      <h4>Ruch i priorytet</h4>
+      <h4>Ruch kolejowy (plan)</h4>
+      {d.rail_flow === null ? (
+        <p className="muted small">Brak danych rozkładowych dla tego obiektu.</p>
+      ) : (
+        <>
+          <dl>
+            <Row label="Dzień roboczy">
+              <strong>{Math.round(d.rail_flow.weekday_avg)}</strong> pociągów pasażerskich na dobę
+            </Row>
+            <Row label="Sobota">{d.rail_flow.saturday ?? "brak danych"}</Row>
+            <Row label="Niedziela">{d.rail_flow.sunday ?? "brak danych"}</Row>
+          </dl>
+          <p className="muted small">
+            Rozkład planowy, tydzień {d.rail_flow.period_start} – {d.rail_flow.period_end}. Tylko
+            pociągi pasażerskie
+            {d.rail_flow.weekday_avg === 0
+              ? "; zero nie oznacza braku ruchu towarowego lub manewrowego."
+              : "; bez towarowych i służbowych."}
+          </p>
+        </>
+      )}
+
+      <h4>Ruch drogowy i priorytet</h4>
       <p className="muted small">
-        Brak danych: liczba pociągów, natężenie ruchu drogowego i wskaźnik priorytetu pojawią się
-        po kolejnych zadaniach (RSA-006 – RSA-010).
+        Brak danych: natężenie ruchu drogowego i wskaźnik priorytetu pojawią się po kolejnych
+        zadaniach (RSA-007 – RSA-010).
       </p>
 
       {notes.length > 0 && (
