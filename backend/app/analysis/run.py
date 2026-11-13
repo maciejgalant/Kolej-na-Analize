@@ -189,8 +189,7 @@ def run_analysis(conn: psycopg.Connection, is_demo: bool = False) -> RunSummary:
                         ),
                     )
         conn.execute(
-            "UPDATE analysis.runs SET status = 'completed', finished_at = now() "
-            "WHERE run_id = %s",
+            "UPDATE analysis.runs SET status = 'completed', finished_at = now() WHERE run_id = %s",
             (run_id,),
         )
     ranked = sum(1 for s in scores if s.rank is not None)
