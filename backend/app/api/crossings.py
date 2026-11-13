@@ -10,10 +10,12 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from app.analysis.rps import ROAD_CLASS_VEHICLES
 from app.db import get_connection
 
 router = APIRouter(tags=["ewidencja"])
 
+ROAD_CLASSES = list(ROAD_CLASS_VEHICLES)  # od najniższej do najwyższej klasy
 LATEST_RUN_SQL = (
     "SELECT run_id FROM analysis.runs WHERE status = 'completed' "
     "ORDER BY finished_at DESC, run_id DESC LIMIT 1"
@@ -206,7 +208,7 @@ def crossings(
 ) -> CrossingCollection:
     box = _parse_bbox(bbox)
     where = ["c.district_id IS NOT NULL"]
-    params: dict[str, Any] = {"limit": limit, "offset": offset}
+    params: dict[str, Any] = {"limit": limit, "offset": offset, "classes": ROAD_CLASSES}
     if district_id is not None:
         where.append("c.district_id = %(district_id)s")
         params["district_id"] = district_id
@@ -242,6 +244,14 @@ def crossings(
                    AND extract(isodow FROM f.period_start AT TIME ZONE 'Europe/Warsaw') < 6
                ) AS trains_weekday,
                s.rank, s.rps::float AS rps,
+               -- Ulica przejazdu do opisu na liście: jezdnia o najwyższej klasie do 15 m,
+               -- a gdy takiej nie ma, najbliższa nazwana do 30 m.
+               (SELECT r.road_name FROM spatial.road_segments r
+                 WHERE r.road_name IS NOT NULL AND ST_DWithin(r.geom, c.geom, 30)
+                 ORDER BY ST_Distance(r.geom, c.geom) > 15,
+                          array_position(%(classes)s::text[], r.road_class) DESC NULLS LAST,
+                          ST_Distance(r.geom, c.geom)
+                 LIMIT 1) AS street,
                ST_AsGeoJSON(ST_Transform(c.geom, 4326), 6)::json AS geometry
         FROM spatial.crossings c
         JOIN spatial.districts d ON d.district_id = c.district_id

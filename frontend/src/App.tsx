@@ -11,10 +11,12 @@ import {
   type Health,
 } from "./api";
 import { Assistant } from "./Assistant";
+import { CategoryPin } from "./CategoryPin";
 import { CrossingCard } from "./CrossingCard";
 import { Dialog } from "./Dialog";
 import { crossingTitle, objectsLabel } from "./labels";
 import { MapView } from "./MapView";
+import { CATEGORY_SHORT } from "./pictograms";
 
 type HealthState =
   { kind: "loading" } | { kind: "error" } | { kind: "ready"; health: Health };
@@ -129,6 +131,130 @@ function ServiceStatus({ state }: { state: HealthState }) {
         }
       />
     </ul>
+  );
+}
+
+function CrossingItem({
+  crossing,
+  active,
+  onSelect,
+}: {
+  crossing: CrossingFeature;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const p = crossing.properties;
+  const ranked = p.rank !== null && p.rps !== null;
+  return (
+    <li>
+      <button
+        type="button"
+        className={active ? "item item-active" : "item"}
+        aria-pressed={active}
+        onClick={onSelect}
+      >
+        <CategoryPin
+          category={p.category}
+          verified={p.verification_status === "verified"}
+          warning={p.warnings > 0}
+          size={34}
+        />
+        <span className="item-text">
+          <span className="item-name">{p.street ?? crossingTitle(p)}</span>
+          <span className="item-sub">
+            {p.street ? `nr ${crossingTitle(p)} · ` : ""}
+            {p.district_name}
+          </span>
+          <span className="item-meta">
+            <span className="chip">
+              {p.category ? CATEGORY_SHORT[p.category] : "kategoria nieznana"}
+            </span>
+            {p.trains_weekday !== null && (
+              <span className="chip">
+                {p.trains_weekday} poc./dzień roboczy
+              </span>
+            )}
+            {p.verification_status !== "verified" && (
+              <span className="chip chip-muted">niezweryfikowany</span>
+            )}
+            {p.warnings > 0 && (
+              <span className="chip chip-warn">! uwagi do danych</span>
+            )}
+          </span>
+        </span>
+        {ranked && (
+          <span
+            className="item-score"
+            title={`Priorytet do dalszej oceny: ${p.rps!.toFixed(0)} na 100, pozycja ${p.rank}`}
+          >
+            <span className="item-rank">{p.rank}.</span>
+            <span className="score-bar" aria-hidden="true">
+              <span style={{ width: `${Math.max(4, p.rps!)}%` }} />
+            </span>
+            <span className="item-rps">RPS {p.rps!.toFixed(0)}</span>
+          </span>
+        )}
+      </button>
+    </li>
+  );
+}
+
+function CrossingGroups({
+  crossings,
+  grouped,
+  selectedId,
+  onSelect,
+}: {
+  crossings: CrossingFeature[];
+  grouped: boolean;
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  const render = (items: CrossingFeature[]) =>
+    items.map((c) => (
+      <CrossingItem
+        key={c.id}
+        crossing={c}
+        active={c.id === selectedId}
+        onSelect={() => onSelect(c.id)}
+      />
+    ));
+  if (!grouped) return <ul className="crossing-list">{render(crossings)}</ul>;
+  const groups: { title: string; note?: string; items: CrossingFeature[] }[] = [
+    {
+      title: "W rankingu",
+      note: "1. = najwyższy priorytet do dalszej oceny",
+      items: crossings.filter((c) => c.properties.rank !== null),
+    },
+    {
+      title: "Bez pozycji",
+      note: "brak kluczowych danych, np. kursów pasażerskich",
+      items: crossings.filter(
+        (c) => c.properties.rank === null && !c.properties.is_pedestrian,
+      ),
+    },
+    {
+      title: "Przejścia dla pieszych",
+      note: "poza rankingiem",
+      items: crossings.filter(
+        (c) => c.properties.rank === null && c.properties.is_pedestrian,
+      ),
+    },
+  ];
+  return (
+    <div className="crossing-list">
+      {groups
+        .filter((g) => g.items.length > 0)
+        .map((g) => (
+          <section key={g.title} className="list-group" aria-label={g.title}>
+            <h3 className="list-group-title">
+              {g.title} <span className="list-group-count">{g.items.length}</span>
+              {g.note && <span className="list-group-note">{g.note}</span>}
+            </h3>
+            <ul>{render(g.items)}</ul>
+          </section>
+        ))}
+    </div>
   );
 }
 
@@ -414,59 +540,12 @@ export function App() {
                   Żaden obiekt nie spełnia wybranych filtrów.
                 </p>
               ) : (
-                <ul className="crossing-list">
-                  {visible.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        className={
-                          c.id === selectedId ? "item item-active" : "item"
-                        }
-                        aria-pressed={c.id === selectedId}
-                        onClick={() => setSelectedId(c.id)}
-                      >
-                        <span
-                          className={
-                            "marker " +
-                            (c.properties.is_pedestrian
-                              ? "marker-ped"
-                              : "marker-road") +
-                            (c.properties.verification_status === "verified"
-                              ? ""
-                              : " marker-unverified")
-                          }
-                          aria-hidden="true"
-                        >
-                          {c.properties.category ?? "?"}
-                        </span>
-                        <span className="item-text">
-                          <span className="item-name">
-                            {crossingTitle(c.properties)}
-                          </span>
-                          <span className="item-sub">
-                            {c.properties.district_name}
-                            {c.properties.trains_weekday !== null
-                              ? ` · ${c.properties.trains_weekday} poc./dobę`
-                              : ""}
-                            {c.properties.warnings > 0
-                              ? " · ! ostrzeżenie"
-                              : ""}
-                          </span>
-                        </span>
-                        {c.properties.rank !== null &&
-                          c.properties.rps !== null && (
-                            <span
-                              className="item-score"
-                              title="Priorytet do dalszej oceny (RPS)"
-                            >
-                              <strong>{c.properties.rps.toFixed(0)}</strong>
-                              <span>poz. {c.properties.rank}</span>
-                            </span>
-                          )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <CrossingGroups
+                  crossings={visible}
+                  grouped={sortBy === "priority" && analysis !== null}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                />
               )}
             </>
           )}
