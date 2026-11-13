@@ -103,6 +103,12 @@ body {
   font-size: 14px;
 }
 
+.demo-bar-strong {
+  background: #7a1f1f;
+  border-bottom-color: #5c1515;
+  color: #fff;
+}
+
 .layout {
   flex: 1;
   min-height: 0;
