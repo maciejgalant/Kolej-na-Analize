@@ -58,7 +58,7 @@ docker compose run --rm worker python -m app.worker run-analysis
 Uruchamiać po imporcie rozkładu. Liczy eksperymentalny wskaźnik RPS dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/RPS_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
 
 ### Asystent AI (RSA-013)
-Pole na dole aplikacji wysyła pytania do lokalnego modelu Qwen (Ollama). Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez pięć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Bez karty graficznej odpowiedź może trwać minutę lub dłużej. Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Pole na dole aplikacji wysyła pytania do lokalnego modelu Qwen (Ollama). Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez pięć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 

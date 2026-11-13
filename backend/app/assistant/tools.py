@@ -5,6 +5,7 @@ jedną z poniższych funkcji i podać jej argumenty; argumenty są walidowane, a
 to mały słownik z danymi z ostatniego zakończonego przebiegu analizy.
 """
 
+import difflib
 from collections.abc import Callable
 from typing import Any
 
@@ -20,17 +21,48 @@ class ToolError(ValueError):
     """Błąd argumentów; treść trafia do modelu, żeby mógł poprawić wywołanie."""
 
 
+# Odmiana nazw dzielnic, której nie złapie samo podobieństwo napisów.
+DISTRICT_FORMS = {
+    "wawra": "Wawer", "wawrze": "Wawer",
+    "woli": "Wola", "wole": "Wola",
+    "włoch": "Włochy", "włochach": "Włochy",
+    "bielan": "Bielany", "bielanach": "Bielany",
+    "pragi-południe": "Praga-Południe", "pradze-południe": "Praga-Południe",
+    "pragi-północ": "Praga-Północ", "pradze-północ": "Praga-Północ",
+    "pragi południe": "Praga-Południe", "pragi północ": "Praga-Północ",
+    "praga południe": "Praga-Południe", "praga północ": "Praga-Północ",
+    "śródmieścia": "Śródmieście", "śródmieściu": "Śródmieście",
+    "ochoty": "Ochota", "ochocie": "Ochota",
+    "wesołej": "Wesoła",
+}  # fmt: skip
+
+
+def _plain(text: str) -> str:
+    table = str.maketrans("ąćęłńóśźż", "acelnoszz")
+    return " ".join(text.lower().replace("dzielnica", "").split()).translate(table)
+
+
 def _district_id(conn: psycopg.Connection, name: str | None) -> tuple[int | None, str | None]:
+    """Rozpoznaje dzielnicę także w odmianie („Targówka”, „na Woli”) i bez polskich znaków."""
     if name is None or not str(name).strip():
         return None, None
-    wanted = str(name).strip().lower()
     rows = conn.execute("SELECT district_id, name FROM spatial.districts").fetchall()
-    for row in rows:
-        if row["name"].lower() == wanted:
-            return row["district_id"], row["name"]
-    close = [row for row in rows if wanted in row["name"].lower()]
-    if len(close) == 1:
-        return close[0]["district_id"], close[0]["name"]
+    by_plain = {_plain(row["name"]): row for row in rows}
+    wanted = " ".join(str(name).lower().replace("dzielnica", "").split())
+    for prefix in ("na ", "w ", "we ", "dla ", "z ", "ze "):
+        wanted = wanted.removeprefix(prefix)
+    if wanted in DISTRICT_FORMS:
+        wanted = DISTRICT_FORMS[wanted]
+    key = _plain(wanted)
+    if key in by_plain:
+        return by_plain[key]["district_id"], by_plain[key]["name"]
+    prefixed = [plain for plain in by_plain if plain.startswith(key)]
+    close = difflib.get_close_matches(key, list(by_plain), n=2, cutoff=0.72)
+    # Skrót pasujący do kilku dzielnic („Urs”, „Praga”) jest niejednoznaczny: nie zgadujemy.
+    if len(prefixed) <= 1 and (
+        len(close) == 1 or (len(close) == 2 and close[0][:4] != close[1][:4])
+    ):
+        return by_plain[close[0]]["district_id"], by_plain[close[0]]["name"]
     raise ToolError(
         f"Nie ma dzielnicy '{name}'. Dostępne: " + ", ".join(sorted(r["name"] for r in rows))
     )
