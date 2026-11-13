@@ -30,11 +30,18 @@ SYSTEM_PROMPT = (
     "7. Nazwy dzielnic przekazuj do funkcji tak, jak napisał użytkownik; funkcja sama "
     "rozpozna odmianę (np. „Targówka” to Targówek).\n"
     "8. Pisz zwykłym tekstem, bez tabel i nagłówków; przy rankingu podaj listę: pozycja, "
-    "numer przejazdu, kategoria, RPS. /no_think"
+    "numer przejazdu, kategoria, RPS."
 )
 # Model zostaje w pamięci między pytaniami; limit długości chroni przed wielominutową odpowiedzią.
 KEEP_ALIVE = "30m"
 MAX_ANSWER_TOKENS = 700
+# Model rozumujący zużywa część limitu na tok rozumowania, zanim zacznie odpowiadać.
+MAX_THINKING_TOKENS = 2500
+TRUNCATED_ANSWER = (
+    "Model nie zmieścił odpowiedzi w limicie długości. Zadaj węższe pytanie, "
+    "np. o jedną dzielnicę albo jeden przejazd."
+)
+_thinking_models: dict[str, bool] = {}
 
 
 class AssistantUnavailable(RuntimeError):
@@ -66,6 +73,23 @@ def _clean(text: str) -> str:
     return text.strip()
 
 
+def model_thinks(http: httpx.Client, base_url: str, model: str) -> bool:
+    """Czy model ma tryb rozumowania (wg Ollamy). Wynik pamiętany do restartu usługi.
+
+    Niektóre wydania (np. qwen3:4b od wersji 2507) rozumują zawsze i ignorują prośbę
+    o wyłączenie. Wtedy prosimy Ollamę o oddzielenie rozumowania od odpowiedzi.
+    """
+    if model not in _thinking_models:
+        try:
+            response = http.post(f"{base_url}/api/show", json={"model": model})
+            response.raise_for_status()
+            capabilities = response.json().get("capabilities") or []
+        except (httpx.HTTPError, ValueError, AttributeError):
+            return False  # nie zapamiętujemy: przy następnym pytaniu spróbujemy ponownie
+        _thinking_models[model] = "thinking" in capabilities
+    return _thinking_models[model]
+
+
 def chat(
     conn: psycopg.Connection,
     http: httpx.Client,
@@ -82,29 +106,41 @@ def chat(
     ]
     messages.append({"role": "user", "content": message})
     reply = AssistantReply(answer="", model=model)
+    thinks = model_thinks(http, base_url, model)
+    truncated = False
 
     for round_number in range(MAX_TOOL_ROUNDS + 1):
         payload = {
             "model": model,
             "messages": messages,
             "stream": False,
-            "think": False,
             "keep_alive": KEEP_ALIVE,
-            "options": {"temperature": 0.1, "num_predict": MAX_ANSWER_TOKENS},
+            "options": {
+                "temperature": 0.1,
+                "num_predict": MAX_THINKING_TOKENS if thinks else MAX_ANSWER_TOKENS,
+            },
         }
+        if thinks:
+            payload["think"] = True  # rozumowanie trafia do osobnego pola, nie do odpowiedzi
         # W ostatniej rundzie model nie dostaje funkcji, więc musi odpowiedzieć tekstem.
         if round_number < MAX_TOOL_ROUNDS:
             payload["tools"] = TOOL_DEFINITIONS
         try:
             response = http.post(f"{base_url}/api/chat", json=payload)
             response.raise_for_status()
-            assistant = response.json()["message"]
+            body = response.json()
+            assistant = body["message"]
         except (httpx.HTTPError, KeyError, ValueError) as error:
             raise AssistantUnavailable(str(error)) from error
 
         calls = assistant.get("tool_calls") or []
         if not calls:
-            reply.answer = _clean(assistant.get("content", ""))
+            content = assistant.get("content", "")
+            # Ucięte rozumowanie bez znacznika zamykającego to nie odpowiedź.
+            truncated = body.get("done_reason") == "length" and (
+                "</think>" not in content or not _clean(content)
+            )
+            reply.answer = "" if truncated else _clean(content)
             break
         messages.append({"role": "assistant", "content": "", "tool_calls": calls})
         for call in calls:
@@ -130,7 +166,9 @@ def chat(
             )
 
     reply.grounded = any(call.ok for call in reply.tool_calls)
-    if not reply.answer:
+    if truncated:
+        reply.answer = TRUNCATED_ANSWER
+    elif not reply.answer:
         reply.answer = (
             "Nie udało mi się przygotować odpowiedzi na podstawie danych. "
             "Spróbuj zadać pytanie inaczej, np. o ranking w wybranej dzielnicy."

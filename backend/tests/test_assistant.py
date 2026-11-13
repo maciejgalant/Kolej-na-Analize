@@ -11,6 +11,7 @@ from psycopg.rows import dict_row
 
 from app.analysis.run import run_analysis
 from app.api.assistant import get_http_client
+from app.assistant import service
 from app.assistant.service import MAX_TOOL_ROUNDS, AssistantUnavailable, _clean, chat
 from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool
 from app.config import get_settings
@@ -38,14 +39,20 @@ def db(conn):  # noqa: F811
 class FakeOllama:
     """Odtwarza zaplanowane odpowiedzi modelu i zapisuje otrzymane żądania."""
 
-    def __init__(self, *replies: dict):
+    def __init__(self, *replies: dict, capabilities=("completion", "tools"), done_reason="stop"):
         self.replies = list(replies)
         self.requests: list[dict] = []
+        self.capabilities = list(capabilities)
+        self.done_reason = done_reason
         self.client = httpx.Client(transport=httpx.MockTransport(self._handle))
+        service._thinking_models.clear()
 
     def _handle(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/show":
+            return httpx.Response(200, json={"capabilities": self.capabilities})
         self.requests.append(json.loads(request.content))
-        return httpx.Response(200, json={"message": self.replies.pop(0)})
+        body = {"message": self.replies.pop(0), "done_reason": self.done_reason}
+        return httpx.Response(200, json=body)
 
 
 def tool_call(name: str, **arguments) -> dict:
@@ -165,7 +172,7 @@ def test_chat_runs_tool_then_answers_from_its_result(db):
         ("get_ranking", {"limit": 2}, True)
     ]
     first, second = fake.requests
-    assert first["model"] == "qwen3:4b" and first["stream"] is False and first["think"] is False
+    assert first["model"] == "qwen3:4b" and first["stream"] is False and "think" not in first
     assert [m["role"] for m in first["messages"]] == [
         "system",
         "user",
@@ -270,7 +277,26 @@ def test_chat_limits_answer_length_and_keeps_model_loaded(db):
     request = fake.requests[0]
     assert request["keep_alive"] == "30m"
     assert request["options"]["num_predict"] == 700
-    assert request["messages"][0]["content"].endswith("/no_think")
+    assert "think" not in request
+
+
+def test_thinking_model_gets_separated_reasoning_and_larger_limit(db):
+    fake = FakeOllama(
+        {"role": "assistant", "content": "Najwyżej: X.", "thinking": "Okay, the user wants..."},
+        capabilities=("completion", "tools", "thinking"),
+    )
+    reply = ask(db, fake)
+    assert fake.requests[0]["think"] is True
+    assert fake.requests[0]["options"]["num_predict"] == 2500
+    assert reply.answer == "Najwyżej: X."
+
+
+def test_truncated_reasoning_is_not_shown_as_answer(db):
+    fake = FakeOllama(
+        text("Okay, the user wants to see the ranking. Wait, the"), done_reason="length"
+    )
+    reply = ask(db, fake)
+    assert reply.answer == service.TRUNCATED_ANSWER and "Okay" not in reply.answer
 
 
 def _add_districts(db, *names):
