@@ -181,3 +181,18 @@ def test_api_exposes_latest_run_ranking_and_components(conn):  # noqa: F811
         "component": "H", "value": None, "weight": 0.1, "status": "unknown",
         "detail": {"reason": "brak danych o zdarzeniach"},
     }  # fmt: skip
+
+
+def test_road_between_15_and_30_m_gives_class_but_no_angle(conn):  # noqa: F811
+    prepare(conn)
+    # Jezdnia odsunięta o 20 m: nadal w promieniu potwierdzenia drogi (30 m), poza 15 m.
+    conn.execute(
+        "UPDATE spatial.road_segments r SET geom = ST_Translate(r.geom, 20, 0) "
+        "FROM spatial.crossings c WHERE c.name = 'ok' AND ST_DWithin(r.geom, c.geom, 15)"
+    )
+    ok = by_name(conn, load_inputs(conn))["ok"]
+    assert ok.road_class == "droga lokalna"
+    assert ok.road_distance_m == pytest.approx(20.0, abs=0.5)
+    assert ok.angle_deg is None
+    detail = rps.exposure_component(ok.trains_weekday, ok.road_class, ok.road_distance_m).detail
+    assert "rozszerzonego promienia" in detail["note"]
