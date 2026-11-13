@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     postgres_password: str = ""
 
     ollama_base_url: str = "http://ollama:11434"
-    ollama_model: str = "qwen3:4b"
+    ollama_model: str = "qwen3:4b-instruct"
 
     demo_mode: bool = True
     healthcheck_timeout_s: float = 2.0

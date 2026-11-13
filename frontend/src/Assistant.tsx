@@ -62,8 +62,17 @@ export function Assistant({ modelReady }: { modelReady: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, history }),
       });
-      const body = await response.json();
-      if (!response.ok) throw new Error(typeof body.detail === "string" ? body.detail : "");
+      // Przy przekroczeniu czasu serwer pośredniczący zwraca stronę HTML, nie JSON.
+      const body = await response.json().catch(() => null);
+      if (response.status === 504 || response.status === 502) {
+        throw new Error(
+          "Lokalny model nie zdążył odpowiedzieć w wyznaczonym czasie. Spróbuj ponownie " +
+            "albo zadaj węższe pytanie, np. o jedną dzielnicę.",
+        );
+      }
+      if (!response.ok || !body) {
+        throw new Error(body && typeof body.detail === "string" ? body.detail : "");
+      }
       setTurns((current) => [
         ...current,
         {
