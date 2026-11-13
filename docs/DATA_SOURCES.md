@@ -9,8 +9,8 @@
 | Linie i drogi | Map matching | OSM / BDOT10k | Topologia, aktualność, prawo wykorzystania |
 | Rozkład pociągów | Kursy planowane | PDP API PKP PLK | Zakres, limit, identyfikacja odcinków |
 | Wykonanie pociągów | Porównanie z planem | PDP API PKP PLK | Semantyka zdarzeń, brak pełnego GPS, opóźnienia |
-| Ruch drogowy (liczba pojazdów) | Ekspozycja drogowa | APR / pomiary ZDM Warszawa | Zasięg liczników, okres, kierunek, warunki ponownego użycia |
-| Bieżąca prędkość / korki | Warstwa warunków ruchu | TomTom / HERE | Koszt, licencja, buforowanie, użycie jako wejście obliczeń |
+| Ruch drogowy (liczba pojazdów) | Ekspozycja drogowa | APR / pomiary ZDM Warszawa | Import RSA-007 (`zdm-street-1`); zasięg: kilka przejazdów, warunki ponownego użycia do potwierdzenia |
+| Bieżąca prędkość / korki | Warstwa warunków ruchu | TomTom / HERE | NO-GO (RSA-008): prędkości, nie natężenie; licencje ewaluacyjne bez prawa udostępniania |
 | Pociągi towarowe | Kompletność ruchu | Dane zarządcy | Brak potwierdzonego pełnego publicznego API |
 | Incydenty i wypadki | Walidacja ryzyka | PKBWK / PLK / SEWiK | Dokładna lokalizacja, definicja zdarzenia, zgodność czasowa |
 
@@ -77,7 +77,34 @@ Uruchomienie (po `import-topology`): `docker compose run --rm worker python -m a
 
 **Pokrycie przejazdów: niewystarczające.** 254 lokalizacje w 128 punktach leżą głównie na trasach wylotowych, mostach i w centrum. Spośród 36 przejazdów drogowych punkt pomiarowy na tej samej ulicy ma trzy: `021 001 656` (Radzymińska, 75 m), `007 012 635` (Wydawnicza, 1,0 km) i `021 005 525` (Łodygowa, 1,2 km). Dla pozostałych najbliższy punkt leży na innej ulicy.
 
-**Decyzja.** Importu pomiarów ZDM nie budujemy na tym etapie. Ekspozycja drogowa w RPS jest szacowana z klasy drogi BDOT10k i oznaczana jako model (ANALYSIS_METHOD.md, sekcja 8). Pomiary ZDM pozostają źródłem do kalibracji tabeli klas i do walidacji trzech obiektów.
+**Decyzja z 2026-11-12 (zmieniona 2026-11-13).** Pierwotnie importu nie budowaliśmy. Pierwszy raport dla punktu przy `021 001 656` pokazał jednak, że model z klasy drogi myli się o rząd wielkości: ZDM klasyfikuje Radzymińską w tym miejscu jako drogę zbiorczą (Z), model przyjmuje dla niej 8 000 pojazdów/dobę, a pomiar z 29.10–12.11.2026 dał średnio ok. 35 000 (oba kierunki). Dlatego pomiary są importowane i tam, gdzie punkt leży blisko przejazdu, zastępują szacunek.
+
+### Import pomiarów ZDM — RSA-007 (2026-11-13), metoda `zdm-street-1`
+Polecenie: `docker compose run --rm worker python -m app.worker import-road-counts` → `reports/DATA_AUDIT_road.md`. Uruchamiać po `import-topology`, a po imporcie ponownie `run-analysis`.
+
+**Interfejs.** Ten sam, z którego korzysta publiczne narzędzie „Analiza ruchu na drogach online”: `getLocations.ccor` (POST, lista lokalizacji: punkt, ulica, odcinek, kierunek, klasa drogi, współrzędne WGS84), `generateReport.ccor` (POST z JSON: lokalizacje, zakres dat w ms, `dayTypes`, `groupByPoint=POINT`, `aggregationFunction=AVG`, `dataPresentationWay=HOURLY`, `reportId=001A`) i `getReportProgress.ccor?uuid=…` (GET, odpytywany do statusu `FINISHED`). Format zapytania odczytany z ruchu sieciowego przeglądarki przy zwykłym użyciu formularza. Odpowiedź dla punktu: średnia dobowa (`average`), maksimum dobowe, suma okresu i 24 średnie wartości godzinowe.
+
+**Grzeczne użycie serwera.** Jedno zlecenie naraz, odpytywanie co 1,5 s (limit 180 s), 2 s przerwy między punktami, nagłówek User-Agent projektu, ponowienia przy 5xx/429. Raporty zleca się tylko dla punktów leżących na ulicach przejazdów (dziś kilka punktów, nie całe 128). Testy używają sztucznego serwera (`tests/test_road_counts.py`) i nie łączą się z ZDM.
+
+**Okres i typ dni.** Domyślnie 28 dni kończących się wczoraj, tylko dni ZDM typu „miarodajny” (dzień roboczy bez zakłóceń). Opcje `--days` i `--end`.
+
+**Dopasowanie do przejazdu.** Ulica przejazdu = nazwy jezdni BDOT10k do 15 m od punktu (bez nich: jezdnie powiązane do 30 m), porównywane po normalizacji („ul. Radzymińska” = „Radzymińska”). Punkt ZDM musi leżeć na tej samej ulicy do 1,5 km. Najbliższy taki punkt do 300 m ma typ `direct` i jego średnia dobowa wchodzi do RPS (`vehicles_source = measured`). Pozostałe mają typ `validation` i służą tylko do porównania z modelem, bo po drodze mogą być skrzyżowania. Punkt na innej ulicy nie jest przypisywany, nawet tuż obok przejazdu (zasada jakości 4).
+
+**Zapis.** `road.stations` (dopasowane punkty), `road.crossing_stations` (przejazd ↔ punkt, odległość, typ, wersja metody), `road.measurements` (`vehicles/day`, oba kierunki, typ dni, liczba dni, profil godzinowy w `hourly_profile`). Powtórny import aktualizuje rekordy zamiast je dublować.
+
+**Plan B bez dostępu do API.** Raport wygenerowany ręcznie w narzędziu ZDM zapisuje się z narzędzi deweloperskich przeglądarki (zakładka Sieć → `getReportProgress.ccor` → Odpowiedź) jako plik JSON i podaje: `import-road-counts --zdm-file /reports/zdm.json --day-type miarodajny`.
+
+**Licencja i atrybucja.** ZDM jest podmiotem sektora publicznego, a dane są publikowane na jego stronie bez podanych warunków ponownego wykorzystania. Zgodnie z ustawą z 11 sierpnia 2021 r. o otwartych danych i ponownym wykorzystywaniu informacji sektora publicznego traktujemy je jako informację sektora publicznego. W bazie licencja `zdm-apr-psi` ma `allows_storage = NULL` (niepotwierdzone), a każdy wynik podaje źródło: „Zarząd Dróg Miejskich w Warszawie, system APR”. Do zrobienia: krótka informacja do ZDM o wykorzystaniu danych w projekcie i prośba o potwierdzenie warunków.
+
+**Zestaw demonstracyjny.** `load-demo` dodaje jeden fikcyjny punkt (`DEMO-APR-1`, 150 m od DEMO-02) ze źródłem `demo_road_counts` oznaczonym `is_demo`. W karcie przejazdu jest opisany jako „pomiar fikcyjny (demo)”.
+
+## Komercyjne API ruchu (TomTom, HERE) — decyzja RSA-008 (2026-11-13)
+**NO-GO na etapie konkursu.** Sprawdzone dokumenty:
+- TomTom Traffic API (Flow Segment Data) i HERE Traffic API v7 zwracają prędkość, prędkość swobodną i wskaźnik zatłoczenia (`jamFactor` 0–10), a nie liczbę pojazdów. Nie nadają się do składnika T (zasada jakości 3).
+- TomTom MOVE / Traffic Stats (liczba próbek jako względne natężenie): umowa ewaluacyjna dopuszcza wyłącznie wewnętrzną ewaluację i testy (pkt 2.1), zakazuje przekazywania osobom trzecim (2.2), tworzenia utworów zależnych (3.2) i porównywania z innymi źródłami (3.4). Jury i repozytorium są osobami trzecimi.
+- HERE Platform: przechowywanie wyników dłużej niż 30 dni tylko do wewnętrznych testów; zastosowania typu „Infrastructure Planning” wymienione osobno w warunkach deweloperskich; HERE Traffic Analytics (probe counts) dostępne tylko w licencji komercyjnej.
+
+**Pomysł na później:** wskaźnik zatorów sięgających przejazdu (jak często w szczycie prędkość spada poniżej np. 30% prędkości swobodnej) — wymaga pisemnej zgody dostawcy na przechowywanie i użycie wyników.
 
 ## Zasady jakości
 1. Nie zakładać, że przecięcie linii na mapie jest przejazdem w jednym poziomie.

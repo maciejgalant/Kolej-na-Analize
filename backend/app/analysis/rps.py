@@ -1,4 +1,4 @@
-"""RailSafe Priority Score (RPS) — wersja eksperymentalna `rps-0.4-exp`.
+"""RailSafe Priority Score (RPS) — wersja eksperymentalna `rps-0.5-exp`.
 
 RPS to autorski *priorytet do dalszej oceny*, a nie prawdopodobieństwo wypadku ani
 urzędowa klasyfikacja przejazdu. Wagi i tabele poniżej są założeniami roboczymi,
@@ -6,8 +6,10 @@ niezwalidowanymi; każda zmiana wymaga nowej wersji metody.
 
     RPS = 0,40·T + 0,30·P + 0,20·G + 0,10·H      (składniki w skali 0–100)
 
-T — ekspozycja: planowe pociągi pasażerskie na dobę × szacowane pojazdy na dobę,
-    w skali logarytmicznej względem stałego poziomu odniesienia.
+T — ekspozycja: planowe pociągi pasażerskie na dobę × pojazdy na dobę, w skali
+    logarytmicznej względem stałego poziomu odniesienia. Pojazdy: pomiar ZDM (APR), gdy
+    punkt pomiarowy leży na ulicy przejazdu blisko niego, w pozostałych przypadkach
+    szacunek z klasy drogi.
 P — zabezpieczenia: wynika z kategorii przejazdu (mniej urządzeń = wyższy priorytet).
 G — geometria: liczba torów i kąt skrzyżowania (przybliżenie; brak danych o widoczności).
 H — historia zdarzeń: brak danych, status `unknown`.
@@ -18,14 +20,14 @@ Moduł zawiera wyłącznie czyste funkcje, bez dostępu do bazy.
 import math
 from dataclasses import dataclass, field
 
-METHOD_VERSION = "rps-0.4-exp"
+METHOD_VERSION = "rps-0.5-exp"
 WEIGHTS: dict[str, float] = {"T": 0.40, "P": 0.30, "G": 0.20, "H": 0.10}
 # Bez tych składników obiekt nie dostaje pozycji w rankingu.
 KEY_COMPONENTS = ("T", "P")
 
 # Szacowane natężenie ruchu drogowego [pojazdy/dobę] według klasy drogi z BDOT10k.
-# ZAŁOŻENIE robocze: pomiary ZDM (APR) pokrywają 1–3 z 36 przejazdów, więc dla
-# pozostałych używana jest klasa drogi. Wartości wymagają kalibracji.
+# ZAŁOŻENIE robocze dla przejazdów bez pomiaru ZDM (APR) na ulicy przejazdu.
+# Wartości wymagają kalibracji (porównanie z pomiarami: reports/DATA_AUDIT_road.md).
 INTERNAL_ROAD = "droga wewnętrzna"
 ROAD_CLASS_VEHICLES: dict[str, int] = {
     "droga wewnętrzna": 300,
@@ -62,6 +64,8 @@ class CrossingInputs:
     tracks: int | None
     angle_deg: float | None  # kąt ostry między osią drogi i toru, 0–90
     road_distance_m: float | None = None  # odległość punktu od przyjętej jezdni
+    vehicles_measured: int | None = None  # średnia dobowa z pomiaru ZDM (typ 'direct')
+    measurement: dict | None = None  # pochodzenie pomiaru: punkt, ulica, odległość, okres
 
 
 @dataclass(frozen=True)
@@ -91,13 +95,24 @@ def exposure_component(
     road_class: str | None,
     road_distance_m: float | None = None,
     category: str | None = None,
+    vehicles_measured: int | None = None,
+    measurement: dict | None = None,
 ) -> Component:
     from_category = road_class is None and category == "F"
     if from_category:
         road_class = INTERNAL_ROAD  # kategoria F z definicji leży na drodze wewnętrznej
-    vehicles = ROAD_CLASS_VEHICLES.get(road_class or "")
+    model = ROAD_CLASS_VEHICLES.get(road_class or "")
     detail = {"trains_per_day": trains_weekday, "road_class": road_class,
-              "vehicles_per_day_model": vehicles}  # fmt: skip
+              "vehicles_per_day_model": model}  # fmt: skip
+    vehicles = model
+    if vehicles_measured:
+        vehicles = vehicles_measured
+        detail["vehicles_per_day_measured"] = vehicles_measured
+        detail["vehicles_source"] = "measured"
+        if measurement:
+            detail["measurement"] = measurement
+    else:
+        detail["vehicles_source"] = "model"
     if road_distance_m is not None:
         detail["road_distance_m"] = road_distance_m
         if road_distance_m > 15:
@@ -115,8 +130,10 @@ def exposure_component(
         return Component(None, "unknown", detail | {"reason": "brak jezdni lub klasy drogi"})
     product = trains_weekday * vehicles
     value = 100.0 * math.log10(1 + product) / math.log10(1 + EXPOSURE_REFERENCE)
+    # Planowe pociągi to dane źródłowe; z pomiarem ruchu drogowego cały składnik nie jest
+    # już szacunkiem.
     return Component(
-        round(min(100.0, value), 2), "modelled",
+        round(min(100.0, value), 2), "ok" if vehicles_measured else "modelled",
         detail | {"exposure_product": round(product), "reference": EXPOSURE_REFERENCE},
     )  # fmt: skip
 
@@ -176,7 +193,12 @@ def score_crossings(inputs: list[CrossingInputs], sensitivity_step: float = 0.2)
     for item in inputs:
         components = {
             "T": exposure_component(
-                item.trains_weekday, item.road_class, item.road_distance_m, item.category
+                item.trains_weekday,
+                item.road_class,
+                item.road_distance_m,
+                item.category,
+                item.vehicles_measured,
+                item.measurement,
             ),
             "P": protection_component(item.category),
             "G": geometry_component(item.tracks, item.angle_deg),

@@ -57,6 +57,15 @@ def test_demo_set_gives_a_complete_labelled_ranking(db):
     assert props["DEMO-04"]["rank"] < props["DEMO-01"]["rank"]
     assert props["DEMO-08"]["rank"] is not None  # kategoria F bez jezdni: droga wewnętrzna
     assert client.get("/api/v1/health").json()["services"]["database"]["demo_data"] is True
+    # fikcyjny pomiar ruchu drogowego 150 m od DEMO-02, ze źródłem oznaczonym jako demo
+    demo02 = client.get(f"/api/v1/crossings/{props['DEMO-02']['crossing_id']}").json()
+    exposure = next(c for c in demo02["priority"]["components"] if c["component"] == "T")
+    assert exposure["status"] == "ok"
+    assert exposure["detail"]["vehicles_per_day_measured"] == 21500
+    assert exposure["detail"]["measurement"]["source"] == "demo_road_counts"
+    assert db.execute(
+        "SELECT bool_and(is_demo) FROM system.sources WHERE code = 'demo_road_counts'"
+    ).fetchone()[0]
 
     with psycopg.connect(
         **get_settings().database_connect_kwargs, row_factory=dict_row

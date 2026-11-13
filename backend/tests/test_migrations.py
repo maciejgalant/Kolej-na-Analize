@@ -22,7 +22,7 @@ SCHEMAS = ["analysis", "rail", "road", "safety", "spatial", "system"]
 EXPECTED_TABLES = {
     "analysis": {"components", "risk_scores", "runs"},
     "rail": {"crossing_flow", "operation_events", "schedule_events"},
-    "road": {"live_flow", "measurements"},
+    "road": {"crossing_stations", "live_flow", "measurements", "stations"},
     "safety": {"crossing_attributes", "incidents"},
     "spatial": {
         "crossing_rail_segments",
@@ -34,7 +34,7 @@ EXPECTED_TABLES = {
     },
     "system": {"import_jobs", "licenses", "quality_flags", "sources"},
 }
-HEAD = "0006"
+HEAD = "0007"
 
 
 @pytest.fixture(scope="module")

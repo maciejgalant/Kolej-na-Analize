@@ -13,6 +13,7 @@ from datetime import date, timedelta
 import psycopg
 
 from app.analysis.run import RunSummary, run_analysis
+from app.etl import road_counts as rc
 from app.etl import topology_import as topo
 from app.etl.bdot10k import GROUND_LEVEL, Segment
 from app.etl.crossing_import import import_crossings
@@ -21,6 +22,7 @@ from app.etl.gtfs import Feed, merge_feeds
 from app.etl.prg import District
 from app.etl.train_flow import import_train_flow
 from app.etl.utk_wms import WmsFeature
+from app.etl.zdm_apr import PointReport
 
 DEMO_PREFIX = "DEMO-"
 DEMO_LABEL = "DEMO"
@@ -59,6 +61,9 @@ CROSSINGS = [
     DemoCrossing("DEMO-10", 631000, MAIN_N, "E", None),
     DemoCrossing("DEMO-11", BRANCH_E, 479800, "E", None),
 ]
+# Fikcyjny punkt pomiaru ruchu drogowego: 150 m od DEMO-02, na tej samej ulicy.
+DEMO_ROAD_SOURCE = "demo_road_counts"
+DEMO_STATION = ("DEMO-APR-1", "Demonstracyjna 02", 631400.0, MAIN_N + 150, 21500)
 # kursy na dobę: (dni robocze, weekend)
 TRIPS = {"MAIN": (120, 80), "BRANCH": (24, 12)}
 
@@ -160,6 +165,38 @@ def _feed(conn: psycopg.Connection, week: list[date]) -> Feed:
     return merge_feeds({"PL": feed})
 
 
+def _load_road_counts(conn: psycopg.Connection, week: list[date]) -> None:
+    """Fikcyjny pomiar natężenia w formacie importu ZDM; źródło oznaczone jako demo."""
+    point_id, street, east, north, per_day = DEMO_STATION
+    lon, lat = _lonlat(conn, east, north)
+    share = [1, 1, 1, 1, 1, 2, 4, 7, 7, 6, 5, 5, 5, 5, 6, 7, 7, 7, 6, 5, 4, 3, 2, 2]
+    hourly = [round(per_day * part / sum(share)) for part in share]
+    report = PointReport(point_id, street, "odcinek demonstracyjny", lon, lat, per_day,
+                         per_day + 1800, 5, hourly, week[0], week[4])  # fmt: skip
+    with conn.transaction():
+        source_id = conn.execute(
+            """
+            INSERT INTO system.sources (code, name, provider, is_demo)
+            VALUES (%s, 'Fikcyjne pomiary ruchu drogowego (zestaw demonstracyjny)', 'RailSafe AI',
+                    true)
+            ON CONFLICT (code) DO UPDATE SET is_demo = true
+            RETURNING source_id
+            """,
+            (DEMO_ROAD_SOURCE,),
+        ).fetchone()[0]
+        stations = rc.stations_from_reports([report])
+        summary = rc.RoadCountsSummary(
+            job_id=rc.start_job(conn, source_id, {"demo": True}),
+            start=week[0],
+            end=week[4],
+            day_type="miarodajny",
+            stations_seen=1,
+            matches=rc.match_stations(conn, stations, rc.crossing_streets(conn)),
+            reports={point_id: report},
+        )
+        rc.save(conn, source_id, summary, stations)
+
+
 def load_demo(conn: psycopg.Connection, today: date | None = None) -> RunSummary:
     """Ładuje zestaw i liczy ranking. Powtórne wywołanie odświeża zestaw."""
     if real_data_present(conn):
@@ -196,6 +233,7 @@ def load_demo(conn: psycopg.Connection, today: date | None = None) -> RunSummary
         topo.verify_crossings(conn, summary)
         topo.finish_job(conn, summary)
     import_train_flow(conn, _feed(conn, week), week)
+    _load_road_counts(conn, week)
     # Zadania importu noszą etykietę DEMO, żeby pochodzenie było widoczne także w bazie.
     conn.execute("UPDATE system.import_jobs SET snapshot_label = %s", (DEMO_LABEL,))
     return run_analysis(conn, is_demo=True)

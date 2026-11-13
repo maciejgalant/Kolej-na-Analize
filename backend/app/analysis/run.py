@@ -25,7 +25,25 @@ WITH base AS (
            ) AS trains_weekday,
            (SELECT r.geom FROM spatial.rail_segments r
              WHERE ST_DWithin(r.geom, c.geom, 15) AND r.level_position = %(ground)s
-             ORDER BY ST_Distance(r.geom, c.geom) LIMIT 1) AS rail_geom
+             ORDER BY ST_Distance(r.geom, c.geom) LIMIT 1) AS rail_geom,
+           -- Najnowszy pomiar ZDM z punktu na ulicy przejazdu, blisko niego (RSA-007).
+           (SELECT jsonb_build_object(
+                       'vehicles', m.vehicles_count, 'station_id', s.station_id,
+                       'street', s.street, 'section', s.section,
+                       'distance_m', cs.distance_m::float, 'day_type', m.day_type,
+                       'period_start', to_char(m.period_start AT TIME ZONE 'Europe/Warsaw',
+                                               'YYYY-MM-DD'),
+                       'period_end', to_char(m.period_end AT TIME ZONE 'Europe/Warsaw'
+                                             - interval '1 day', 'YYYY-MM-DD'),
+                       'source', src.code)
+              FROM road.crossing_stations cs
+              JOIN road.stations s USING (station_pk)
+              JOIN system.sources src ON src.source_id = s.source_id
+              JOIN road.measurements m
+                ON m.source_id = s.source_id AND m.station_id = s.station_id
+               AND m.unit = 'vehicles/day' AND m.vehicles_count IS NOT NULL
+             WHERE cs.crossing_id = c.crossing_id AND cs.match_type = 'direct'
+             ORDER BY m.period_end DESC, cs.distance_m LIMIT 1) AS measured
     FROM spatial.crossings c
     WHERE c.district_id IS NOT NULL AND c.verification_status = 'verified'
       AND c.category IS DISTINCT FROM 'E'
@@ -55,7 +73,7 @@ WITH base AS (
     FROM base b LEFT JOIN road USING (crossing_id)
 )
 SELECT crossing_id, category, trains_weekday, road_class,
-       rail_az, road_az, road_dist,
+       rail_az, road_az, road_dist,  -- 0–6
        -- Tory liczone na 30-metrowym przekroju prostopadłym do najbliższego toru.
        (SELECT sum(coalesce(r.track_count, 1))::int FROM spatial.rail_segments r
          WHERE az.rail_az IS NOT NULL AND r.level_position = %(ground)s
@@ -64,7 +82,8 @@ SELECT crossing_id, category, trains_weekday, road_class,
                               15 * cos(az.rail_az + pi() / 2)),
                  ST_Translate(az.geom, 15 * sin(az.rail_az - pi() / 2),
                               15 * cos(az.rail_az - pi() / 2))))
-       ) AS tracks
+       ) AS tracks,  -- 7
+       measured  -- 8
 FROM az ORDER BY crossing_id
 """
 
@@ -122,6 +141,10 @@ def load_inputs(conn: psycopg.Connection) -> list[rps.CrossingInputs]:
             tracks=row[7],
             road_distance_m=None if row[6] is None else round(row[6], 1),
             angle_deg=_acute_angle_deg(row[4], row[5]),
+            vehicles_measured=None if row[8] is None else row[8]["vehicles"],
+            measurement=None
+            if row[8] is None
+            else {k: v for k, v in row[8].items() if k != "vehicles"},
         )
         for row in rows
     ]
@@ -149,6 +172,11 @@ def run_analysis(conn: psycopg.Connection, is_demo: bool = False) -> RunSummary:
                         "weights": rps.WEIGHTS,
                         "key_components": rps.KEY_COMPONENTS,
                         "road_class_vehicles": rps.ROAD_CLASS_VEHICLES,
+                        "road_measurement": {
+                            "source": "zdm_apr",
+                            "match": "direct",
+                            "method": "zdm-street-1",
+                        },
                         "exposure_reference": rps.EXPOSURE_REFERENCE,
                         "category_score": rps.CATEGORY_SCORE,
                         "sensitivity_step": 0.2,
@@ -157,6 +185,9 @@ def run_analysis(conn: psycopg.Connection, is_demo: bool = False) -> RunSummary:
                 json.dumps(
                     {
                         "crossings": len(inputs),
+                        "with_road_measurement": sum(
+                            1 for item in inputs if item.vehicles_measured
+                        ),
                         "flow_methods": [
                             row[0]
                             for row in conn.execute(
@@ -247,6 +278,11 @@ def build_run_report(conn: psycopg.Connection, summary: RunSummary) -> str:
     def fmt(value) -> str:
         return "—" if value is None else f"{float(value):.1f}"
 
+    measured = conn.execute(
+        "SELECT count(*) FROM analysis.components WHERE run_id = %s AND component = 'T' "
+        "AND detail ->> 'vehicles_source' = 'measured'",
+        (summary.run_id,),
+    ).fetchone()[0]
     ranked = [r for r in rows if r[0] is not None]
     unranked = [r for r in rows if r[0] is None]
     stable = sum(1 for r in ranked if r[6] - r[5] <= 1)
@@ -258,7 +294,8 @@ def build_run_report(conn: psycopg.Connection, summary: RunSummary) -> str:
         "ani urzędowa klasyfikacja. Wagi i tabele są eksperymentalne i niezwalidowane.**",
         "## Metoda w skrócie",
         "- `RPS = 0,40·T + 0,30·P + 0,20·G + 0,10·H`; średnia ważona po dostępnych składnikach.",
-        "- T: planowe pociągi pasażerskie × szacowane pojazdy (z klasy drogi), skala "
+        "- T: planowe pociągi pasażerskie × pojazdy na dobę (pomiar ZDM, gdy punkt leży na "
+        "ulicy przejazdu blisko niego; w pozostałych przypadkach szacunek z klasy drogi), skala "
         "logarytmiczna. P: kategoria przejazdu. G: liczba torów i kąt skrzyżowania. "
         "H: brak danych dla wszystkich obiektów.",
         "- Bez T lub P obiekt nie dostaje pozycji. Kompletność 90% oznacza brak tylko H.",
@@ -284,8 +321,9 @@ def build_run_report(conn: psycopg.Connection, summary: RunSummary) -> str:
         ]  # fmt: skip
     parts += [
         "## Ograniczenia",
-        "- Natężenie ruchu drogowego jest modelem z klasy drogi BDOT10k, nie pomiarem. "
-        "Pomiary ZDM pokrywają pojedyncze przejazdy.",
+        f"- Natężenie ruchu drogowego z pomiaru ZDM ma {measured} z {summary.scored} "
+        "ocenianych przejazdów; pozostałe mają szacunek z klasy drogi BDOT10k "
+        "(porównanie: reports/DATA_AUDIT_road.md).",
         "- Liczba pociągów to plan przewozów pasażerskich; ruch towarowy nie jest ujęty.",
         "- G nie zawiera widoczności ani stanu nawierzchni; H jest puste.",
         "- Tabele punktowe (kategoria, tory, kąt) są założeniami autorskimi.",

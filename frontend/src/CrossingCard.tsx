@@ -74,10 +74,26 @@ function componentNote(
 ): string {
   const detail = c.detail as Record<string, string | number | null>;
   if (c.value === null) return String(detail.reason ?? "brak danych");
-  if (c.component === "T")
-    return `${Math.round(Number(detail.trains_per_day))} poc. × ok. ${Number(
-      detail.vehicles_per_day_model,
-    ).toLocaleString("pl-PL")} poj./dobę (model z klasy drogi)`;
+  if (c.component === "T") {
+    const trains = `${Math.round(Number(detail.trains_per_day))} poc.`;
+    if (detail.vehicles_source === "measured") {
+      const m = (c.detail as { measurement?: Record<string, string | number> })
+        .measurement;
+      const where = m
+        ? `, ul. ${m.street}, punkt ${Math.round(Number(m.distance_m))} m od przejazdu, ${m.period_start} – ${m.period_end}`
+        : "";
+      const label =
+        m?.source === "zdm_apr" ? "pomiar ZDM" : "pomiar fikcyjny (demo)";
+      return `${trains} × ${Number(detail.vehicles_per_day_measured).toLocaleString(
+        "pl-PL",
+      )} poj./dobę (${label}${where}; model z klasy drogi: ${Number(
+        detail.vehicles_per_day_model,
+      ).toLocaleString("pl-PL")})`;
+    }
+    return `${trains} × ok. ${Number(detail.vehicles_per_day_model).toLocaleString(
+      "pl-PL",
+    )} poj./dobę (model z klasy drogi)`;
+  }
   if (c.component === "P") return `kategoria ${detail.category}`;
   if (c.component === "G")
     return `torów: ${detail.tracks}${
