@@ -54,3 +54,11 @@ Makieta tekstowa obrazuje relacje, nie docelowe proporcje. W ekranach węższych
 
 ## Dostępność i technologia
 React + TypeScript + Vite + Leaflet; wykresy np. Recharts; komponenty autorskie lub biblioteka z licencją zgodną z repo. Focus visible, sterowanie klawiaturą, etykiety formularzy, aria-live dla wyników AI, przyjazne stany loading/empty/error. UI nie zakłada pełnych danych dla wszystkich przejazdów.
+
+## Stan wdrożenia (v1.1, listopad 2026)
+Układ odbiega od makiety powyżej na rzecz przejrzystości:
+- **Asystent AI** to okrągły przycisk w prawym dolnym rogu; rozmowa otwiera się w oknie-dymku (Esc zamyka, kropka sygnalizuje nową odpowiedź). W trakcie odpowiedzi widać animację i licznik sekund.
+- **Szczegóły przejazdu** pojawiają się jako wysuwany panel dopiero po wyborze obiektu. Na wierzchu jest wynik i pozycja; reszta (ruch kolejowy, droga i tory, dane ewidencyjne, źródła) w zwijanych sekcjach, których nagłówek pokazuje najważniejszą wartość.
+- **Filtry i kolejność**, **legenda** i **stan usług** są zwinięte; **opis danych, metody i ograniczeń** otwiera się w oknie „O danych i metodzie”.
+- **Ładowanie**: szkielety listy i karty, nakładka z kołem postępu na mapie. Przy `prefers-reduced-motion` animacje są wyłączone.
+- Pasek „DANE DEMONSTRACYJNE” pozostaje zawsze widoczny; nie wolno go chować w oknie.

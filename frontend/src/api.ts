@@ -17,10 +17,7 @@ export interface Health {
 
 export type Category = "A" | "B" | "C" | "D" | "E" | "F";
 export type VerificationStatus =
-  | "verified"
-  | "unverified"
-  | "rejected_grade_separated"
-  | "rejected_other";
+  "verified" | "unverified" | "rejected_grade_separated" | "rejected_other";
 
 export interface DistrictProperties {
   district_id: number;
@@ -75,7 +72,12 @@ export interface CrossingDetail {
   district_name: string | null;
   lon: number;
   lat: number;
-  attributes: { code: string; value: string | null; confidence: string; source: string }[];
+  attributes: {
+    code: string;
+    value: string | null;
+    confidence: string;
+    source: string;
+  }[];
   quality_flags: { code: string; severity: string; message: string | null }[];
   roads: {
     name: string | null;
@@ -90,7 +92,11 @@ export interface CrossingDetail {
     existence: string | null;
     distance_m: number;
   }[];
-  sources: { name: string; attribution: string | null; license_verified: boolean }[];
+  sources: {
+    name: string;
+    attribution: string | null;
+    license_verified: boolean;
+  }[];
   priority: {
     run_id: number;
     method_version: string;
@@ -128,10 +134,13 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T;
 }
 
-export const fetchHealth = (signal?: AbortSignal) => getJson<Health>("/api/v1/health", signal);
+export const fetchHealth = (signal?: AbortSignal) =>
+  getJson<Health>("/api/v1/health", signal);
 
 export const fetchDistricts = (signal?: AbortSignal) =>
-  getJson<{ features: DistrictFeature[] }>("/api/v1/districts", signal).then((c) => c.features);
+  getJson<{ features: DistrictFeature[] }>("/api/v1/districts", signal).then(
+    (c) => c.features,
+  );
 
 export const fetchCrossings = (signal?: AbortSignal) =>
   getJson<{ features: CrossingFeature[]; total: number }>(
@@ -155,7 +164,9 @@ export interface AnalysisRun {
 }
 
 /** Zwraca null, gdy nie ma jeszcze żadnego zakończonego przebiegu analizy (HTTP 404). */
-export async function fetchLatestAnalysis(signal?: AbortSignal): Promise<AnalysisRun | null> {
+export async function fetchLatestAnalysis(
+  signal?: AbortSignal,
+): Promise<AnalysisRun | null> {
   const response = await fetch("/api/v1/analysis/latest", { signal });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
