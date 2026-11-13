@@ -223,7 +223,8 @@ def get_method(conn: psycopg.Connection) -> dict:
         "przebieg": run,
         "wzor": "RPS = 0,40*T + 0,30*P + 0,20*G + 0,10*H (średnia po dostępnych składnikach)",
         "skladniki": {
-            "T": "ekspozycja: planowe pociągi pasażerskie x szacowane pojazdy (z klasy drogi)",
+            "T": "ekspozycja: planowe pociągi pasażerskie x pojazdy na dobę (pomiar ZDM, gdy "
+            "punkt pomiarowy jest na ulicy przejazdu do 300 m; inaczej szacunek z klasy drogi)",
             "P": "zabezpieczenia: wynika z kategorii przejazdu, D (bez urządzeń) = 100, A = 15",
             "G": "geometria: liczba torów i kąt skrzyżowania; bez oceny widoczności",
             "H": "historia zdarzeń: brak danych dla wszystkich przejazdów",
@@ -231,7 +232,8 @@ def get_method(conn: psycopg.Connection) -> dict:
         "wagi": rps.WEIGHTS,
         "ograniczenia": [
             "Tylko pociągi pasażerskie z rozkładu; ruch towarowy nie jest ujęty.",
-            "Ruch drogowy to szacunek z klasy drogi, nie pomiar.",
+            "Ruch drogowy z pomiaru ZDM ma tylko kilka przejazdów; pozostałe mają szacunek "
+            "z klasy drogi.",
             "Przejścia dla pieszych (kategoria E) są poza rankingiem.",
             "Wagi i tabele punktowe są eksperymentalne i niezwalidowane.",
         ],

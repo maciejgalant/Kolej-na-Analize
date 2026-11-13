@@ -27,6 +27,12 @@ def _iso_date(text: str):
     return value
 
 
+def _plain_date(text: str):
+    from datetime import date
+
+    return date.fromisoformat(text)
+
+
 def status() -> int:
     database = check_database(get_settings())
     if database.status != "ok":
@@ -34,7 +40,8 @@ def status() -> int:
         return 1
     print(
         f"worker: PostGIS {database.postgis_version}, schemat {database.schema_revision}; "
-        "dostępne zadania: import-crossings, import-topology, import-schedule, run-analysis"
+        "dostępne zadania: import-crossings, import-topology, import-schedule, "
+        "import-road-counts, run-analysis"
     )
     return 0
 
@@ -223,6 +230,93 @@ def import_schedule_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def import_road_counts_command(args: argparse.Namespace) -> int:
+    from datetime import date, timedelta
+
+    import httpx
+
+    from app.etl import road_counts as rc
+    from app.etl.utk_wms import USER_AGENT
+    from app.etl.zdm_apr import REPRESENTATIVE_DAYS, ZdmClient, ZdmReportError, parse_report
+
+    def log(message: str) -> None:
+        print(f"import-road-counts: {message}", file=sys.stderr, flush=True)
+
+    with psycopg.connect(**get_settings().database_connect_kwargs) as conn:
+        crossings = rc.crossing_streets(conn)
+        if not crossings:
+            log("brak zweryfikowanych przejazdów drogowych — najpierw import-topology")
+            return 1
+        if args.zdm_file:
+            reports = [
+                report
+                for path in args.zdm_file
+                for report in parse_report(json.loads(path.read_text(encoding="utf-8")))
+            ]
+            stations = rc.stations_from_reports(reports)
+            matches = rc.match_stations(conn, stations, crossings)
+            day_type = args.day_type
+            start = min(r.period_start for r in reports)
+            end = max(r.period_end for r in reports)
+            log(f"z plików: {len(reports)} punktów, dopasowań do przejazdów: {len(matches)}")
+        else:
+            end = args.end or date.today() - timedelta(days=1)
+            start = end - timedelta(days=args.days - 1)
+            day_type = REPRESENTATIVE_DAYS["dayTypeName"]
+            with httpx.Client(timeout=60.0, headers={"User-Agent": USER_AGENT}) as http:
+                client = ZdmClient(http)
+                locations = client.locations()
+                stations = rc.stations_from_locations(locations)
+                matches = rc.match_stations(conn, stations, crossings)
+                log(
+                    f"ZDM: {len(stations)} punktów pomiarowych; na ulicach przejazdów: "
+                    f"{len({m.point_id for m in matches})}; okres {start} – {end}, dni miarodajne"
+                )
+                grouped = rc.locations_by_point(locations)
+                reports = []
+                for point_id in sorted({m.point_id for m in matches}):
+                    try:
+                        payload = client.report(grouped[point_id], start, end)
+                    except ZdmReportError as error:
+                        log(f"punkt {point_id}: {error}; pomijam")
+                        continue
+                    reports += parse_report(payload)
+                    client.pause()
+                log(f"raportów: {len(reports)}, zapytań HTTP: {client.requests_made}")
+        with conn.transaction():
+            source_id = rc.ensure_source(conn)
+            summary = rc.RoadCountsSummary(
+                job_id=rc.start_job(
+                    conn,
+                    source_id,
+                    {
+                        "start": start,
+                        "end": end,
+                        "day_type": day_type,
+                        "from_file": bool(args.zdm_file),
+                        "method": rc.METHOD_VERSION,
+                        "direct_m": rc.DIRECT_M,
+                        "max_m": rc.MAX_M,
+                    },
+                ),  # fmt: skip
+                start=start,
+                end=end,
+                day_type=day_type,
+                stations_seen=len(stations),
+                matches=matches,
+                reports={r.point_id: r for r in reports},
+            )
+            rc.save(conn, source_id, summary, stations)
+        report = rc.build_road_report(conn, summary, crossings)
+    _write_report(report, args.report, log)
+    direct = sum(1 for m in summary.matches if m.match_type == "direct")
+    log(
+        f"zapisano pomiarów: {summary.written}; przejazdów z pomiarem w RPS: {direct}. "
+        "Uruchom ponownie run-analysis, żeby ranking uwzględnił pomiary."
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.worker")
     commands = parser.add_subparsers(dest="command")
@@ -279,6 +373,34 @@ def main(argv: list[str] | None = None) -> int:
         "--report",
         type=Path,
         default=Path("/reports/DATA_AUDIT_trains.md"),
+        help="ścieżka raportu Markdown",
+    )
+    road = commands.add_parser("import-road-counts", help="pomiary ruchu ZDM APR (RSA-007)")
+    road.add_argument(
+        "--days", type=int, default=28, help="długość okresu pomiaru w dniach (domyślnie 28)"
+    )
+    road.add_argument(
+        "--end",
+        type=_plain_date,
+        default=None,
+        help="ostatni dzień okresu (RRRR-MM-DD); domyślnie wczoraj",
+    )
+    road.add_argument(
+        "--zdm-file",
+        type=Path,
+        nargs="+",
+        default=None,
+        help="zapisane odpowiedzi getReportProgress (JSON) zamiast pobierania z ZDM",
+    )
+    road.add_argument(
+        "--day-type",
+        default=None,
+        help="typ dni ujęty w raportach z plików, np. miarodajny (zapisywany w metadanych)",
+    )
+    road.add_argument(
+        "--report",
+        type=Path,
+        default=Path("/reports/DATA_AUDIT_road.md"),
         help="ścieżka raportu Markdown",
     )
     commands.add_parser("load-demo", help="syntetyczny zestaw demonstracyjny (RSA-014)")
@@ -369,6 +491,8 @@ def _dispatch(args: argparse.Namespace) -> int:
         return import_crossings_command(args)
     if args.command == "import-topology":
         return import_topology_command(args)
+    if args.command == "import-road-counts":
+        return import_road_counts_command(args)
     return status()
 
 

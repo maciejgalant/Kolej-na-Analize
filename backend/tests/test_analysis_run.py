@@ -77,7 +77,11 @@ def test_run_writes_scores_components_and_metadata(conn):  # noqa: F811
     ).fetchone()
     assert run[:2] == ("completed", rps.METHOD_VERSION)
     assert run[2]["weights"] == rps.WEIGHTS
-    assert run[3] == {"crossings": 2, "flow_methods": ["gtfs-shape-2"]}
+    assert run[3] == {
+        "crossings": 2,
+        "with_road_measurement": 0,
+        "flow_methods": ["gtfs-shape-2"],
+    }
     assert run[4] and str(run[5]) == "2026-11-16 00:00:00"
 
     rows = conn.execute(

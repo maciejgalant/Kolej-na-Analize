@@ -25,6 +25,7 @@ Uszczegółowienie sekcji „Schematy PostGIS” z [ARCHITECTURE.md](ARCHITECTUR
 | `analysis.runs.status`, `system.import_jobs.status` | `running`, `completed`/`succeeded`, `failed` |
 | `analysis.components.component` | `T`, `P`, `G`, `H` |
 | `analysis.components.status` | `ok`, `modelled`, `unknown` |
+| `road.crossing_stations.match_type` | `direct` (pomiar zastępuje model w RPS), `validation` (tylko porównanie) |
 
 ## Reguły wymuszane przez bazę
 - Przejazd o statusie innym niż `unverified` musi mieć `verified_at`. API i ranking używają wyłącznie `verified`; skrzyżowania bezkolizyjne zostają w ewidencji jako `rejected_grade_separated`, żeby nie wracały przy kolejnym imporcie.
@@ -55,3 +56,5 @@ Poniższe szczegóły nie wynikały wprost z dokumentacji i zostały przyjęte p
 | 0003 | `rail`: schedule_events, operation_events, crossing_flow; `road`: measurements, live_flow |
 | 0004 | `safety`: crossing_attributes, incidents; `analysis`: runs, risk_scores, components |
 | 0005 | `spatial.rail_segments` / `road_segments`: położenie względem gruntu, stan, funkcja toru, liczba torów, kategoria zarządzania, numer drogi |
+| 0006 | `analysis.risk_scores`: rank_best, rank_worst (analiza wrażliwości wag) |
+| 0007 | `road`: stations (punkty pomiarowe), crossing_stations (przejazd ↔ punkt, `direct`/`validation`); `road.measurements`: `day_type`, `hourly_profile` (24 wartości), `days_count` |
