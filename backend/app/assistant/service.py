@@ -76,7 +76,7 @@ def _clean(text: str) -> str:
 def model_thinks(http: httpx.Client, base_url: str, model: str) -> bool:
     """Czy model ma tryb rozumowania (wg Ollamy). Wynik pamiętany do restartu usługi.
 
-    Niektóre wydania (np. qwen3:4b od wersji 2507) rozumują zawsze i ignorują prośbę
+    Niektóre wydania (np. qwen3:4b-thinking) rozumują zawsze i ignorują prośbę
     o wyłączenie. Wtedy prosimy Ollamę o oddzielenie rozumowania od odpowiedzi.
     """
     if model not in _thinking_models:

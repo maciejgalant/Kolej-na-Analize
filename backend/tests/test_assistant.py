@@ -230,7 +230,7 @@ def test_endpoint_returns_answer_and_tool_trace(db):
     body = response.json()
     assert response.status_code == 200
     assert body["answer"] == "RPS to priorytet do dalszej oceny."
-    assert body["grounded"] is True and body["model"] == "qwen3:4b"
+    assert body["grounded"] is True and body["model"] == "qwen3:4b-instruct"
     assert body["tool_calls"] == [{"name": "get_method", "arguments": {}, "ok": True}]
     assert "nie prognoza" in body["disclaimer"]
     assert fake.requests[0]["messages"][-1]["content"] == "Co oznacza RPS?"

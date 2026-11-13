@@ -13,7 +13,7 @@ x-backend-env: &backend-env
   POSTGRES_USER: ${POSTGRES_USER:-railsafe}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w pliku .env}
   OLLAMA_BASE_URL: http://ollama:11434
-  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct}
   DEMO_MODE: ${DEMO_MODE:-true}
 
 services:
@@ -60,7 +60,7 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen3:4b}"]
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen3:4b-instruct}"]
     networks: [railsafe]
 
   # Jednorazowo doprowadza schemat do najnowszej rewizji (tylko "upgrade", nigdy "downgrade").
