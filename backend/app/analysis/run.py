@@ -32,13 +32,16 @@ WITH base AS (
 ), road AS (
     -- Jezdnia o najwyższej klasie spośród leżących do 15 m od punktu (ulica przejazdu,
     -- a nie boczna dojazdówka); jej oś służy też do wyznaczenia kąta. Gdy bliżej niż 15 m
-    -- nie ma żadnej (szeroki przejazd, punkt w osi torowiska), brana jest najbliższa do 30 m
-    -- — ten sam promień, którym import potwierdza istnienie drogi — ale już bez kąta.
+    -- nie ma żadnej, brana jest najbliższa do 30 m, o ile przecina tor — już bez kąta.
     SELECT DISTINCT ON (b.crossing_id) b.crossing_id, r.road_class, r.geom AS road_geom,
            ST_Distance(r.geom, b.geom) AS road_dist
     FROM base b
     JOIN spatial.road_segments r
-      ON ST_DWithin(r.geom, b.geom, %(road_far)s) AND r.level_position = %(ground)s
+      ON r.level_position = %(ground)s
+     AND (ST_DWithin(r.geom, b.geom, %(road_near)s)
+          -- dalsza jezdnia musi przecinać tor przy przejeździe; ulica równoległa odpada
+          OR (ST_DWithin(r.geom, b.geom, %(road_far)s)
+              AND ST_DWithin(ST_Intersection(r.geom, b.rail_geom), b.geom, 40)))
     ORDER BY b.crossing_id,
              (ST_Distance(r.geom, b.geom) > %(road_near)s),
              CASE WHEN ST_Distance(r.geom, b.geom) <= %(road_near)s

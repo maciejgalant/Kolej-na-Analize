@@ -196,3 +196,16 @@ def test_road_between_15_and_30_m_gives_class_but_no_angle(conn):  # noqa: F811
     assert ok.angle_deg is None
     detail = rps.exposure_component(ok.trains_weekday, ok.road_class, ok.road_distance_m).detail
     assert "rozszerzonego promienia" in detail["note"]
+
+
+def test_parallel_road_beyond_15_m_is_not_taken(conn):  # noqa: F811
+    prepare(conn)
+    # Zamiast ulicy przejazdu zostaje tylko ulica równoległa do toru, 20 m od punktu.
+    conn.execute(
+        "UPDATE spatial.road_segments r SET geom = ST_Translate(rail.geom, 0, 20) "
+        "FROM spatial.crossings c, spatial.rail_segments rail "
+        "WHERE c.name = 'ok' AND rail.source_object_id = 'r-main' "
+        "AND ST_DWithin(r.geom, c.geom, 15)"
+    )
+    ok = by_name(conn, load_inputs(conn))["ok"]
+    assert ok.road_class is None and ok.road_distance_m is None and ok.angle_deg is None

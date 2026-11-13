@@ -127,3 +127,11 @@ def test_sensitivity_detects_unstable_neighbours():
     assert {scores[1].rank_best, scores[1].rank_worst} == {1, 2}
     stable = {s.crossing_id: s for s in score_crossings([a, b], sensitivity_step=0.0)}
     assert stable[1].rank_best == stable[1].rank_worst
+
+
+def test_category_f_without_road_uses_internal_road_class():
+    component = exposure_component(392, None, None, "F")
+    assert component.detail["road_class"] == "droga wewnętrzna"
+    assert component.detail["vehicles_per_day_model"] == 300
+    assert "kategorii F" in component.detail["note"]
+    assert exposure_component(392, None, None, "A").value is None
