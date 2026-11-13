@@ -129,7 +129,7 @@ def test_other_tools(db):
         for d in districts
     ] == [("Alfa", 1, 1, 2), ("Bemowo", 1, 0, 1)]
     method = call_tool(db, "get_method", {})
-    assert method["przebieg"]["method_version"] == "rps-0.2-exp"
+    assert method["przebieg"]["method_version"] == "rps-0.3-exp"
     assert method["przebieg"]["okres_od"] == "2026-11-16"
     assert "nie prognoza" in method["zastrzezenie"]
     pair = call_tool(db, "compare_crossings", {"number_a": "ok", "number_b": "old-track"})

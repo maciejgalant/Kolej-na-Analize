@@ -1,4 +1,4 @@
-"""RailSafe Priority Score (RPS) — wersja eksperymentalna `rps-0.2-exp`.
+"""RailSafe Priority Score (RPS) — wersja eksperymentalna `rps-0.3-exp`.
 
 RPS to autorski *priorytet do dalszej oceny*, a nie prawdopodobieństwo wypadku ani
 urzędowa klasyfikacja przejazdu. Wagi i tabele poniżej są założeniami roboczymi,
@@ -18,7 +18,7 @@ Moduł zawiera wyłącznie czyste funkcje, bez dostępu do bazy.
 import math
 from dataclasses import dataclass, field
 
-METHOD_VERSION = "rps-0.2-exp"
+METHOD_VERSION = "rps-0.3-exp"
 WEIGHTS: dict[str, float] = {"T": 0.40, "P": 0.30, "G": 0.20, "H": 0.10}
 # Bez tych składników obiekt nie dostaje pozycji w rankingu.
 KEY_COMPONENTS = ("T", "P")
@@ -60,6 +60,7 @@ class CrossingInputs:
     road_class: str | None
     tracks: int | None
     angle_deg: float | None  # kąt ostry między osią drogi i toru, 0–90
+    road_distance_m: float | None = None  # odległość punktu od przyjętej jezdni
 
 
 @dataclass(frozen=True)
@@ -84,10 +85,16 @@ class Score:
         return self.completeness_pct < 100.0
 
 
-def exposure_component(trains_weekday: float | None, road_class: str | None) -> Component:
+def exposure_component(
+    trains_weekday: float | None, road_class: str | None, road_distance_m: float | None = None
+) -> Component:
     vehicles = ROAD_CLASS_VEHICLES.get(road_class or "")
     detail = {"trains_per_day": trains_weekday, "road_class": road_class,
               "vehicles_per_day_model": vehicles}  # fmt: skip
+    if road_distance_m is not None:
+        detail["road_distance_m"] = road_distance_m
+        if road_distance_m > 15:
+            detail["note"] = "jezdnia przyjęta z rozszerzonego promienia (15–30 m)"
     if trains_weekday is None:
         return Component(None, "unknown", detail | {"reason": "brak danych rozkładowych"})
     if trains_weekday <= 0:
@@ -159,7 +166,7 @@ def score_crossings(inputs: list[CrossingInputs], sensitivity_step: float = 0.2)
     scores = []
     for item in inputs:
         components = {
-            "T": exposure_component(item.trains_weekday, item.road_class),
+            "T": exposure_component(item.trains_weekday, item.road_class, item.road_distance_m),
             "P": protection_component(item.category),
             "G": geometry_component(item.tracks, item.angle_deg),
             "H": history_component(),

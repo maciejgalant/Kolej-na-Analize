@@ -12,6 +12,9 @@ import psycopg
 
 from app.analysis import rps
 from app.etl.bdot10k import GROUND_LEVEL
+from app.etl.topology_import import ROAD_RADIUS_M
+
+ROAD_NEAR_M = 15.0
 
 INPUTS_SQL = """
 WITH base AS (
@@ -28,22 +31,28 @@ WITH base AS (
       AND c.category IS DISTINCT FROM 'E'
 ), road AS (
     -- Jezdnia o najwyższej klasie spośród leżących do 15 m od punktu (ulica przejazdu,
-    -- a nie boczna dojazdówka); jej oś służy też do wyznaczenia kąta.
-    SELECT DISTINCT ON (b.crossing_id) b.crossing_id, r.road_class, r.geom AS road_geom
+    -- a nie boczna dojazdówka); jej oś służy też do wyznaczenia kąta. Gdy bliżej niż 15 m
+    -- nie ma żadnej (szeroki przejazd, punkt w osi torowiska), brana jest najbliższa do 30 m
+    -- — ten sam promień, którym import potwierdza istnienie drogi — ale już bez kąta.
+    SELECT DISTINCT ON (b.crossing_id) b.crossing_id, r.road_class, r.geom AS road_geom,
+           ST_Distance(r.geom, b.geom) AS road_dist
     FROM base b
     JOIN spatial.road_segments r
-      ON ST_DWithin(r.geom, b.geom, 15) AND r.level_position = %(ground)s
+      ON ST_DWithin(r.geom, b.geom, %(road_far)s) AND r.level_position = %(ground)s
     ORDER BY b.crossing_id,
-             array_position(%(classes)s::text[], r.road_class) DESC NULLS LAST,
+             (ST_Distance(r.geom, b.geom) > %(road_near)s),
+             CASE WHEN ST_Distance(r.geom, b.geom) <= %(road_near)s
+                  THEN array_position(%(classes)s::text[], r.road_class) END DESC NULLS LAST,
              ST_Distance(r.geom, b.geom)
 ), az AS (
-    SELECT b.*, road.road_class, road.road_geom,
+    SELECT b.*, road.road_class, road.road_geom, road.road_dist,
            pg_temp.analysis_azimuth(b.rail_geom, b.geom) AS rail_az,
-           pg_temp.analysis_azimuth(road.road_geom, b.geom) AS road_az
+           CASE WHEN road.road_dist <= %(road_near)s
+                THEN pg_temp.analysis_azimuth(road.road_geom, b.geom) END AS road_az
     FROM base b LEFT JOIN road USING (crossing_id)
 )
 SELECT crossing_id, category, trains_weekday, road_class,
-       rail_az, road_az,
+       rail_az, road_az, road_dist,
        -- Tory liczone na 30-metrowym przekroju prostopadłym do najbliższego toru.
        (SELECT sum(coalesce(r.track_count, 1))::int FROM spatial.rail_segments r
          WHERE az.rail_az IS NOT NULL AND r.level_position = %(ground)s
@@ -93,7 +102,13 @@ def _acute_angle_deg(rail_az: float | None, road_az: float | None) -> float | No
 def load_inputs(conn: psycopg.Connection) -> list[rps.CrossingInputs]:
     _create_helpers(conn)
     rows = conn.execute(
-        INPUTS_SQL, {"ground": GROUND_LEVEL, "classes": list(rps.ROAD_CLASS_VEHICLES)}
+        INPUTS_SQL,
+        {
+            "ground": GROUND_LEVEL,
+            "classes": list(rps.ROAD_CLASS_VEHICLES),
+            "road_near": ROAD_NEAR_M,
+            "road_far": ROAD_RADIUS_M,
+        },
     ).fetchall()
     return [
         rps.CrossingInputs(
@@ -101,7 +116,8 @@ def load_inputs(conn: psycopg.Connection) -> list[rps.CrossingInputs]:
             category=row[1],
             trains_weekday=row[2],
             road_class=row[3],
-            tracks=row[6],
+            tracks=row[7],
+            road_distance_m=None if row[6] is None else round(row[6], 1),
             angle_deg=_acute_angle_deg(row[4], row[5]),
         )
         for row in rows
