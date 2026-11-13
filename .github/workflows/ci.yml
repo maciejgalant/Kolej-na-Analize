@@ -88,5 +88,12 @@ jobs:
           docker compose run --rm worker | tee worker.txt
           grep -q "import-crossings" worker.txt
           test "$(docker compose --profile jobs config --images | sort -u | grep -c railsafe-backend)" = "1"
+      - name: Zestaw demonstracyjny daje oznaczony ranking bez sieci (RSA-014)
+        run: |
+          docker compose run --rm worker python -m app.worker load-demo
+          curl -fsS http://127.0.0.1:8080/api/v1/analysis/latest | tee run.json
+          grep -q '"is_demo":true' run.json && grep -q '"ranked":8' run.json
+          curl -fsS http://127.0.0.1:8080/api/v1/health | grep -q '"demo_data":true'
+          ! docker compose run --rm worker python -m app.worker import-crossings
       - if: always()
         run: docker compose logs --no-color && docker compose down -v

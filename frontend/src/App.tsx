@@ -168,6 +168,7 @@ export function App() {
   }, [visible, selectedId]);
 
   const demoMode = health.kind === "ready" && health.health.demo_mode;
+  const demoData = health.kind === "ready" && health.health.services.database.demo_data === true;
   const servicesOk = health.kind === "ready" && health.health.status === "ok";
   const hiddenUnverified =
     data.kind === "ready"
@@ -204,6 +205,13 @@ export function App() {
         </div>
       </header>
 
+      {demoData && (
+        <div className="demo-bar demo-bar-strong" role="alert">
+          <strong>DANE DEMONSTRACYJNE.</strong> Przejazdy „DEMO-…”, dzielnice „Demo-…”, tory, drogi
+          i liczby pociągów są fikcyjne i nie opisują rzeczywistej sieci kolejowej. Zestaw służy
+          wyłącznie do pokazania działania aplikacji.
+        </div>
+      )}
       {demoMode && (
         <div className="demo-bar" role="status">
           Tryb bez zewnętrznych API. Ranking to eksperymentalny priorytet do dalszej oceny, a nie

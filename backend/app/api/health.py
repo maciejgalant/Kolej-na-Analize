@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.config import APP_VERSION, Settings, get_settings
+from app.demo import demo_present
 
 router = APIRouter(tags=["system"])
 
@@ -24,6 +25,8 @@ class DatabaseHealth(BaseModel):
     postgis_version: str | None = None
     # Rewizja migracji Alembic; None = migracje jeszcze nie były uruchomione.
     schema_revision: str | None = None
+    # True, gdy w bazie jest syntetyczny zestaw demonstracyjny (fikcyjne przejazdy DEMO-…).
+    demo_data: bool = False
 
 
 class OllamaHealth(BaseModel):
@@ -52,8 +55,12 @@ def check_database(settings: Settings) -> DatabaseHealth:
             if conn.execute("SELECT to_regclass('public.alembic_version')").fetchone()[0]:
                 found = conn.execute("SELECT version_num FROM public.alembic_version").fetchone()
                 revision = found[0] if found else None
+            demo_data = demo_present(conn)
         return DatabaseHealth(
-            status="ok", postgis_version=row[0] if row else None, schema_revision=revision
+            status="ok",
+            postgis_version=row[0] if row else None,
+            schema_revision=revision,
+            demo_data=demo_data,
         )
     except psycopg.Error:
         return DatabaseHealth(status="unavailable")

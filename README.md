@@ -33,6 +33,15 @@ docker compose ps           # wszystkie usługi powinny być "healthy"
 
 Przy pierwszym uruchomieniu usługa `ollama-pull` pobiera model (`OLLAMA_MODEL`, kilka GB). Do tego czasu healthcheck zwraca `degraded`, a mapa i backend działają normalnie. Worker: `docker compose run --rm worker`.
 
+### Zestaw demonstracyjny bez internetu (RSA-014)
+Na **pustej** bazie jedno polecenie ładuje 11 fikcyjnych przejazdów (`DEMO-01` … `DEMO-11`) w trzech fikcyjnych dzielnicach, liczy ruch pociągów i ranking:
+
+```
+docker compose run --rm worker python -m app.worker load-demo
+```
+
+Nie wymaga sieci ani kluczy API. Aplikacja pokazuje wtedy czerwony pasek „DANE DEMONSTRACYJNE”, a ranking ma znacznik `is_demo`. Zestaw przechodzi przez te same funkcje importu i analizy co dane rzeczywiste, więc pokazuje działanie aplikacji, a nie stan sieci kolejowej. Danych fikcyjnych i rzeczywistych nie da się zmieszać: `load-demo` odmawia pracy na bazie z prawdziwymi przejazdami, a polecenia `import-*` — na bazie demonstracyjnej. Żeby mieć obie, użyj osobnego projektu Compose (osobny wolumen), np. `docker compose -p railsafe-demo ...` z innymi portami w `.env`.
+
 ### Import ewidencji przejazdów (RSA-004)
 ```bash
 docker compose run --rm worker python -m app.worker import-crossings

@@ -281,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("/reports/DATA_AUDIT_trains.md"),
         help="ścieżka raportu Markdown",
     )
+    commands.add_parser("load-demo", help="syntetyczny zestaw demonstracyjny (RSA-014)")
     analysis = commands.add_parser("run-analysis", help="wskaźnik RPS i ranking (RSA-010)")
     analysis.add_argument(
         "--report",
@@ -299,13 +300,14 @@ def main(argv: list[str] | None = None) -> int:
 
 def run_analysis_command(args: argparse.Namespace) -> int:
     from app.analysis.run import build_run_report, run_analysis
+    from app.demo import demo_present
 
     def log(message: str) -> None:
         print(f"run-analysis: {message}", file=sys.stderr, flush=True)
 
     with psycopg.connect(**get_settings().database_connect_kwargs) as conn:
         try:
-            summary = run_analysis(conn)
+            summary = run_analysis(conn, is_demo=demo_present(conn))
         except RuntimeError as error:
             log(str(error))
             return 1
@@ -323,7 +325,42 @@ def _network_errors() -> tuple[type[Exception], ...]:
     return (RemoteFileUnavailable, httpx.TransportError, httpx.HTTPStatusError)
 
 
+def load_demo_command() -> int:
+    from app.demo import CROSSINGS, DemoConflict, load_demo
+
+    with psycopg.connect(**get_settings().database_connect_kwargs, autocommit=True) as conn:
+        try:
+            summary = load_demo(conn)
+        except DemoConflict as error:
+            print(f"load-demo: {error}", file=sys.stderr)
+            return 1
+    print(
+        f"load-demo: załadowano {len(CROSSINGS)} fikcyjnych przejazdów (DEMO-…); "
+        f"ranking: ocenionych {summary.scored}, z pozycją {summary.ranked}",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _refuse_on_demo_data(command: str) -> bool:
+    from app.demo import demo_present
+
+    with psycopg.connect(**get_settings().database_connect_kwargs) as conn:
+        if not demo_present(conn):
+            return False
+    print(
+        f"{command}: baza zawiera zestaw demonstracyjny (DEMO-…). Import danych rzeczywistych "
+        "wymaga osobnej, pustej bazy, żeby dane fikcyjne nie zmieszały się z prawdziwymi.",
+        file=sys.stderr,
+    )
+    return True
+
+
 def _dispatch(args: argparse.Namespace) -> int:
+    if args.command == "load-demo":
+        return load_demo_command()
+    if args.command and args.command.startswith("import-") and _refuse_on_demo_data(args.command):
+        return 1
     if args.command == "run-analysis":
         return run_analysis_command(args)
     if args.command == "import-schedule":

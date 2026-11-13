@@ -9,6 +9,7 @@ export interface Health {
       status: ServiceState;
       postgis_version: string | null;
       schema_revision: string | null;
+      demo_data?: boolean;
     };
     ollama: { status: ServiceState; model: string; model_available: boolean };
   };
