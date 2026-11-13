@@ -101,9 +101,7 @@ def exposure_component(
     if road_distance_m is not None:
         detail["road_distance_m"] = road_distance_m
         if road_distance_m > 15:
-            detail["note"] = (
-                "jezdnia przecinająca tor, z rozszerzonego promienia (15–30 m)"
-            )
+            detail["note"] = "jezdnia przecinająca tor, z rozszerzonego promienia (15–30 m)"
     if from_category:
         detail["note"] = "brak jezdni w danych; klasa drogi przyjęta z kategorii F"
     if trains_weekday is None:
