@@ -48,7 +48,10 @@ export function attributeLabel(code: string): string | null {
   return ATTRIBUTE_LABEL[code] ?? null;
 }
 
-export function crossingTitle(c: { name: string | null; crossing_id: number }): string {
+export function crossingTitle(c: {
+  name: string | null;
+  crossing_id: number;
+}): string {
   return c.name ?? `Przejazd nr ${c.crossing_id}`;
 }
 
@@ -56,7 +59,8 @@ export function objectsLabel(count: number): string {
   const lastTwo = count % 100;
   const last = count % 10;
   if (count === 1) return "obiekt";
-  if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14)) return "obiekty";
+  if (last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14))
+    return "obiekty";
   return "obiektów";
 }
 

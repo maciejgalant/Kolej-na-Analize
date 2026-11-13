@@ -1,5 +1,5 @@
 import L from "leaflet";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { CrossingFeature, DistrictFeature } from "./api";
 import { crossingTitle } from "./labels";
@@ -12,6 +12,11 @@ interface Props {
   selectedDistrictId: number | null;
   selectedCrossingId: number | null;
   onSelectCrossing: (id: number) => void;
+  loading: boolean;
+  /** Zestaw demonstracyjny: podpis źródeł nie może wskazywać rzeczywistych rejestrów. */
+  demo: boolean;
+  /** Zmiana wartości wymusza przeliczenie rozmiaru mapy (np. po otwarciu panelu). */
+  layoutKey: string;
 }
 
 function markerIcon(feature: CrossingFeature, selected: boolean): L.DivIcon {
@@ -22,7 +27,10 @@ function markerIcon(feature: CrossingFeature, selected: boolean): L.DivIcon {
     p.verification_status === "verified" ? "" : "marker-unverified",
     selected ? "marker-selected" : "",
   ];
-  const warning = p.warnings > 0 ? '<span class="marker-warn" aria-hidden="true">!</span>' : "";
+  const warning =
+    p.warnings > 0
+      ? '<span class="marker-warn" aria-hidden="true">!</span>'
+      : "";
   return L.divIcon({
     className: "",
     html: `<span class="${classes.join(" ").trim()}">${p.category ?? "?"}${warning}</span>`,
@@ -37,7 +45,11 @@ export function MapView({
   selectedDistrictId,
   selectedCrossingId,
   onSelectCrossing,
+  loading,
+  demo,
+  layoutKey,
 }: Props) {
+  const [legendOpen, setLegendOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const districtLayer = useRef<L.GeoJSON | null>(null);
@@ -47,12 +59,14 @@ export function MapView({
 
   useEffect(() => {
     if (!container.current) return;
-    const instance = L.map(container.current, { center: WARSAW_CENTER, zoom: 11 });
+    const instance = L.map(container.current, {
+      center: WARSAW_CENTER,
+      zoom: 11,
+    });
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | ' +
-        "przejazdy: UTK/GUGiK | granice, tory, drogi: GUGiK",
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(instance);
     markerLayer.current = L.layerGroup().addTo(instance);
     map.current = instance;
@@ -61,6 +75,15 @@ export function MapView({
       map.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const control = map.current?.attributionControl;
+    if (!control) return;
+    const real = "przejazdy: UTK/GUGiK | granice, tory, drogi: GUGiK";
+    const fake = "obiekty na mapie: dane demonstracyjne (fikcyjne)";
+    control.removeAttribution(real).removeAttribution(fake);
+    control.addAttribution(demo ? fake : real);
+  }, [demo]);
 
   // Granice dzielnic; wybrana dzielnica jest wyróżniona i mapa się do niej dopasowuje.
   useEffect(() => {
@@ -85,7 +108,9 @@ export function MapView({
       selectedDistrictId === null
         ? layer.getBounds()
         : L.geoJSON(
-            districts.filter((d) => d.id === selectedDistrictId) as unknown as GeoJSON.Feature[],
+            districts.filter(
+              (d) => d.id === selectedDistrictId,
+            ) as unknown as GeoJSON.Feature[],
           ).getBounds();
     if (target.isValid()) instance.fitBounds(target, { padding: [16, 16] });
   }, [districts, selectedDistrictId]);
@@ -118,25 +143,57 @@ export function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCrossingId]);
 
+  // Po zmianie układu kolumn Leaflet musi poznać nowy rozmiar kontenera.
+  useEffect(() => {
+    const timer = window.setTimeout(() => map.current?.invalidateSize(), 260);
+    return () => window.clearTimeout(timer);
+  }, [layoutKey]);
+
   return (
     <div className="map-holder">
-      <div ref={container} className="map" role="application" aria-label="Mapa przejazdów" />
-      <div className="legend" aria-label="Legenda">
-        <div>
-          <span className="marker marker-road">B</span> przejazd drogowy (litera = kategoria)
+      <div
+        ref={container}
+        className="map"
+        role="application"
+        aria-label="Mapa przejazdów"
+      />
+      {loading && (
+        <div className="map-loading" role="status">
+          <span className="spinner" aria-hidden="true" />
+          Wczytywanie mapy przejazdów…
         </div>
-        <div>
-          <span className="marker marker-ped">E</span> przejście dla pieszych
-        </div>
-        <div>
-          <span className="marker marker-road marker-unverified">D</span> niezweryfikowany
-        </div>
-        <div>
-          <span className="marker marker-road">
-            C<span className="marker-warn">!</span>
-          </span>{" "}
-          ostrzeżenie o danych
-        </div>
+      )}
+      <div className="legend-wrap">
+        <button
+          type="button"
+          className="map-button"
+          aria-expanded={legendOpen}
+          onClick={() => setLegendOpen((value) => !value)}
+        >
+          {legendOpen ? "Ukryj legendę" : "Legenda"}
+        </button>
+        {legendOpen && (
+          <div className="legend" aria-label="Legenda">
+            <div>
+              <span className="marker marker-road">B</span> przejazd drogowy
+              (litera = kategoria)
+            </div>
+            <div>
+              <span className="marker marker-ped">E</span> przejście dla
+              pieszych
+            </div>
+            <div>
+              <span className="marker marker-road marker-unverified">D</span>{" "}
+              niezweryfikowany
+            </div>
+            <div>
+              <span className="marker marker-road">
+                C<span className="marker-warn">!</span>
+              </span>{" "}
+              ostrzeżenie o danych
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

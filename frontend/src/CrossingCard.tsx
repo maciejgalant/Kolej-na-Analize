@@ -16,7 +16,13 @@ type State =
   | { kind: "error" }
   | { kind: "ready"; detail: CrossingDetail };
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="kv">
       <dt>{label}</dt>
@@ -25,7 +31,47 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function componentNote(c: NonNullable<CrossingDetail["priority"]>["components"][number]): string {
+function Section({
+  title,
+  summary,
+  open = false,
+  children,
+}: {
+  title: string;
+  summary?: string;
+  open?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="section" open={open}>
+      <summary>
+        <span className="section-title">{title}</span>
+        {summary && <span className="section-summary">{summary}</span>}
+      </summary>
+      <div className="section-body">{children}</div>
+    </details>
+  );
+}
+
+export function CardSkeleton() {
+  return (
+    <div
+      className="skeleton-card"
+      role="status"
+      aria-label="Wczytywanie szczegółów"
+    >
+      <span className="skeleton skeleton-title" />
+      <span className="skeleton skeleton-line" />
+      <span className="skeleton skeleton-block" />
+      <span className="skeleton skeleton-line" />
+      <span className="skeleton skeleton-line skeleton-short" />
+    </div>
+  );
+}
+
+function componentNote(
+  c: NonNullable<CrossingDetail["priority"]>["components"][number],
+): string {
   const detail = c.detail as Record<string, string | number | null>;
   if (c.value === null) return String(detail.reason ?? "brak danych");
   if (c.component === "T")
@@ -46,79 +92,103 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
   const p = detail.priority;
   if (detail.is_pedestrian)
     return (
-      <p className="muted small">Przejścia dla pieszych nie są objęte rankingiem priorytetów.</p>
+      <p className="muted small">
+        Przejścia dla pieszych nie są objęte rankingiem priorytetów.
+      </p>
     );
   if (p === null)
     return (
       <p className="muted small">
-        Brak wyniku priorytetu: analiza nie była jeszcze uruchomiona albo obiekt jest poza jej
-        zakresem.
+        Brak wyniku priorytetu: analiza nie była jeszcze uruchomiona albo obiekt
+        jest poza jej zakresem.
       </p>
     );
   return (
-    <section className="priority" aria-label="Priorytet do dalszej oceny">
-      <h4>Priorytet do dalszej oceny</h4>
-      {p.rps === null ? (
-        <p className="priority-none">
-          <strong>Bez pozycji w rankingu</strong> — brakuje kluczowych danych (kompletność{" "}
-          {Math.round(p.completeness_pct)}%).
-        </p>
-      ) : (
-        <p className="priority-head">
-          <span className="priority-score">{p.rps.toFixed(1)}</span>
-          <span>
-            <strong>
-              pozycja {p.rank} z {p.ranked_total}
-            </strong>
+    <>
+      <section className="priority" aria-label="Priorytet do dalszej oceny">
+        {p.rps === null ? (
+          <p className="priority-none">
+            <strong>Bez pozycji w rankingu</strong>
             <br />
             <span className="muted small">
-              przy zmianie wag o ±20%: {p.rank_best}–{p.rank_worst} · kompletność{" "}
-              {Math.round(p.completeness_pct)}%
+              brakuje kluczowych danych (kompletność{" "}
+              {Math.round(p.completeness_pct)}%)
             </span>
-          </span>
-        </p>
-      )}
-      <ul className="components">
-        {p.components.map((c) => (
-          <li key={c.component}>
-            <div className="component-head">
-              <span>
-                {COMPONENT_LABEL[c.component]}{" "}
-                <span className="muted">(waga {Math.round(c.weight * 100)}%)</span>
+          </p>
+        ) : (
+          <p className="priority-head">
+            <span className="priority-score">{p.rps.toFixed(1)}</span>
+            <span>
+              <span className="priority-label">
+                Priorytet do dalszej oceny (RPS)
               </span>
-              <span>{c.value === null ? "—" : Math.round(c.value)}</span>
-            </div>
-            <div
-              className="bar"
-              role="img"
-              aria-label={
-                c.value === null
-                  ? `${COMPONENT_LABEL[c.component]}: brak danych`
-                  : `${COMPONENT_LABEL[c.component]}: ${Math.round(c.value)} na 100`
-              }
-            >
-              {c.value !== null && (
-                <span
-                  className={c.status === "modelled" ? "bar-fill bar-modelled" : "bar-fill"}
-                  style={{ width: `${c.value}%` }}
-                />
-              )}
-            </div>
-            <div className="muted small">
-              {COMPONENT_STATUS[c.status] ?? c.status}: {componentNote(c)}
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="muted small">
-        To nie jest prognoza wypadków ani urzędowa klasyfikacja. Metoda {p.method_version}, wagi
-        eksperymentalne.
-      </p>
-    </section>
+              <strong>
+                pozycja {p.rank} z {p.ranked_total}
+              </strong>
+            </span>
+          </p>
+        )}
+      </section>
+      <Section title="Skąd ten wynik" summary="składniki priorytetu" open>
+        <ul className="components">
+          {p.components.map((c) => (
+            <li key={c.component}>
+              <div className="component-head">
+                <span>
+                  {COMPONENT_LABEL[c.component]}{" "}
+                  <span className="muted">
+                    (waga {Math.round(c.weight * 100)}%)
+                  </span>
+                </span>
+                <span>{c.value === null ? "—" : Math.round(c.value)}</span>
+              </div>
+              <div
+                className="bar"
+                role="img"
+                aria-label={
+                  c.value === null
+                    ? `${COMPONENT_LABEL[c.component]}: brak danych`
+                    : `${COMPONENT_LABEL[c.component]}: ${Math.round(c.value)} na 100`
+                }
+              >
+                {c.value !== null && (
+                  <span
+                    className={
+                      c.status === "modelled"
+                        ? "bar-fill bar-modelled"
+                        : "bar-fill"
+                    }
+                    style={{ width: `${c.value}%` }}
+                  />
+                )}
+              </div>
+              <div className="muted small">
+                {COMPONENT_STATUS[c.status] ?? c.status}: {componentNote(c)}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="muted small">
+          {p.rps !== null &&
+            (p.rank_best === p.rank_worst
+              ? "Przy zmianie wag o ±20% pozycja się nie zmienia. "
+              : `Przy zmianie wag o ±20% pozycja mieści się w zakresie ${p.rank_best}–${p.rank_worst}. `)}
+          Kompletność danych {Math.round(p.completeness_pct)}%. To nie jest
+          prognoza wypadków ani urzędowa klasyfikacja; metoda {p.method_version}
+          , wagi eksperymentalne.
+        </p>
+      </Section>
+    </>
   );
 }
 
-export function CrossingCard({ crossingId }: { crossingId: number }) {
+export function CrossingCard({
+  crossingId,
+  onClose,
+}: {
+  crossingId: number;
+  onClose: () => void;
+}) {
   const [state, setState] = useState<State>({ kind: "loading" });
 
   useEffect(() => {
@@ -132,12 +202,38 @@ export function CrossingCard({ crossingId }: { crossingId: number }) {
     return () => controller.abort();
   }, [crossingId]);
 
-  if (state.kind === "loading") return <p className="muted">Wczytywanie szczegółów…</p>;
+  const close = (
+    <button
+      type="button"
+      className="icon-button"
+      onClick={onClose}
+      aria-label="Zamknij szczegóły"
+    >
+      ×
+    </button>
+  );
+
+  if (state.kind === "loading")
+    return (
+      <article>
+        <header className="card-head">
+          <span className="muted">Wczytywanie…</span>
+          {close}
+        </header>
+        <CardSkeleton />
+      </article>
+    );
   if (state.kind === "error")
     return (
-      <p className="alert" role="alert">
-        Nie udało się wczytać szczegółów przejazdu.
-      </p>
+      <article>
+        <header className="card-head">
+          <span />
+          {close}
+        </header>
+        <p className="alert" role="alert">
+          Nie udało się wczytać szczegółów przejazdu.
+        </p>
+      </article>
     );
 
   const d = state.detail;
@@ -146,21 +242,24 @@ export function CrossingCard({ crossingId }: { crossingId: number }) {
     .filter((a) => a.label !== null && a.value);
   const warnings = d.quality_flags.filter((f) => f.severity !== "info");
   const notes = d.quality_flags.filter((f) => f.severity === "info");
+  const unverifiedSources = d.sources.filter((s) => !s.license_verified).length;
 
   return (
-    <article aria-live="polite">
-      <h3 className="card-title">
-        {d.is_pedestrian ? "Przejście" : "Przejazd"} {crossingTitle(d)}
-      </h3>
-      <p className="card-sub">
-        {d.category ? (
-          <>
-            Kategoria <strong>{d.category}</strong> — {CATEGORY_DESCRIPTION[d.category]}
-          </>
-        ) : (
-          "Kategoria nieznana"
-        )}
-      </p>
+    <article aria-live="polite" className="card-enter" key={d.crossing_id}>
+      <header className="card-head">
+        <div>
+          <h3 className="card-title">
+            {d.is_pedestrian ? "Przejście" : "Przejazd"} {crossingTitle(d)}
+          </h3>
+          <p className="card-sub">
+            <span className="tag">kat. {d.category ?? "?"}</span>
+            {d.category
+              ? CATEGORY_DESCRIPTION[d.category]
+              : "kategoria nieznana"}
+          </p>
+        </div>
+        {close}
+      </header>
 
       {warnings.length > 0 && (
         <ul className="warnings" aria-label="Ostrzeżenia o danych">
@@ -174,105 +273,148 @@ export function CrossingCard({ crossingId }: { crossingId: number }) {
 
       <PriorityBlock detail={d} />
 
-      <dl>
-        <Row label="Dzielnica">{d.district_name ?? "poza Warszawą"}</Row>
-        <Row label="Status">
-          {STATUS_LABEL[d.verification_status]}
-          {d.verified_at ? ` (${d.verified_at.slice(0, 10)})` : ""}
-        </Row>
-        {shown.map((a) => (
-          <Row key={`${a.code}-${a.source}`} label={a.label as string}>
-            {a.value}
-            {a.confidence === "probable" ? " (niepotwierdzone)" : ""}
-          </Row>
-        ))}
-        <Row label="Współrzędne">
-          {d.lat.toFixed(5)}, {d.lon.toFixed(5)}
-        </Row>
-      </dl>
-
-      <h4>Droga</h4>
-      {d.roads.length === 0 ? (
-        <p className="muted small">
-          {d.is_pedestrian ? "Nie dotyczy przejścia dla pieszych." : "Brak jezdni w danych."}
-        </p>
-      ) : (
-        <ul className="plain">
-          {d.roads.map((r, i) => (
-            <li key={i}>
-              {r.name ?? "droga bez nazwy"}
-              <span className="muted"> — {[r.road_class, r.management].filter(Boolean).join(", ")}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h4>Tory</h4>
-      {d.tracks.length === 0 ? (
-        <p className="muted small">Brak toru w danych.</p>
-      ) : (
-        <ul className="plain">
-          {d.tracks.map((t, i) => (
-            <li key={i}>
-              {t.line_number ? `linia ${t.line_number}, ` : ""}
-              {t.track_function ?? "tor"}
-              <span className="muted">
-                {" "}
-                — {[t.track_count ? `torów: ${t.track_count}` : null, t.existence]
-                  .filter(Boolean)
-                  .join(", ")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <h4>Ruch kolejowy (plan)</h4>
-      {d.rail_flow === null ? (
-        <p className="muted small">Brak danych rozkładowych dla tego obiektu.</p>
-      ) : (
-        <>
-          <dl>
-            <Row label="Dzień roboczy">
-              <strong>{Math.round(d.rail_flow.weekday_avg)}</strong> pociągów pasażerskich na dobę
-            </Row>
-            <Row label="Sobota">{d.rail_flow.saturday ?? "brak danych"}</Row>
-            <Row label="Niedziela">{d.rail_flow.sunday ?? "brak danych"}</Row>
-          </dl>
+      <Section
+        title="Ruch kolejowy"
+        summary={
+          d.rail_flow === null
+            ? "brak danych"
+            : `${Math.round(d.rail_flow.weekday_avg)} poc./dobę (plan)`
+        }
+      >
+        {d.rail_flow === null ? (
           <p className="muted small">
-            Rozkład planowy, tydzień {d.rail_flow.period_start} – {d.rail_flow.period_end}. Tylko
-            pociągi pasażerskie
-            {d.rail_flow.weekday_avg === 0
-              ? "; zero nie oznacza braku ruchu towarowego lub manewrowego."
-              : "; bez towarowych i służbowych."}
+            Brak danych rozkładowych dla tego obiektu.
           </p>
-        </>
-      )}
+        ) : (
+          <>
+            <dl>
+              <Row label="Dzień roboczy">
+                <strong>{Math.round(d.rail_flow.weekday_avg)}</strong> pociągów
+                pasażerskich na dobę
+              </Row>
+              <Row label="Sobota">{d.rail_flow.saturday ?? "brak danych"}</Row>
+              <Row label="Niedziela">{d.rail_flow.sunday ?? "brak danych"}</Row>
+            </dl>
+            <p className="muted small">
+              Rozkład planowy, tydzień {d.rail_flow.period_start} –{" "}
+              {d.rail_flow.period_end}. Tylko pociągi pasażerskie
+              {d.rail_flow.weekday_avg === 0
+                ? "; zero nie oznacza braku ruchu towarowego lub manewrowego."
+                : "; bez towarowych i służbowych."}
+            </p>
+          </>
+        )}
+      </Section>
 
-
-      {notes.length > 0 && (
-        <>
-          <h4>Uwagi</h4>
-          <ul className="plain small">
-            {notes.map((f) => (
-              <li key={f.code}>
-                {FLAG_LABEL[f.code] ?? f.code}
-                {f.message ? ` — ${f.message}` : ""}
+      <Section
+        title="Droga i tory"
+        summary={[
+          d.roads[0]?.name ?? (d.roads.length ? "droga bez nazwy" : null),
+          d.tracks.length ? `odcinków toru: ${d.tracks.length}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      >
+        <h4>Droga</h4>
+        {d.roads.length === 0 ? (
+          <p className="muted small">
+            {d.is_pedestrian
+              ? "Nie dotyczy przejścia dla pieszych."
+              : "Brak jezdni w danych."}
+          </p>
+        ) : (
+          <ul className="plain">
+            {d.roads.map((r, i) => (
+              <li key={i}>
+                {r.name ?? "droga bez nazwy"}
+                <span className="muted">
+                  {" "}
+                  — {[r.road_class, r.management].filter(Boolean).join(", ")}
+                </span>
               </li>
             ))}
           </ul>
-        </>
-      )}
+        )}
+        <h4>Tory</h4>
+        {d.tracks.length === 0 ? (
+          <p className="muted small">Brak toru w danych.</p>
+        ) : (
+          <ul className="plain">
+            {d.tracks.map((t, i) => (
+              <li key={i}>
+                {t.line_number ? `linia ${t.line_number}, ` : ""}
+                {t.track_function ?? "tor"}
+                <span className="muted">
+                  {" "}
+                  —{" "}
+                  {[
+                    t.track_count ? `torów: ${t.track_count}` : null,
+                    t.existence,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
 
-      <h4>Źródła</h4>
-      <ul className="plain small">
-        {d.sources.map((s) => (
-          <li key={s.name}>
-            {s.name}
-            {s.license_verified ? "" : " (warunki wykorzystania niepotwierdzone)"}
-          </li>
-        ))}
-      </ul>
+      <Section
+        title="Dane ewidencyjne"
+        summary={d.district_name ?? "poza Warszawą"}
+      >
+        <dl>
+          <Row label="Dzielnica">{d.district_name ?? "poza Warszawą"}</Row>
+          <Row label="Status">
+            {STATUS_LABEL[d.verification_status]}
+            {d.verified_at ? ` (${d.verified_at.slice(0, 10)})` : ""}
+          </Row>
+          {shown.map((a) => (
+            <Row key={`${a.code}-${a.source}`} label={a.label as string}>
+              {a.value}
+              {a.confidence === "probable" ? " (niepotwierdzone)" : ""}
+            </Row>
+          ))}
+          <Row label="Współrzędne">
+            {d.lat.toFixed(5)}, {d.lon.toFixed(5)}
+          </Row>
+        </dl>
+      </Section>
+
+      <Section
+        title="Źródła i uwagi"
+        summary={
+          unverifiedSources > 0
+            ? `${d.sources.length} źródeł, ${unverifiedSources} bez potwierdzonych warunków`
+            : `${d.sources.length} źródeł`
+        }
+      >
+        {notes.length > 0 && (
+          <>
+            <h4>Uwagi</h4>
+            <ul className="plain small">
+              {notes.map((f) => (
+                <li key={f.code}>
+                  {FLAG_LABEL[f.code] ?? f.code}
+                  {f.message ? ` — ${f.message}` : ""}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <h4>Źródła</h4>
+        <ul className="plain small">
+          {d.sources.map((s) => (
+            <li key={s.name}>
+              {s.name}
+              {s.license_verified
+                ? ""
+                : " (warunki wykorzystania niepotwierdzone)"}
+            </li>
+          ))}
+        </ul>
+      </Section>
     </article>
   );
 }

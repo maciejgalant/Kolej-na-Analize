@@ -12,13 +12,12 @@ import {
 } from "./api";
 import { Assistant } from "./Assistant";
 import { CrossingCard } from "./CrossingCard";
+import { Dialog } from "./Dialog";
 import { crossingTitle, objectsLabel } from "./labels";
 import { MapView } from "./MapView";
 
 type HealthState =
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "ready"; health: Health };
+  { kind: "loading" } | { kind: "error" } | { kind: "ready"; health: Health };
 
 type DataState =
   | { kind: "loading" }
@@ -76,7 +75,15 @@ function useInventory(): [DataState, () => void] {
   return [state, () => setAttempt((n) => n + 1)];
 }
 
-function StatusRow({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
+function StatusRow({
+  label,
+  ok,
+  detail,
+}: {
+  label: string;
+  ok: boolean;
+  detail: string;
+}) {
   return (
     <li className="status-row">
       <span className={ok ? "badge badge-ok" : "badge badge-warn"}>
@@ -89,7 +96,8 @@ function StatusRow({ label, ok, detail }: { label: string; ok: boolean; detail: 
 }
 
 function ServiceStatus({ state }: { state: HealthState }) {
-  if (state.kind === "loading") return <p className="muted">Sprawdzanie usług…</p>;
+  if (state.kind === "loading")
+    return <p className="muted">Sprawdzanie usług…</p>;
   if (state.kind === "error")
     return (
       <p className="alert" role="alert">
@@ -132,7 +140,11 @@ export function App() {
   const [showPedestrian, setShowPedestrian] = useState(true);
   const [showUnverified, setShowUnverified] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"priority" | "name" | "trains">("priority");
+  const [sortBy, setSortBy] = useState<"priority" | "name" | "trains">(
+    "priority",
+  );
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const districts = data.kind === "ready" ? data.districts : [];
   const analysis = data.kind === "ready" ? data.analysis : null;
@@ -148,27 +160,34 @@ export function App() {
     if (sortBy === "priority") {
       // Najpierw obiekty z pozycją, potem pozostałe w kolejności z API.
       return [...filtered].sort(
-        (a, b) => (a.properties.rank ?? Infinity) - (b.properties.rank ?? Infinity),
+        (a, b) =>
+          (a.properties.rank ?? Infinity) - (b.properties.rank ?? Infinity),
       );
     }
     if (sortBy === "trains") {
       // Obiekty bez danych rozkładowych trafiają na koniec, nie są traktowane jak zero.
       return [...filtered].sort(
-        (a, b) => (b.properties.trains_weekday ?? -1) - (a.properties.trains_weekday ?? -1),
+        (a, b) =>
+          (b.properties.trains_weekday ?? -1) -
+          (a.properties.trains_weekday ?? -1),
       );
     }
     return filtered;
   }, [data, districtId, showRoad, showPedestrian, showUnverified, sortBy]);
   const hasTrainData =
-    data.kind === "ready" && data.crossings.some((c) => c.properties.trains_weekday !== null);
+    data.kind === "ready" &&
+    data.crossings.some((c) => c.properties.trains_weekday !== null);
 
   // Wybrany przejazd znika z karty, gdy filtr go ukryje.
   useEffect(() => {
-    if (selectedId !== null && !visible.some((c) => c.id === selectedId)) setSelectedId(null);
+    if (selectedId !== null && !visible.some((c) => c.id === selectedId))
+      setSelectedId(null);
   }, [visible, selectedId]);
 
   const demoMode = health.kind === "ready" && health.health.demo_mode;
-  const demoData = health.kind === "ready" && health.health.services.database.demo_data === true;
+  const demoData =
+    health.kind === "ready" &&
+    health.health.services.database.demo_data === true;
   const servicesOk = health.kind === "ready" && health.health.status === "ok";
   const hiddenUnverified =
     data.kind === "ready"
@@ -179,6 +198,29 @@ export function App() {
         ).length
       : 0;
 
+  const activeFilters = [!showRoad, !showPedestrian, showUnverified].filter(
+    Boolean,
+  ).length;
+  const sortLabel = {
+    priority: "priorytet",
+    name: "dzielnica i numer",
+    trains: "liczba pociągów",
+  }[sortBy];
+  // Przykład dla asystenta: dzielnica z największą liczbą przejazdów w bieżących danych.
+  const exampleDistrict =
+    [...districts].sort(
+      (a, b) =>
+        b.properties.crossings_verified - a.properties.crossings_verified,
+    )[0]?.properties.name ?? null;
+  const healthLabel =
+    health.kind === "ready"
+      ? servicesOk
+        ? "Usługi działają"
+        : "Usługi częściowo niedostępne"
+      : health.kind === "loading"
+        ? "Sprawdzanie…"
+        : "Brak backendu";
+
   return (
     <div className="app">
       <header className="topbar">
@@ -186,53 +228,84 @@ export function App() {
           <strong>RailSafe AI</strong>
           <span className="brand-sub">projekt edukacyjny, niezależny</span>
         </div>
-        <nav aria-label="Główna nawigacja">
-          <span className="nav-item nav-active" aria-current="page">
-            Analiza przejazdów
-          </span>
-          <span className="nav-item nav-disabled">Porównania</span>
-          <span className="nav-item nav-disabled">O projekcie</span>
-        </nav>
-        <div className="data-state" aria-live="polite">
-          <span className={servicesOk ? "dot dot-ok" : "dot dot-warn"} aria-hidden="true" />
-          {health.kind === "ready"
-            ? servicesOk
-              ? "Usługi działają"
-              : "Usługi częściowo niedostępne"
-            : health.kind === "loading"
-              ? "Sprawdzanie…"
-              : "Brak backendu"}
+        <span className="topbar-title">
+          Przejazdy kolejowo-drogowe w Warszawie
+        </span>
+        <button
+          type="button"
+          className="topbar-button"
+          onClick={() => setInfoOpen(true)}
+        >
+          O danych i metodzie
+        </button>
+        <div className="status-wrap">
+          <button
+            type="button"
+            className="topbar-button topbar-status"
+            aria-expanded={statusOpen}
+            onClick={() => setStatusOpen((value) => !value)}
+          >
+            <span
+              className={
+                health.kind === "loading"
+                  ? "dot dot-pulse"
+                  : servicesOk
+                    ? "dot dot-ok"
+                    : "dot dot-warn"
+              }
+              aria-hidden="true"
+            />
+            <span aria-live="polite">{healthLabel}</span>
+          </button>
+          {statusOpen && (
+            <div className="popover" role="dialog" aria-label="Stan usług">
+              <ServiceStatus state={health} />
+            </div>
+          )}
         </div>
       </header>
 
       {demoData && (
         <div className="demo-bar demo-bar-strong" role="alert">
-          <strong>DANE DEMONSTRACYJNE.</strong> Przejazdy „DEMO-…”, dzielnice „Demo-…”, tory, drogi
-          i liczby pociągów są fikcyjne i nie opisują rzeczywistej sieci kolejowej. Zestaw służy
-          wyłącznie do pokazania działania aplikacji.
-        </div>
-      )}
-      {demoMode && (
-        <div className="demo-bar" role="status">
-          Tryb bez zewnętrznych API. Ranking to eksperymentalny priorytet do dalszej oceny, a nie
-          prognoza wypadków; natężenie ruchu drogowego jest szacowane z klasy drogi.
+          <strong>DANE DEMONSTRACYJNE.</strong> Wszystkie obiekty i liczby są
+          fikcyjne i nie opisują rzeczywistej sieci kolejowej.{" "}
+          <button
+            type="button"
+            className="link link-light"
+            onClick={() => setInfoOpen(true)}
+          >
+            Więcej
+          </button>
         </div>
       )}
 
-      <main className="layout">
+      <main className={selectedId === null ? "layout" : "layout layout-detail"}>
         <section className="panel" aria-labelledby="list-title">
-          <h2 id="list-title">Ewidencja przejazdów</h2>
+          <div className="panel-head">
+            <h2 id="list-title">Przejazdy</h2>
+            {data.kind === "ready" && data.crossings.length > 0 && (
+              <span className="pill" aria-live="polite">
+                {visible.length} {objectsLabel(visible.length)}
+              </span>
+            )}
+          </div>
 
-          <label className="field" htmlFor="district">
+          <label className="sr-only" htmlFor="district">
             Dzielnica
           </label>
           <select
             id="district"
             value={districtId ?? ""}
-            onChange={(e) => setDistrictId(e.target.value === "" ? null : Number(e.target.value))}
+            onChange={(e) =>
+              setDistrictId(
+                e.target.value === "" ? null : Number(e.target.value),
+              )
+            }
             disabled={data.kind !== "ready"}
           >
-            <option value="">Cała Warszawa</option>
+            <option value="">
+              {demoData ? "Wszystkie dzielnice" : "Cała Warszawa"}
+            </option>
             {districts.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.properties.name} ({d.properties.crossings_verified})
@@ -240,53 +313,79 @@ export function App() {
             ))}
           </select>
 
-          <fieldset>
-            <legend>Rodzaj</legend>
-            <label>
-              <input
-                type="checkbox"
-                checked={showRoad}
-                onChange={(e) => setShowRoad(e.target.checked)}
-              />{" "}
-              przejazdy drogowe (A–D, F)
+          <details className="filters">
+            <summary>
+              <span>Filtry i kolejność</span>
+              <span className="section-summary">
+                {sortLabel}
+                {activeFilters > 0 ? ` · zmienione: ${activeFilters}` : ""}
+              </span>
+            </summary>
+            <fieldset>
+              <legend>Rodzaj obiektu</legend>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showRoad}
+                  onChange={(e) => setShowRoad(e.target.checked)}
+                />{" "}
+                przejazdy drogowe (A–D, F)
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showPedestrian}
+                  onChange={(e) => setShowPedestrian(e.target.checked)}
+                />{" "}
+                przejścia dla pieszych (E)
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showUnverified}
+                  onChange={(e) => setShowUnverified(e.target.checked)}
+                />{" "}
+                pokaż niezweryfikowane ({hiddenUnverified})
+              </label>
+            </fieldset>
+            <label className="field" htmlFor="sort">
+              Kolejność
             </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={showPedestrian}
-                onChange={(e) => setShowPedestrian(e.target.checked)}
-              />{" "}
-              przejścia dla pieszych (E)
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={showUnverified}
-                onChange={(e) => setShowUnverified(e.target.checked)}
-              />{" "}
-              pokaż niezweryfikowane ({hiddenUnverified})
-            </label>
-          </fieldset>
+            <select
+              id="sort"
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(e.target.value as "priority" | "name" | "trains")
+              }
+              disabled={data.kind !== "ready"}
+            >
+              <option value="priority" disabled={analysis === null}>
+                według priorytetu (RPS)
+              </option>
+              <option value="name">według dzielnicy i numeru</option>
+              <option value="trains" disabled={!hasTrainData}>
+                według liczby pociągów (plan)
+              </option>
+            </select>
+          </details>
 
-          <label className="field" htmlFor="sort">
-            Kolejność
-          </label>
-          <select
-            id="sort"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "priority" | "name" | "trains")}
-            disabled={data.kind !== "ready"}
-          >
-            <option value="priority" disabled={analysis === null}>
-              według priorytetu (RPS)
-            </option>
-            <option value="name">według dzielnicy i numeru</option>
-            <option value="trains" disabled={!hasTrainData}>
-              według liczby pociągów (plan)
-            </option>
-          </select>
-
-          {data.kind === "loading" && <p className="muted">Wczytywanie ewidencji…</p>}
+          {data.kind === "loading" && (
+            <ul
+              className="crossing-list"
+              role="status"
+              aria-label="Wczytywanie ewidencji"
+            >
+              {Array.from({ length: 8 }, (_, i) => (
+                <li key={i} className="skeleton-item">
+                  <span className="skeleton skeleton-dot" />
+                  <span className="skeleton-lines">
+                    <span className="skeleton skeleton-line" />
+                    <span className="skeleton skeleton-line skeleton-short" />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           {data.kind === "error" && (
             <div className="alert" role="alert">
               Nie udało się wczytać ewidencji przejazdów.{" "}
@@ -297,34 +396,41 @@ export function App() {
           )}
           {data.kind === "ready" && data.crossings.length === 0 && (
             <p className="muted">
-              Baza nie zawiera jeszcze przejazdów. Uruchom zadania <code>import-crossings</code> i{" "}
-              <code>import-topology</code> (opis w README).
+              Baza nie zawiera jeszcze przejazdów. Uruchom zadania{" "}
+              <code>import-crossings</code> i <code>import-topology</code> (opis
+              w README).
             </p>
           )}
           {data.kind === "ready" && data.crossings.length > 0 && (
             <>
-              <p className="count" aria-live="polite">
-                Pokazano <strong>{visible.length}</strong> {objectsLabel(visible.length)}.{" "}
-                {analysis === null
-                  ? "Ranking priorytetów pojawi się po uruchomieniu analizy (run-analysis)."
-                  : `Ranking: ${analysis.ranked} z ${analysis.scored} przejazdów drogowych ma pozycję; dane o ruchu ${analysis.period_start} – ${analysis.period_end}.`}
-              </p>
+              {analysis === null && (
+                <p className="count">
+                  Ranking pojawi się po uruchomieniu analizy (
+                  <code>run-analysis</code>).
+                </p>
+              )}
               {visible.length === 0 ? (
-                <p className="muted">Żaden obiekt nie spełnia wybranych filtrów.</p>
+                <p className="muted">
+                  Żaden obiekt nie spełnia wybranych filtrów.
+                </p>
               ) : (
                 <ul className="crossing-list">
                   {visible.map((c) => (
                     <li key={c.id}>
                       <button
                         type="button"
-                        className={c.id === selectedId ? "item item-active" : "item"}
+                        className={
+                          c.id === selectedId ? "item item-active" : "item"
+                        }
                         aria-pressed={c.id === selectedId}
                         onClick={() => setSelectedId(c.id)}
                       >
                         <span
                           className={
                             "marker " +
-                            (c.properties.is_pedestrian ? "marker-ped" : "marker-road") +
+                            (c.properties.is_pedestrian
+                              ? "marker-ped"
+                              : "marker-road") +
                             (c.properties.verification_status === "verified"
                               ? ""
                               : " marker-unverified")
@@ -334,21 +440,29 @@ export function App() {
                           {c.properties.category ?? "?"}
                         </span>
                         <span className="item-text">
-                          <span className="item-name">{crossingTitle(c.properties)}</span>
-                          {c.properties.rank !== null && c.properties.rps !== null && (
-                            <span className="item-rank">
-                              poz. {c.properties.rank} · RPS {c.properties.rps.toFixed(1)}
-                            </span>
-                          )}
+                          <span className="item-name">
+                            {crossingTitle(c.properties)}
+                          </span>
                           <span className="item-sub">
-                            kat. {c.properties.category ?? "nieznana"} ·{" "}
                             {c.properties.district_name}
                             {c.properties.trains_weekday !== null
                               ? ` · ${c.properties.trains_weekday} poc./dobę`
                               : ""}
-                            {c.properties.warnings > 0 ? " · ! ostrzeżenie" : ""}
+                            {c.properties.warnings > 0
+                              ? " · ! ostrzeżenie"
+                              : ""}
                           </span>
                         </span>
+                        {c.properties.rank !== null &&
+                          c.properties.rps !== null && (
+                            <span
+                              className="item-score"
+                              title="Priorytet do dalszej oceny (RPS)"
+                            >
+                              <strong>{c.properties.rps.toFixed(0)}</strong>
+                              <span>poz. {c.properties.rank}</span>
+                            </span>
+                          )}
                       </button>
                     </li>
                   ))}
@@ -365,26 +479,86 @@ export function App() {
             selectedDistrictId={districtId}
             selectedCrossingId={selectedId}
             onSelectCrossing={setSelectedId}
+            loading={data.kind === "loading"}
+            demo={demoData}
+            layoutKey={selectedId === null ? "list" : "detail"}
           />
+          {selectedId === null &&
+            data.kind === "ready" &&
+            visible.length > 0 && (
+              <p className="map-hint">
+                Kliknij punkt na mapie albo pozycję na liście, aby zobaczyć
+                szczegóły.
+              </p>
+            )}
         </section>
 
-        <section className="panel" aria-labelledby="detail-title">
-          <h2 id="detail-title">Szczegóły</h2>
-          {selectedId === null ? (
-            <p className="muted">Wybierz przejazd z listy albo kliknij punkt na mapie.</p>
-          ) : (
-            <CrossingCard crossingId={selectedId} />
-          )}
-          <details className="services">
-            <summary>Stan usług</summary>
-            <ServiceStatus state={health} />
-          </details>
-          <p className="muted small">
-            Wyniki aplikacji będą oznaczać priorytet do dalszej oceny, a nie prognozę wypadków ani
-            urzędową klasyfikację przejazdów.
-          </p>
-        </section>
+        {selectedId !== null && (
+          <section
+            className="panel panel-detail"
+            aria-label="Szczegóły przejazdu"
+          >
+            <CrossingCard
+              crossingId={selectedId}
+              onClose={() => setSelectedId(null)}
+            />
+          </section>
+        )}
       </main>
+
+      <Dialog
+        title="O danych i metodzie"
+        open={infoOpen}
+        onClose={() => setInfoOpen(false)}
+      >
+        {demoData && (
+          <p className="warnings">
+            <strong>Dane demonstracyjne.</strong> Przejazdy „DEMO-…”, dzielnice
+            „Demo-…”, tory, drogi i liczby pociągów są fikcyjne. Zestaw służy
+            wyłącznie do pokazania działania aplikacji.
+          </p>
+        )}
+        <h3>Co pokazuje ranking</h3>
+        <p>
+          RPS to eksperymentalny <strong>priorytet do dalszej oceny</strong>, a
+          nie prognoza wypadków ani urzędowa klasyfikacja przejazdów. Łączy
+          ekspozycję (pociągi × pojazdy), poziom zabezpieczeń wynikający z
+          kategorii i geometrię skrzyżowania.
+        </p>
+        {analysis !== null && (
+          <p>
+            Bieżący przebieg: metoda <code>{analysis.method_version}</code>,
+            pozycję ma {analysis.ranked} z {analysis.scored} przejazdów
+            drogowych, dane o ruchu z tygodnia {analysis.period_start} –{" "}
+            {analysis.period_end}.
+          </p>
+        )}
+        <h3>Ograniczenia</h3>
+        <ul>
+          <li>
+            Natężenie ruchu drogowego jest szacowane z klasy drogi, nie
+            mierzone.
+          </li>
+          <li>
+            Liczba pociągów pochodzi z rozkładu pasażerskiego; ruch towarowy i
+            manewrowy nie jest uwzględniony.
+          </li>
+          <li>
+            Brak danych o zdarzeniach: składnik historii jest pusty dla
+            wszystkich obiektów.
+          </li>
+          <li>
+            Przejazd bez kluczowych danych nie dostaje pozycji, zamiast
+            zgadywanej wartości.
+          </li>
+        </ul>
+        {demoMode && (
+          <p className="muted small">
+            Aplikacja działa bez zewnętrznych, płatnych API. Źródła i warunki
+            ich wykorzystania są wymienione w karcie każdego przejazdu.
+          </p>
+        )}
+      </Dialog>
 
       <Assistant
         modelReady={
@@ -392,6 +566,7 @@ export function App() {
           health.health.services.ollama.status === "ok" &&
           health.health.services.ollama.model_available
         }
+        exampleDistrict={exampleDistrict}
       />
     </div>
   );
