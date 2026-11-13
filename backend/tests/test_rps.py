@@ -135,3 +135,9 @@ def test_category_f_without_road_uses_internal_road_class():
     assert component.detail["vehicles_per_day_model"] == 300
     assert "kategorii F" in component.detail["note"]
     assert exposure_component(392, None, None, "A").value is None
+
+
+def test_ranking_passes_category_to_exposure():
+    [score] = score_crossings([CrossingInputs(1, "F", 392.0, None, 4, None)])
+    assert score.rank == 1
+    assert score.components["T"].detail["road_class"] == "droga wewnętrzna"
