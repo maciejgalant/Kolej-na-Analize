@@ -49,6 +49,9 @@ def test_crossings_default_to_verified_inside_city(client):
     assert first["properties"]["is_pedestrian"] is True
     assert first["properties"]["district_name"] == "Alfa"
     assert first["properties"]["manager"] == "PKP PLK"
+    streets = {f["properties"]["name"]: f["properties"]["street"] for f in body["features"]}
+    # nazwa ulicy z BDOT10k do opisu na liście; przejście piesze bez jezdni w pobliżu: brak
+    assert streets["ok"] == "ul. Testowa" and streets["boundary-ped"] is None
 
 
 @DB

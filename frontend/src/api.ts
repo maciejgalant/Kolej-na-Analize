@@ -51,6 +51,8 @@ export interface CrossingProperties {
   /** Pozycja i wynik RPS z ostatniego przebiegu; null = poza rankingiem lub brak przebiegu. */
   rank: number | null;
   rps: number | null;
+  /** Nazwa ulicy przejazdu z BDOT10k; null = brak nazwanej jezdni w pobliżu. */
+  street: string | null;
 }
 
 export interface CrossingFeature {
