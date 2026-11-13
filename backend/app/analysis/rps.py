@@ -175,7 +175,9 @@ def score_crossings(inputs: list[CrossingInputs], sensitivity_step: float = 0.2)
     scores = []
     for item in inputs:
         components = {
-            "T": exposure_component(item.trains_weekday, item.road_class, item.road_distance_m),
+            "T": exposure_component(
+                item.trains_weekday, item.road_class, item.road_distance_m, item.category
+            ),
             "P": protection_component(item.category),
             "G": geometry_component(item.tracks, item.angle_deg),
             "H": history_component(),
