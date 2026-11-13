@@ -11,7 +11,7 @@ from psycopg.rows import dict_row
 
 from app.analysis.run import run_analysis
 from app.api.assistant import get_http_client
-from app.assistant.service import MAX_TOOL_ROUNDS, AssistantUnavailable, chat
+from app.assistant.service import MAX_TOOL_ROUNDS, AssistantUnavailable, _clean, chat
 from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool
 from app.config import get_settings
 from app.main import app
@@ -243,3 +243,85 @@ def test_endpoint_validation_and_unavailable_model(db):
         app.dependency_overrides.clear()
     assert response.status_code == 503
     assert "Mapa i ranking działają" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Odpowiedź.", "Odpowiedź."),
+        ("<think>analiza</think>\n\nOdpowiedź.", "Odpowiedź."),
+        # przypadek z testu na żywo: sam znacznik zamykający po długim rozumowaniu
+        (
+            "Okay, the user asked...\nWait, the error says...\n</think>\n\nNie ma dzielnicy.",
+            "Nie ma dzielnicy.",
+        ),
+        ("a</think>b</think>Koniec", "Koniec"),
+        ("Początek <think>urwane rozumowanie", "Początek"),
+        ("", ""),
+    ],
+)
+def test_reasoning_is_removed_from_answer(raw, expected):
+    assert _clean(raw) == expected
+
+
+def test_chat_limits_answer_length_and_keeps_model_loaded(db):
+    fake = FakeOllama(text("ok"))
+    ask(db, fake)
+    request = fake.requests[0]
+    assert request["keep_alive"] == "30m"
+    assert request["options"]["num_predict"] == 700
+    assert request["messages"][0]["content"].endswith("/no_think")
+
+
+def _add_districts(db, *names):
+    for index, name in enumerate(names):
+        db.execute(
+            "INSERT INTO spatial.districts (name, teryt, geom) VALUES (%s, %s, "
+            "ST_Multi(ST_SetSRID(ST_MakeEnvelope(0, 0, 1, 1), 2180)))",
+            (name, f"1465{index + 50}_8"),
+        )
+    db.commit()
+
+
+@pytest.mark.parametrize(
+    ("asked", "expected"),
+    [
+        ("Targówka", "Targówek"),  # dopełniacz z testu na żywo
+        ("targowek", "Targówek"),
+        ("na Targówku", "Targówek"),
+        ("Wawra", "Wawer"),
+        ("w Wawrze", "Wawer"),
+        ("Woli", "Wola"),
+        ("Włoch", "Włochy"),
+        ("dzielnica Rembertów", "Rembertów"),
+        ("Rembertowa", "Rembertów"),
+        ("Pragi-Południe", "Praga-Południe"),
+        ("praga polnoc", "Praga-Północ"),
+        ("Białołęki", "Białołęka"),
+        ("Wesołej", "Wesoła"),
+        ("Ursynowie", "Ursynów"),
+    ],
+)
+def test_ranking_recognises_declined_district_names(db, asked, expected):
+    _add_districts(
+        db,
+        "Targówek",
+        "Wawer",
+        "Wola",
+        "Włochy",
+        "Rembertów",
+        "Praga-Południe",
+        "Praga-Północ",
+        "Białołęka",
+        "Wesoła",
+        "Ursynów",
+        "Ursus",
+    )
+    assert call_tool(db, "get_ranking", {"district": asked})["zakres"] == expected
+
+
+def test_ranking_still_rejects_unknown_or_ambiguous_district(db):
+    _add_districts(db, "Praga-Południe", "Praga-Północ", "Ursynów", "Ursus")
+    for name in ("Atlantyda", "Praga", "Urs"):
+        with pytest.raises(ToolError, match="Dostępne"):
+            call_tool(db, "get_ranking", {"district": name})

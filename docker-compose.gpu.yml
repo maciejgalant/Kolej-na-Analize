@@ -1,0 +1,22 @@
+# Dodatek do docker-compose.yml: udostępnia Ollamie kartę graficzną NVIDIA.
+# Bez niego model działa na procesorze (odpowiedź asystenta trwa minuty zamiast sekund).
+#
+# Wymagania: karta NVIDIA z aktualnym sterownikiem; na Windows Docker Desktop z WSL 2,
+# na Linuksie NVIDIA Container Toolkit.
+#
+# Włączenie na stałe — dopisz do pliku .env:
+#   Windows:      COMPOSE_FILE=docker-compose.yml;docker-compose.gpu.yml
+#   Linux/macOS:  COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml
+# a potem: docker compose up -d
+#
+# Sprawdzenie: docker compose exec ollama nvidia-smi
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
