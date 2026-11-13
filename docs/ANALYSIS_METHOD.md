@@ -35,7 +35,7 @@ Grupy: T = ekspozycja na ruch; P = infrastruktura / zabezpieczenia; G = geometri
 ## 7. Przykładowa interpretacja dla użytkownika
 „Przejazd X ma wysoki *priorytet do dalszej oceny* z powodu wysokiego oszacowanego ruchu pociągów i kategorii zabezpieczeń. Dane o ruchu samochodowym są modelowe, a brak zweryfikowanej widoczności ogranicza pewność porównania. To nie jest prognoza liczby wypadków”.
 
-## 8. Implementacja `rps-0.3-exp` (RSA-010, 2026-11-12)
+## 8. Implementacja `rps-0.4-exp` (RSA-010, 2026-11-12)
 Wersja eksperymentalna; wagi i tabele punktowe są założeniami autorskimi, niezwalidowanymi. Kod: `backend/app/analysis/rps.py`.
 
 **Zakres.** Zweryfikowane przejazdy drogowe (kategorie A–D i F) w granicach Warszawy. Przejścia dla pieszych (kategoria E) są w ewidencji i na mapie, ale poza rankingiem.
@@ -46,7 +46,7 @@ Wersja eksperymentalna; wagi i tabele punktowe są założeniami autorskimi, nie
 - **G — geometria:** `0,6 · tory + 0,4 · kąt`. Tory liczone na 30-metrowym przekroju prostopadłym do najbliższego toru (1 → 0, 2 → 40, 3 → 70, ≥4 → 100). Kąt ostry między osią jezdni a torem: ≥75° → 0, ≤30° → 100, liniowo pomiędzy. Status `modelled`; widoczność nie jest oceniana.
 - **H — historia zdarzeń:** brak danych, `unknown` dla wszystkich obiektów.
 
-**Szacunek ruchu drogowego z klasy drogi [pojazdy/dobę]:** wewnętrzna 300, dojazdowa 800, lokalna 2 500, zbiorcza 8 000, główna 18 000, główna ruchu przyśpieszonego 30 000. Brana jest jezdnia o najwyższej klasie do 15 m od punktu przejazdu. Jeżeli w 15 m nie ma żadnej jezdni (szeroki przejazd, punkt w osi torowiska), brana jest najbliższa do 30 m — ten sam promień, którym import potwierdza istnienie drogi; wtedy kąt skrzyżowania nie jest wyznaczany, a szczegóły składnika T zawierają odległość i adnotację (od wersji `rps-0.3-exp`). To założenie zastępcze: system pomiarowy ZDM (APR, 128 punktów) ma punkt na tej samej ulicy do 1,5 km tylko dla trzech obiektów (Radzymińska 75 m, Wydawnicza 1,0 km, Łodygowa 1,2 km), więc pomiar nie może być podstawą rankingu. Wartości wymagają kalibracji.
+**Szacunek ruchu drogowego z klasy drogi [pojazdy/dobę]:** wewnętrzna 300, dojazdowa 800, lokalna 2 500, zbiorcza 8 000, główna 18 000, główna ruchu przyśpieszonego 30 000. Brana jest jezdnia o najwyższej klasie do 15 m od punktu przejazdu. Jeżeli w 15 m nie ma żadnej jezdni (szeroki przejazd, punkt w osi torowiska), brana jest najbliższa do 30 m, ale tylko taka, która przecina tor przy przejeździe — ulica biegnąca równolegle do torów nie jest ulicą przejazdu. Kąt skrzyżowania nie jest wtedy wyznaczany, a szczegóły składnika T zawierają odległość i adnotację. Przejazd kategorii F bez jezdni w danych dostaje klasę „droga wewnętrzna”, bo ta kategoria z definicji dotyczy dróg wewnętrznych. W pozostałych przypadkach brak jezdni oznacza brak pozycji (od wersji `rps-0.4-exp`; wersja 0.3 brała dowolną jezdnię do 30 m i na danych rzeczywistych przypisała dwóm przejazdom równoległą drogę główną). To założenie zastępcze: system pomiarowy ZDM (APR, 128 punktów) ma punkt na tej samej ulicy do 1,5 km tylko dla trzech obiektów (Radzymińska 75 m, Wydawnicza 1,0 km, Łodygowa 1,2 km), więc pomiar nie może być podstawą rankingu. Wartości wymagają kalibracji.
 
 **Wynik i braki.**
 - `RPS` to średnia ważona po dostępnych składnikach; `completeness_pct` to suma wag dostępnych składników (90% = brak tylko H).

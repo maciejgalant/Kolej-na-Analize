@@ -1,4 +1,4 @@
-"""RailSafe Priority Score (RPS) — wersja eksperymentalna `rps-0.3-exp`.
+"""RailSafe Priority Score (RPS) — wersja eksperymentalna `rps-0.4-exp`.
 
 RPS to autorski *priorytet do dalszej oceny*, a nie prawdopodobieństwo wypadku ani
 urzędowa klasyfikacja przejazdu. Wagi i tabele poniżej są założeniami roboczymi,
@@ -18,7 +18,7 @@ Moduł zawiera wyłącznie czyste funkcje, bez dostępu do bazy.
 import math
 from dataclasses import dataclass, field
 
-METHOD_VERSION = "rps-0.3-exp"
+METHOD_VERSION = "rps-0.4-exp"
 WEIGHTS: dict[str, float] = {"T": 0.40, "P": 0.30, "G": 0.20, "H": 0.10}
 # Bez tych składników obiekt nie dostaje pozycji w rankingu.
 KEY_COMPONENTS = ("T", "P")
@@ -26,6 +26,7 @@ KEY_COMPONENTS = ("T", "P")
 # Szacowane natężenie ruchu drogowego [pojazdy/dobę] według klasy drogi z BDOT10k.
 # ZAŁOŻENIE robocze: pomiary ZDM (APR) pokrywają 1–3 z 36 przejazdów, więc dla
 # pozostałych używana jest klasa drogi. Wartości wymagają kalibracji.
+INTERNAL_ROAD = "droga wewnętrzna"
 ROAD_CLASS_VEHICLES: dict[str, int] = {
     "droga wewnętrzna": 300,
     "droga dojazdowa": 800,
@@ -86,15 +87,25 @@ class Score:
 
 
 def exposure_component(
-    trains_weekday: float | None, road_class: str | None, road_distance_m: float | None = None
+    trains_weekday: float | None,
+    road_class: str | None,
+    road_distance_m: float | None = None,
+    category: str | None = None,
 ) -> Component:
+    from_category = road_class is None and category == "F"
+    if from_category:
+        road_class = INTERNAL_ROAD  # kategoria F z definicji leży na drodze wewnętrznej
     vehicles = ROAD_CLASS_VEHICLES.get(road_class or "")
     detail = {"trains_per_day": trains_weekday, "road_class": road_class,
               "vehicles_per_day_model": vehicles}  # fmt: skip
     if road_distance_m is not None:
         detail["road_distance_m"] = road_distance_m
         if road_distance_m > 15:
-            detail["note"] = "jezdnia przyjęta z rozszerzonego promienia (15–30 m)"
+            detail["note"] = (
+                "jezdnia przecinająca tor, z rozszerzonego promienia (15–30 m)"
+            )
+    if from_category:
+        detail["note"] = "brak jezdni w danych; klasa drogi przyjęta z kategorii F"
     if trains_weekday is None:
         return Component(None, "unknown", detail | {"reason": "brak danych rozkładowych"})
     if trains_weekday <= 0:
