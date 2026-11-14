@@ -288,8 +288,8 @@ fieldset legend {
 }
 
 .item-active {
-  background: #e7f0f9;
-  box-shadow: inset 3px 0 0 var(--red-600);
+  background: #fdf1e8;
+  box-shadow: inset 3px 0 0 #d9570b;
 }
 
 .item-text {
@@ -749,16 +749,6 @@ article {
   position: relative;
 }
 
-.legend-wrap {
-  position: absolute;
-  left: 12px;
-  bottom: 24px;
-  z-index: 500;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-start;
-  gap: 8px;
-}
 
 .map-button {
   padding: 6px 12px;
@@ -1473,19 +1463,6 @@ article {
   filter: grayscale(1) brightness(1.04) contrast(0.88);
 }
 
-.basemap-switch {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 500;
-  display: flex;
-  gap: 6px;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 2px 8px rgba(16, 43, 78, 0.15);
-}
 
 .basemap {
   display: flex;
@@ -1680,4 +1657,427 @@ article {
   .basemap-label {
     display: none;
   }
+}
+
+/* ===== Obszar roboczy z oknami (v1.3) ===== */
+.workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 12px 16px 16px;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+/* mapa tworzy własny kontekst warstw, żeby okna zawsze były nad nią */
+.workspace > .map-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.workspace-docked {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: visible;
+  border: none;
+  border-radius: 0;
+}
+
+.workspace-docked > .map-wrap {
+  position: relative;
+  inset: auto;
+  height: 60vh;
+  min-height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.window {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.window-floating {
+  box-shadow:
+    0 1px 2px rgba(16, 43, 78, 0.08),
+    0 10px 30px rgba(16, 43, 78, 0.18);
+}
+
+.window.panel {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.window-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 8px 6px 10px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  background: var(--white);
+  user-select: none;
+}
+
+.window-floating > .window-head {
+  cursor: grab;
+  touch-action: none;
+}
+
+.window-floating > .window-head:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: -2px;
+}
+
+.window-minimized > .window-head {
+  border-bottom: none;
+  border-radius: 12px;
+}
+
+.window-grip {
+  color: #a7b4c2;
+  font-size: 12px;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.window-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--navy-900);
+}
+
+.window-title h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.window-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.window-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--slate-600);
+  cursor: pointer;
+}
+
+.window-button:hover {
+  background: var(--surface);
+  color: var(--navy-900);
+}
+
+.window-button:focus-visible {
+  outline: 2px solid var(--blue-500);
+}
+
+.window-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 16px;
+  overflow-y: auto;
+}
+
+.window-body[hidden] {
+  display: none;
+}
+
+/* miejsce na przycisk asystenta w prawym dolnym rogu */
+.panel-detail .window-body {
+  padding-bottom: 80px;
+}
+
+.window-resize {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.window-resize-n,
+.window-resize-s {
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.window-resize-n {
+  top: -4px;
+}
+
+.window-resize-s {
+  bottom: -4px;
+}
+
+.window-resize-e,
+.window-resize-w {
+  top: 10px;
+  bottom: 10px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.window-resize-e {
+  right: -4px;
+}
+
+.window-resize-w {
+  left: -4px;
+}
+
+.window-resize-ne,
+.window-resize-nw,
+.window-resize-se,
+.window-resize-sw {
+  width: 14px;
+  height: 14px;
+}
+
+.window-resize-ne {
+  top: -4px;
+  right: -4px;
+  cursor: nesw-resize;
+}
+
+.window-resize-sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: nesw-resize;
+}
+
+.window-resize-nw {
+  top: -4px;
+  left: -4px;
+  cursor: nwse-resize;
+}
+
+.window-resize-se {
+  right: -4px;
+  bottom: -4px;
+  cursor: nwse-resize;
+}
+
+/* widoczny uchwyt w prawym dolnym rogu */
+.window-resize-se::after {
+  content: "";
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #b8c4d0;
+  border-bottom: 2px solid #b8c4d0;
+  border-radius: 0 0 2px 0;
+}
+
+body.is-dragging,
+body.is-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+body.is-resizing {
+  user-select: none;
+}
+
+.card-number {
+  margin: 2px 0 6px;
+  color: var(--slate-600);
+  font-size: 13px;
+}
+
+/* ===== Asystent jako okno ===== */
+.chat-window.window {
+  animation: chat-in 0.2s ease-out;
+  overflow: hidden;
+}
+
+.chat-window > .window-head {
+  background: var(--navy-900);
+  color: var(--white);
+  border-bottom: none;
+}
+
+.chat-window .window-title {
+  color: var(--white);
+  overflow: visible;
+}
+
+.chat-window .window-button {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.chat-window .window-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white);
+}
+
+.chat-window .window-grip {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-window .window-body {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.chat-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 400;
+}
+
+.chat-title > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-title strong {
+  font-size: 15px;
+}
+
+.chat-title .chat-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+/* ===== Pasek narzędzi mapy ===== */
+.map-toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 4px 16px rgba(16, 43, 78, 0.18);
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 2px;
+  background: var(--border);
+}
+
+.tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--white);
+  color: var(--navy-900);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tool-button:hover {
+  background: var(--surface);
+}
+
+.tool-button:focus-visible,
+.basemap:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 1px;
+}
+
+.tool-active {
+  border-color: var(--navy-700);
+  background: var(--surface);
+}
+
+.map-toolbar .basemap {
+  flex-direction: row;
+  gap: 6px;
+  padding: 2px 8px 2px 2px;
+  border-width: 1px;
+  border-color: var(--border);
+}
+
+.map-toolbar .basemap-active {
+  border-color: var(--navy-700);
+  box-shadow: inset 0 0 0 1px var(--navy-700);
+}
+
+.map-toolbar .basemap-thumb {
+  width: 30px;
+  height: 30px;
+}
+
+.map-toolbar .basemap-thumb svg {
+  width: 30px;
+  height: 30px;
+}
+
+.map-wrap > .map-holder .legend,
+.map-holder > .legend {
+  position: absolute;
+  left: 50%;
+  bottom: 80px;
+  z-index: 501;
+  transform: translateX(-50%);
+  width: min(360px, calc(100% - 32px));
+  max-width: none;
+  box-shadow: 0 8px 24px rgba(16, 43, 78, 0.2);
+}
+
+@media (max-width: 1360px) {
+  .map-toolbar .basemap-label {
+    display: none;
+  }
+
+  .map-toolbar .basemap {
+    padding: 2px;
+  }
+}
+
+.map-holder > .legend {
+  animation-name: fade-in;
 }

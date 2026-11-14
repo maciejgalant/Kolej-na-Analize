@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { FloatingWindow } from "./FloatingWindow";
+
 interface ToolCall {
   name: string;
   arguments: Record<string, unknown>;
@@ -148,35 +150,39 @@ export function Assistant({ modelReady, exampleDistrict }: Props) {
   return (
     <div className="chat">
       {open && (
-        <section
+        <FloatingWindow
+          id="assistant"
+          floating
+          fixed
           className="chat-window"
-          role="dialog"
-          aria-label="Rozmowa z asystentem AI"
-        >
-          <header className="chat-head">
-            <span className="chat-avatar" aria-hidden="true">
-              <ChatIcon />
-            </span>
-            <div>
-              <strong>Asystent RailSafe</strong>
-              <span className="chat-state">
-                <span
-                  className={modelReady ? "dot dot-ok" : "dot dot-warn"}
-                  aria-hidden="true"
-                />
-                {modelReady ? "lokalny model gotowy" : "model niedostępny"}
+          ariaLabel="Rozmowa z asystentem AI"
+          title={
+            <span className="chat-title">
+              <span className="chat-avatar" aria-hidden="true">
+                <ChatIcon />
               </span>
-            </div>
-            <button
-              type="button"
-              className="icon-button icon-button-light"
-              onClick={() => setOpen(false)}
-              aria-label="Zamknij okno asystenta"
-            >
-              ×
-            </button>
-          </header>
-
+              <span>
+                <strong>Asystent RailSafe</strong>
+                <span className="chat-state">
+                  <span
+                    className={modelReady ? "dot dot-ok" : "dot dot-warn"}
+                    aria-hidden="true"
+                  />
+                  {modelReady ? "lokalny model gotowy" : "model niedostępny"}
+                </span>
+              </span>
+            </span>
+          }
+          onClose={() => setOpen(false)}
+          closeLabel="Zamknij okno asystenta"
+          defaultRect={(w, h) => {
+            const width = Math.min(400, w - 32);
+            const height = Math.min(560, h - 140);
+            return { x: w - width - 16, y: h - height - 96, w: width, h: height };
+          }}
+          minWidth={300}
+          minHeight={280}
+        >
           <div className="chat-log" ref={log} aria-live="polite">
             {turns.length === 0 && (
               <div className="chat-empty">
@@ -276,7 +282,7 @@ export function Assistant({ modelReady, exampleDistrict }: Props) {
           <p className="chat-foot">
             Model lokalny, może się mylić. Dane nie opuszczają komputera.
           </p>
-        </section>
+        </FloatingWindow>
       )}
 
       <button

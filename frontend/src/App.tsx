@@ -11,6 +11,7 @@ import {
   type Health,
 } from "./api";
 import { Assistant } from "./Assistant";
+import { FloatingWindow, resetWindowLayout, useFloatingLayout } from "./FloatingWindow";
 import { CategoryPin } from "./CategoryPin";
 import { CrossingCard } from "./CrossingCard";
 import { Dialog } from "./Dialog";
@@ -271,9 +272,14 @@ export function App() {
   );
   const [infoOpen, setInfoOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const floating = useFloatingLayout();
 
   const districts = data.kind === "ready" ? data.districts : [];
   const analysis = data.kind === "ready" ? data.analysis : null;
+  const selectedStreet =
+    data.kind === "ready"
+      ? (data.crossings.find((c) => c.id === selectedId)?.properties.street ?? null)
+      : null;
   const visible = useMemo(() => {
     if (data.kind !== "ready") return [];
     const filtered = data.crossings.filter((c) => {
@@ -357,6 +363,16 @@ export function App() {
         <span className="topbar-title">
           Przejazdy kolejowo-drogowe w Warszawie
         </span>
+        {floating && (
+          <button
+            type="button"
+            className="topbar-button"
+            onClick={resetWindowLayout}
+            title="Przywraca domyślne położenie i rozmiar okien"
+          >
+            Układ okien
+          </button>
+        )}
         <button
           type="button"
           className="topbar-button"
@@ -405,16 +421,46 @@ export function App() {
         </div>
       )}
 
-      <main className={selectedId === null ? "layout" : "layout layout-detail"}>
-        <section className="panel" aria-labelledby="list-title">
-          <div className="panel-head">
-            <h2 id="list-title">Przejazdy</h2>
-            {data.kind === "ready" && data.crossings.length > 0 && (
+      <main className={floating ? "workspace" : "workspace workspace-docked"}>
+        <section className="map-wrap" aria-label="Mapa">
+          <MapView
+            districts={districts}
+            crossings={visible}
+            selectedDistrictId={districtId}
+            selectedCrossingId={selectedId}
+            onSelectCrossing={setSelectedId}
+            loading={data.kind === "loading"}
+            demo={demoData}
+            layoutKey={floating ? "floating" : "docked"}
+            fitPadding={floating ? { left: 400, right: selectedId === null ? 40 : 420 } : null}
+          />
+          {selectedId === null &&
+            data.kind === "ready" &&
+            visible.length > 0 && (
+              <p className="map-hint">
+                Kliknij punkt na mapie albo pozycję na liście, aby zobaczyć
+                szczegóły.
+              </p>
+            )}
+        </section>
+
+        <FloatingWindow
+          id="list"
+          floating={floating}
+          ariaLabel="Przejazdy"
+          className="panel"
+          title={<h2 id="list-title">Przejazdy</h2>}
+          titleExtra={
+            data.kind === "ready" &&
+            data.crossings.length > 0 && (
               <span className="pill" aria-live="polite">
                 {visible.length} {objectsLabel(visible.length)}
               </span>
-            )}
-          </div>
+            )
+          }
+          defaultRect={(_w, h) => ({ x: 16, y: 16, w: 360, h: h - 32 })}
+          minWidth={280}
+        >
 
           <label className="sr-only" htmlFor="district">
             Dzielnica
@@ -549,39 +595,26 @@ export function App() {
               )}
             </>
           )}
-        </section>
-
-        <section className="map-wrap" aria-label="Mapa">
-          <MapView
-            districts={districts}
-            crossings={visible}
-            selectedDistrictId={districtId}
-            selectedCrossingId={selectedId}
-            onSelectCrossing={setSelectedId}
-            loading={data.kind === "loading"}
-            demo={demoData}
-            layoutKey={selectedId === null ? "list" : "detail"}
-          />
-          {selectedId === null &&
-            data.kind === "ready" &&
-            visible.length > 0 && (
-              <p className="map-hint">
-                Kliknij punkt na mapie albo pozycję na liście, aby zobaczyć
-                szczegóły.
-              </p>
-            )}
-        </section>
+        </FloatingWindow>
 
         {selectedId !== null && (
-          <section
+          <FloatingWindow
+            id="detail"
+            floating={floating}
+            ariaLabel="Szczegóły przejazdu"
             className="panel panel-detail"
-            aria-label="Szczegóły przejazdu"
+            title="Szczegóły"
+            onClose={() => setSelectedId(null)}
+            closeLabel="Zamknij szczegóły"
+            defaultRect={(w, h) => ({ x: w - 396, y: 16, w: 380, h: h - 32 })}
+            minWidth={300}
           >
             <CrossingCard
               crossingId={selectedId}
-              onClose={() => setSelectedId(null)}
+              street={selectedStreet}
+              onClose={floating ? undefined : () => setSelectedId(null)}
             />
-          </section>
+          </FloatingWindow>
         )}
       </main>
 
@@ -615,8 +648,9 @@ export function App() {
         <h3>Ograniczenia</h3>
         <ul>
           <li>
-            Natężenie ruchu drogowego jest szacowane z klasy drogi, nie
-            mierzone.
+            Natężenie ruchu drogowego pochodzi z pomiaru ZDM tylko tam, gdzie
+            punkt pomiarowy leży na ulicy przejazdu; w pozostałych miejscach
+            jest szacowane z klasy drogi.
           </li>
           <li>
             Liczba pociągów pochodzi z rozkładu pasażerskiego; ruch towarowy i

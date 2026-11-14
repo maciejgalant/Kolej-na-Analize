@@ -20,6 +20,8 @@ interface Props {
   demo: boolean;
   /** Zmiana wartości wymusza przeliczenie rozmiaru mapy (np. po otwarciu panelu). */
   layoutKey: string;
+  /** Margines dopasowania widoku, gdy okna zasłaniają boki mapy (px). */
+  fitPadding?: { left: number; right: number } | null;
 }
 
 function markerIcon(feature: CrossingFeature, selected: boolean): L.DivIcon {
@@ -74,6 +76,7 @@ export function MapView({
   loading,
   demo,
   layoutKey,
+  fitPadding = null,
 }: Props) {
   const [legendOpen, setLegendOpen] = useState(false);
   const [basemap, setBasemap] = useState<BasemapId>(storedBasemap);
@@ -90,6 +93,8 @@ export function MapView({
     const instance = L.map(container.current, {
       center: WARSAW_CENTER,
       zoom: 11,
+      // własne przyciski powiększenia są na pasku narzędzi mapy (nie pod oknami)
+      zoomControl: false,
     });
     markerLayer.current = L.layerGroup().addTo(instance);
     map.current = instance;
@@ -139,7 +144,16 @@ export function MapView({
               (d) => d.id === selectedDistrictId,
             ) as unknown as GeoJSON.Feature[],
           ).getBounds();
-    if (target.isValid()) instance.fitBounds(target, { padding: [16, 16] });
+    if (target.isValid())
+      instance.fitBounds(
+        target,
+        fitPadding
+          ? {
+              paddingTopLeft: [fitPadding.left, 24],
+              paddingBottomRight: [fitPadding.right, 90],
+            }
+          : { padding: [16, 16] },
+      );
     // Zmiana podkładu zmienia tylko styl granic; dopasowanie widoku zostaje bez zmian.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [districts, selectedDistrictId]);
@@ -205,58 +219,85 @@ export function MapView({
           Wczytywanie mapy przejazdów…
         </div>
       )}
-      <div className="basemap-switch" role="group" aria-label="Podkład mapy">
-        {BASEMAPS.map((b) => (
+      {legendOpen && (
+        <div className="legend" id="map-legend" aria-label="Legenda">
+          <p className="legend-title">Kategoria przejazdu</p>
+          {LEGEND_ORDER.map((category) => (
+            <div key={category} className="legend-row">
+              <CategoryPin category={category} size={24} />
+              <span>
+                <strong>{category}</strong> — {CATEGORY_DESCRIPTION[category]}
+              </span>
+            </div>
+          ))}
+          <p className="legend-note">
+            Wszystkie znaki mają ten sam kolor; kategorię rozpoznaje się po
+            rysunku. Znak nie mówi nic o pozycji w rankingu.
+          </p>
+          <div className="legend-row">
+            <CategoryPin category="B" verified={false} size={24} />
+            <span>niezweryfikowany (przerywana obwódka)</span>
+          </div>
+          <div className="legend-row">
+            <CategoryPin category="C" warning size={24} />
+            <span>ostrzeżenie o jakości danych</span>
+          </div>
+        </div>
+      )}
+      <div className="map-toolbar" role="toolbar" aria-label="Narzędzia mapy">
+        <div className="toolbar-group" role="group" aria-label="Powiększenie">
           <button
-            key={b.id}
             type="button"
-            className={b.id === basemap ? "basemap basemap-active" : "basemap"}
-            aria-pressed={b.id === basemap}
-            title={`Podkład: ${b.label.toLowerCase()}`}
-            onClick={() => setBasemap(b.id)}
+            className="tool-button"
+            aria-label="Pomniejsz mapę"
+            title="Pomniejsz"
+            onClick={() => map.current?.zoomOut()}
           >
-            <span
-              className="basemap-thumb"
-              dangerouslySetInnerHTML={{ __html: b.thumbnail }}
-            />
-            <span className="basemap-label">{b.label}</span>
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <path d="M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </button>
-        ))}
-      </div>
-      <div className="legend-wrap">
+          <button
+            type="button"
+            className="tool-button"
+            aria-label="Powiększ mapę"
+            title="Powiększ"
+            onClick={() => map.current?.zoomIn()}
+          >
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <path d="M3 8h10M8 3v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <span className="toolbar-sep" aria-hidden="true" />
+        <div className="toolbar-group" role="group" aria-label="Podkład mapy">
+          {BASEMAPS.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              className={b.id === basemap ? "basemap basemap-active" : "basemap"}
+              aria-pressed={b.id === basemap}
+              title={`Podkład: ${b.label.toLowerCase()}`}
+              onClick={() => setBasemap(b.id)}
+            >
+              <span
+                className="basemap-thumb"
+                dangerouslySetInnerHTML={{ __html: b.thumbnail }}
+              />
+              <span className="basemap-label">{b.label}</span>
+            </button>
+          ))}
+        </div>
+        <span className="toolbar-sep" aria-hidden="true" />
         <button
           type="button"
-          className="map-button"
+          className={legendOpen ? "tool-button tool-text tool-active" : "tool-button tool-text"}
           aria-expanded={legendOpen}
+          aria-controls="map-legend"
           onClick={() => setLegendOpen((value) => !value)}
         >
-          {legendOpen ? "Ukryj legendę" : "Legenda"}
+          Legenda
         </button>
-        {legendOpen && (
-          <div className="legend" aria-label="Legenda">
-            <p className="legend-title">Kategoria przejazdu</p>
-            {LEGEND_ORDER.map((category) => (
-              <div key={category} className="legend-row">
-                <CategoryPin category={category} size={24} />
-                <span>
-                  <strong>{category}</strong> — {CATEGORY_DESCRIPTION[category]}
-                </span>
-              </div>
-            ))}
-            <p className="legend-note">
-              Ciemniejsza czerwień = mniej urządzeń zabezpieczenia. To nie jest
-              wynik rankingu.
-            </p>
-            <div className="legend-row">
-              <CategoryPin category="B" verified={false} size={24} />
-              <span>niezweryfikowany (przerywana obwódka)</span>
-            </div>
-            <div className="legend-row">
-              <CategoryPin category="C" warning size={24} />
-              <span>ostrzeżenie o jakości danych</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
