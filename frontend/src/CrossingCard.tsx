@@ -200,10 +200,13 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
 
 export function CrossingCard({
   crossingId,
+  street = null,
   onClose,
 }: {
   crossingId: number;
-  onClose: () => void;
+  street?: string | null;
+  /** Bez tej funkcji karta nie ma własnego przycisku zamknięcia (zamyka okno). */
+  onClose?: () => void;
 }) {
   const [state, setState] = useState<State>({ kind: "loading" });
 
@@ -218,7 +221,7 @@ export function CrossingCard({
     return () => controller.abort();
   }, [crossingId]);
 
-  const close = (
+  const close = onClose && (
     <button
       type="button"
       className="icon-button"
@@ -265,8 +268,13 @@ export function CrossingCard({
       <header className="card-head">
         <div>
           <h3 className="card-title">
-            {d.is_pedestrian ? "Przejście" : "Przejazd"} {crossingTitle(d)}
+            {street ?? `${d.is_pedestrian ? "Przejście" : "Przejazd"} ${crossingTitle(d)}`}
           </h3>
+          {street && (
+            <p className="card-number">
+              {d.is_pedestrian ? "przejście" : "przejazd"} nr {crossingTitle(d)}
+            </p>
+          )}
           <p className="card-sub">
             <span className="tag">kat. {d.category ?? "?"}</span>
             {d.category

@@ -3,21 +3,13 @@ import type { Category } from "./api";
 /**
  * Piktogramy przejazdów (SVG 24×24, biały rysunek na kolorowym tle).
  *
- * Kolor drogowych kategorii to odcienie czerwieni: im mniej urządzeń zabezpieczenia,
- * tym ciemniejsza czerwień (A najjaśniejsza, D najciemniejsza). Przejście dla pieszych
- * (E) ma kolor granatowy, bo nie należy do rankingu. Kategoria nigdy nie jest
- * przekazywana samym kolorem: każda ma własny rysunek i opis w legendzie.
+ * Wszystkie znaki mają ten sam pomarańczowy kolor (PIN_COLOR); kategorię rozróżnia
+ * wyłącznie rysunek, a przejście dla pieszych dodatkowo kształt (zaokrąglony kwadrat).
+ * Kolor nie niesie więc żadnej informacji o ryzyku ani pozycji w rankingu.
  */
 
-export const CATEGORY_COLOR: Record<Category | "unknown", string> = {
-  A: "#cf6e76", // pracownik kolei kieruje ruchem
-  B: "#bf3e48", // rogatki i sygnalizacja
-  C: "#a3242e", // sygnalizacja bez rogatek
-  D: "#7a121b", // bez urządzeń
-  F: "#9e4a2c", // droga wewnętrzna
-  E: "#174a7e", // przejście dla pieszych
-  unknown: "#526476",
-};
+/** Jeden pomarańczowy kolor dla wszystkich znaków (stylistyka kolejowa). */
+export const PIN_COLOR = "#d9570b";
 
 export const CATEGORY_SHORT: Record<Category, string> = {
   A: "pracownik kolei kieruje ruchem",
@@ -74,7 +66,7 @@ export function categoryKey(category: Category | null): Category | "unknown" {
 /** Sam rysunek (bez tła) jako znacznik SVG 24×24. */
 export function pictogramSvg(category: Category | null, size = 18): string {
   const key = categoryKey(category);
-  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" focusable="false" style="color:${CATEGORY_COLOR[key]}">${DRAWINGS[key]}</svg>`;
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" focusable="false" style="color:${PIN_COLOR}">${DRAWINGS[key]}</svg>`;
 }
 
 export function categoryLabel(category: Category | null): string {
@@ -108,5 +100,5 @@ export function pinHtml({
     .filter(Boolean)
     .join(" ");
   const badge = warning ? '<span class="pin-warn" aria-hidden="true">!</span>' : "";
-  return `<span class="${classes}" style="--pin:${CATEGORY_COLOR[key]};width:${size}px;height:${size}px">${pictogramSvg(category, Math.round(size * 0.74))}${badge}</span>`;
+  return `<span class="${classes}" style="--pin:${PIN_COLOR};width:${size}px;height:${size}px">${pictogramSvg(category, Math.round(size * 0.74))}${badge}</span>`;
 }
