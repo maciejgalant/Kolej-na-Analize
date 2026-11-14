@@ -134,6 +134,31 @@ class AnalysisRun(BaseModel):
     disclaimer: str
 
 
+class RoadCount(BaseModel):
+    """Pomiar ruchu drogowego powiązany z przejazdem (RSA-007, RSA-017)."""
+
+    kind: str  # 'station' (licznik APR, średnia dobowa) | 'intersection' (skrzyżowanie)
+    match_type: str  # direct | validation | intersection
+    source: str
+    station_id: str
+    name: str | None
+    distance_m: float
+    is_demo: bool
+    # licznik: średnia dobowa i okres
+    vehicles_per_day: int | None = None
+    day_type: str | None = None
+    period_start: str | None = None
+    period_end: str | None = None
+    # skrzyżowanie: najbardziej ruchliwa zmierzona godzina całego węzła
+    measured_on: str | None = None
+    hours: int | None = None
+    peak_vehicles: int | None = None
+    peak_hour: str | None = None
+    heavy_share: float | None = None
+    pedestrians_max: int | None = None
+    cyclists_max: int | None = None
+
+
 class CrossingDetail(BaseModel):
     crossing_id: int
     official_id: str | None
@@ -150,6 +175,7 @@ class CrossingDetail(BaseModel):
     quality_flags: list[QualityFlag]
     roads: list[LinkedRoad]
     tracks: list[LinkedTrack]
+    road_counts: list[RoadCount] = []
     sources: list[SourceInfo]
     rail_flow: RailFlow | None
     priority: Priority | None
@@ -344,7 +370,9 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
             UNION SELECT r.source_id FROM spatial.crossing_rail_segments l
                   JOIN spatial.rail_segments r USING (segment_id) WHERE l.crossing_id = %(id)s
             UNION SELECT r.source_id FROM spatial.crossing_road_segments l
-                  JOIN spatial.road_segments r USING (segment_id) WHERE l.crossing_id = %(id)s)
+                  JOIN spatial.road_segments r USING (segment_id) WHERE l.crossing_id = %(id)s
+            UNION SELECT st.source_id FROM road.crossing_stations cs
+                  JOIN road.stations st USING (station_pk) WHERE cs.crossing_id = %(id)s)
         ORDER BY s.name
         """,
         {"id": crossing_id},
@@ -394,6 +422,7 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
         ).fetchall()
     return CrossingDetail(
         **row,
+        road_counts=_road_counts(conn, crossing_id),
         priority=priority,
         rail_flow=flow,
         attributes=attributes,
@@ -402,6 +431,86 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
         tracks=tracks,
         sources=sources,
     )
+
+
+HEAVY_CLASSES = ("S_C_", "SCP", "BUS")
+
+
+def _road_counts(conn: psycopg.Connection, crossing_id: int) -> list[dict]:
+    links = conn.execute(
+        """
+        SELECT cs.match_type, src.code AS source, src.is_demo, s.source_id, s.station_id,
+               coalesce(s.street || coalesce(' (' || s.section || ')', ''), s.street) AS name,
+               cs.distance_m::float AS distance_m
+        FROM road.crossing_stations cs
+        JOIN road.stations s USING (station_pk)
+        JOIN system.sources src ON src.source_id = s.source_id
+        WHERE cs.crossing_id = %s
+        ORDER BY array_position(ARRAY['direct', 'intersection', 'validation'], cs.match_type),
+                 cs.distance_m
+        """,
+        (crossing_id,),
+    ).fetchall()
+    result = []
+    for link in links:
+        key = (link.pop("source_id"), link["station_id"])
+        if link["match_type"] == "intersection":
+            hours = conn.execute(
+                """
+                SELECT vehicles_count, composition, pedestrians, cyclists,
+                       to_char(period_start AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD') AS day,
+                       to_char(period_start AT TIME ZONE 'Europe/Warsaw', 'FMHH24:MI') AS start,
+                       to_char(period_end AT TIME ZONE 'Europe/Warsaw', 'FMHH24:MI') AS end_
+                FROM road.measurements
+                WHERE source_id = %s AND station_id = %s AND unit = 'vehicles/hour'
+                ORDER BY period_start
+                """,
+                key,
+            ).fetchall()
+            total = sum(h["vehicles_count"] or 0 for h in hours)
+            heavy = sum(
+                (h["composition"] or {}).get(code, 0) for h in hours for code in HEAVY_CLASSES
+            )
+            peak = max(hours, key=lambda h: h["vehicles_count"] or 0) if hours else None
+            peds = [h["pedestrians"] for h in hours if h["pedestrians"] is not None]
+            cycl = [h["cyclists"] for h in hours if h["cyclists"] is not None]
+            result.append(
+                link
+                | {
+                    "kind": "intersection",
+                    "measured_on": hours[0]["day"] if hours else None,
+                    "hours": len(hours),
+                    "peak_vehicles": peak["vehicles_count"] if peak else None,
+                    "peak_hour": f"{peak['start']}–{peak['end_']}" if peak else None,
+                    "heavy_share": round(heavy / total, 3) if total else None,
+                    "pedestrians_max": max(peds) if peds else None,
+                    "cyclists_max": max(cycl) if cycl else None,
+                }
+            )
+        else:
+            latest = conn.execute(
+                """
+                SELECT vehicles_count, day_type,
+                       to_char(period_start AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD') AS ps,
+                       to_char(period_end AT TIME ZONE 'Europe/Warsaw' - interval '1 day',
+                               'YYYY-MM-DD') AS pe
+                FROM road.measurements
+                WHERE source_id = %s AND station_id = %s AND unit = 'vehicles/day'
+                ORDER BY period_end DESC LIMIT 1
+                """,
+                key,
+            ).fetchone()
+            result.append(
+                link
+                | {
+                    "kind": "station",
+                    "vehicles_per_day": latest["vehicles_count"] if latest else None,
+                    "day_type": latest["day_type"] if latest else None,
+                    "period_start": latest["ps"] if latest else None,
+                    "period_end": latest["pe"] if latest else None,
+                }
+            )
+    return result
 
 
 @router.get("/analysis/latest", response_model=AnalysisRun)

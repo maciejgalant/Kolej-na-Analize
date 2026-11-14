@@ -66,6 +66,12 @@ docker compose run --rm worker python -m app.worker import-road-counts
 ```
 Uruchamiać po imporcie dzielnic i torów, przed `run-analysis`. Wybiera punkty systemu Automatycznych Pomiarów Ruchu ZDM leżące na ulicach przejazdów, zleca dla nich raporty natężenia (dni miarodajne, domyślnie ostatnie 28 dni), zapisuje średnie dobowe i profile godzinowe oraz tworzy raport `reports/DATA_AUDIT_road.md` z porównaniem pomiaru i modelu z klasy drogi. Przejazd z punktem na tej samej ulicy do 300 m dostaje w rankingu zmierzone natężenie zamiast szacunku. Źródło danych: Zarząd Dróg Miejskich w Warszawie. Bez dostępu do serwera ZDM można podać raport zapisany z przeglądarki: `--zdm-file /reports/zdm.json --day-type miarodajny`. Szczegóły: [DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
+### Pomiary ZDM na skrzyżowaniach (RSA-017)
+```bash
+docker compose run --rm worker python -m app.worker import-intersection-counts
+```
+Pobiera z publicznych warstw ArcGIS ZDM pomiary na 254 skrzyżowaniach (2023–2026) i przypisuje przejazdom najbliższe skrzyżowanie na tej samej ulicy do 300 m. Karta przejazdu pokazuje natężenie w szczycie (całe skrzyżowanie), udział ciężarówek i autobusów, pieszych i rowerzystów. Ranking się nie zmienia: to pomiary kilku godzin dla całego węzła. Raport: `reports/DATA_AUDIT_intersections.md`.
+
 ### Analiza priorytetów RPS (RSA-010)
 ```bash
 docker compose run --rm worker python -m app.worker run-analysis

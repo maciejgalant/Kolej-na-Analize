@@ -41,7 +41,7 @@ def status() -> int:
     print(
         f"worker: PostGIS {database.postgis_version}, schemat {database.schema_revision}; "
         "dostępne zadania: import-crossings, import-topology, import-schedule, "
-        "import-road-counts, run-analysis"
+        "import-road-counts, import-intersection-counts, run-analysis"
     )
     return 0
 
@@ -317,6 +317,60 @@ def import_road_counts_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def import_intersection_counts_command(args: argparse.Namespace) -> int:
+    import httpx
+
+    from app.etl import intersection_counts as ic
+    from app.etl import road_counts as rc
+    from app.etl.utk_wms import USER_AGENT
+
+    def log(message: str) -> None:
+        print(f"import-intersection-counts: {message}", file=sys.stderr, flush=True)
+
+    def rows(path: Path) -> list[dict]:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return (
+            [f["attributes"] for f in payload.get("features", payload)]
+            if isinstance(payload, dict)
+            else payload
+        )
+
+    with psycopg.connect(**get_settings().database_connect_kwargs) as conn:
+        crossings = rc.crossing_streets(conn)
+        if not crossings:
+            log("brak zweryfikowanych przejazdów drogowych — najpierw import-topology")
+            return 1
+        if args.summary_file and args.hourly_file:
+            summary_rows, hourly_rows = rows(args.summary_file), rows(args.hourly_file)
+        else:
+            with httpx.Client(timeout=60.0, headers={"User-Agent": USER_AGENT}) as http:
+                client = ic.ArcGisClient(http)
+                summary_rows = client.features(ic.SUMMARY_URL, ic.SUMMARY_FIELDS)
+                hourly_rows = client.features(ic.HOURLY_URL, ic.HOURLY_FIELDS)
+            log(f"ArcGIS ZDM: {len(summary_rows)} skrzyżowań, {len(hourly_rows)} godzin pomiaru")
+        intersections = ic.parse(summary_rows, hourly_rows)
+        matches = ic.match(conn, intersections, crossings)
+        with conn.transaction():
+            source_id = ic.ensure_source(conn)
+            summary = ic.IntersectionSummary(
+                job_id=rc.start_job(
+                    conn,
+                    source_id,
+                    {
+                        "method": ic.METHOD_VERSION,
+                        "max_m": ic.MAX_M,
+                        "from_file": bool(args.summary_file),
+                    },
+                ),  # fmt: skip
+                intersections=intersections,
+                matches=matches,
+            )
+            ic.save(conn, source_id, summary)
+    _write_report(ic.build_report(summary, crossings), args.report, log)
+    log(f"przejazdów z pomiarem skrzyżowania: {len(matches)}; zapisanych godzin: {summary.written}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.worker")
     commands = parser.add_subparsers(dest="command")
@@ -401,6 +455,23 @@ def main(argv: list[str] | None = None) -> int:
         "--report",
         type=Path,
         default=Path("/reports/DATA_AUDIT_road.md"),
+        help="ścieżka raportu Markdown",
+    )
+    inter = commands.add_parser(
+        "import-intersection-counts", help="pomiary ZDM na skrzyżowaniach (RSA-017)"
+    )
+    inter.add_argument(
+        "--summary-file", type=Path, default=None,
+        help="zapisana odpowiedź warstwy podsumowań ArcGIS (JSON) zamiast pobierania",
+    )  # fmt: skip
+    inter.add_argument(
+        "--hourly-file", type=Path, default=None,
+        help="zapisana odpowiedź warstwy godzinowej ArcGIS (JSON) zamiast pobierania",
+    )  # fmt: skip
+    inter.add_argument(
+        "--report",
+        type=Path,
+        default=Path("/reports/DATA_AUDIT_intersections.md"),
         help="ścieżka raportu Markdown",
     )
     commands.add_parser("load-demo", help="syntetyczny zestaw demonstracyjny (RSA-014)")
@@ -493,6 +564,8 @@ def _dispatch(args: argparse.Namespace) -> int:
         return import_topology_command(args)
     if args.command == "import-road-counts":
         return import_road_counts_command(args)
+    if args.command == "import-intersection-counts":
+        return import_intersection_counts_command(args)
     return status()
 
 

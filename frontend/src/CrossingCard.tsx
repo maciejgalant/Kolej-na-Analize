@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { type CrossingDetail, fetchCrossingDetail } from "./api";
+import { type CrossingDetail, fetchCrossingDetail, type RoadCount } from "./api";
 import {
   attributeLabel,
   CATEGORY_DESCRIPTION,
@@ -198,6 +198,49 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
   );
 }
 
+const pl = (value: number) => value.toLocaleString("pl-PL");
+
+function RoadCountItem({ count: r }: { count: RoadCount }) {
+  const who = r.is_demo ? "Pomiar fikcyjny (demo)" : "ZDM";
+  if (r.kind === "intersection")
+    return (
+      <li>
+        <strong>Skrzyżowanie {r.name}</strong>
+        <span className="muted"> — {Math.round(r.distance_m)} m od przejazdu</span>
+        <br />
+        {r.peak_vehicles !== null && (
+          <>
+            w szczycie {pl(r.peak_vehicles)} poj./h ({r.peak_hour}, całe skrzyżowanie)
+          </>
+        )}
+        {r.heavy_share !== null && (
+          <>, ciężarowe i autobusy {Math.round(r.heavy_share * 100)}%</>
+        )}
+        {r.pedestrians_max !== null && <>, piesi do {pl(r.pedestrians_max)}/h</>}
+        {r.cyclists_max !== null && <>, rowerzyści do {pl(r.cyclists_max)}/h</>}
+        <span className="muted small">
+          {" "}
+          · {who}, pomiar {r.measured_on} ({r.hours} godz.); nie zmienia rankingu
+        </span>
+      </li>
+    );
+  return (
+    <li>
+      <strong>Licznik {r.name}</strong>
+      <span className="muted"> — {Math.round(r.distance_m)} m od przejazdu</span>
+      <br />
+      {r.vehicles_per_day !== null
+        ? `${pl(r.vehicles_per_day)} poj./dobę (oba kierunki${r.day_type ? `, dni: ${r.day_type}` : ""})`
+        : "brak pomiaru w okresie"}
+      <span className="muted small">
+        {" "}
+        · {who}, {r.period_start} – {r.period_end};{" "}
+        {r.match_type === "direct" ? "użyty w rankingu" : "tylko do porównania"}
+      </span>
+    </li>
+  );
+}
+
 export function CrossingCard({
   crossingId,
   street = null,
@@ -335,6 +378,7 @@ export function CrossingCard({
         summary={[
           d.roads[0]?.name ?? (d.roads.length ? "droga bez nazwy" : null),
           d.tracks.length ? `odcinków toru: ${d.tracks.length}` : null,
+          d.road_counts.length ? "pomiary ruchu" : null,
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -358,6 +402,16 @@ export function CrossingCard({
               </li>
             ))}
           </ul>
+        )}
+        {d.road_counts.length > 0 && (
+          <>
+            <h4>Pomiary ruchu drogowego</h4>
+            <ul className="plain road-counts">
+              {d.road_counts.map((r) => (
+                <RoadCountItem key={`${r.source}-${r.station_id}`} count={r} />
+              ))}
+            </ul>
+          </>
         )}
         <h4>Tory</h4>
         {d.tracks.length === 0 ? (
