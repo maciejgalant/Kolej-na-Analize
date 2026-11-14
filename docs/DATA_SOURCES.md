@@ -98,6 +98,27 @@ Polecenie: `docker compose run --rm worker python -m app.worker import-road-coun
 
 **Zestaw demonstracyjny.** `load-demo` dodaje jeden fikcyjny punkt (`DEMO-APR-1`, 150 m od DEMO-02) ze źródłem `demo_road_counts` oznaczonym `is_demo`. W karcie przejazdu jest opisany jako „pomiar fikcyjny (demo)”.
 
+### Pomiary ZDM na skrzyżowaniach — RSA-017 (2026-11-14), metoda `zdm-intersection-1`
+Polecenie: `docker compose run --rm worker python -m app.worker import-intersection-counts` → `reports/DATA_AUDIT_intersections.md`. Uruchamiać po `import-topology`.
+
+**Źródło.** Publiczne warstwy ArcGIS ZDM z mapy „Pomiary na skrzyżowaniach i inne bieżące 2023–2026” (zwykłe zapytania REST `FeatureServer/0/query`, bez klucza, stronicowanie po 1000 rekordów):
+- `pomiary_skrzyzowania_2023_2` — 254 skrzyżowania: nazwa, położenie, data, liczba godzin pomiaru, klasy dróg, sygnalizacja, link do raportu PDF;
+- `pomiary_skrzyzowania_2023` — ok. 1 470 rekordów godzinowych: pojazdy według rodzaju (osobowe, dostawcze, ciężarowe, z przyczepą, autobusy, motocykle, rowery na jezdni), piesi i rowerzyści.
+
+Mapa z lat 2019–2022 zawiera w warstwach tylko lokalizacje (liczby są w PDF), więc nie jest importowana.
+
+**Dopasowanie.** Skrzyżowanie leży na ulicy przejazdu (nazwy z „ul. A - ul. B” po normalizacji, jak w RSA-007) do 300 m od niego; przejazd dostaje najbliższe takie skrzyżowanie (`road.crossing_stations.match_type = 'intersection'`).
+
+**Co zapisujemy.** Godziny pomiaru jako `road.measurements` (`vehicles/hour`, kierunek `all` = wszystkie wloty) ze strukturą pojazdów (`composition`), pieszymi i rowerzystami.
+
+**Jak używamy.** Liczby dotyczą całego skrzyżowania w kilku godzinach jednego dnia, a nie ruchu przez przejazd w ciągu doby, więc **nie zmieniają RPS**. Karta przejazdu pokazuje szczyt, udział pojazdów ciężkich, pieszych i rowerzystów. Raport porównuje szacunek z klasy drogi z górnym ograniczeniem „szczyt / 0,08” (założony udział najbardziej ruchliwej godziny w ruchu doby; APR na Radzymińskiej: 7%) i oznacza przejazdy, dla których model je przekracza.
+
+**Licencja.** Jak APR: informacja sektora publicznego ZDM (`zdm-apr-psi`), atrybucja „Zarząd Dróg Miejskich w Warszawie”.
+
+**Plan B.** Odpowiedzi obu warstw zapisane jako JSON: `import-intersection-counts --summary-file … --hourly-file …`.
+
+**Demo.** `load-demo` dodaje fikcyjne skrzyżowanie 110 m od DEMO-04 (źródło `demo_intersections`, `is_demo`).
+
 ## Komercyjne API ruchu (TomTom, HERE) — decyzja RSA-008 (2026-11-13)
 **NO-GO na etapie konkursu.** Sprawdzone dokumenty:
 - TomTom Traffic API (Flow Segment Data) i HERE Traffic API v7 zwracają prędkość, prędkość swobodną i wskaźnik zatłoczenia (`jamFactor` 0–10), a nie liczbę pojazdów. Nie nadają się do składnika T (zasada jakości 3).

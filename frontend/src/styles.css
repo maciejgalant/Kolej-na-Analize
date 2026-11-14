@@ -2081,3 +2081,11 @@ body.is-resizing {
 .map-holder > .legend {
   animation-name: fade-in;
 }
+
+.road-counts li {
+  line-height: 1.45;
+}
+
+.road-counts li + li {
+  margin-top: 8px;
+}

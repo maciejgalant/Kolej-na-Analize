@@ -62,6 +62,27 @@ export interface CrossingFeature {
   properties: CrossingProperties;
 }
 
+export interface RoadCount {
+  kind: "station" | "intersection";
+  match_type: "direct" | "validation" | "intersection";
+  source: string;
+  station_id: string;
+  name: string | null;
+  distance_m: number;
+  is_demo: boolean;
+  vehicles_per_day: number | null;
+  day_type: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  measured_on: string | null;
+  hours: number | null;
+  peak_vehicles: number | null;
+  peak_hour: string | null;
+  heavy_share: number | null;
+  pedestrians_max: number | null;
+  cyclists_max: number | null;
+}
+
 export interface CrossingDetail {
   crossing_id: number;
   official_id: string | null;
@@ -81,6 +102,7 @@ export interface CrossingDetail {
     source: string;
   }[];
   quality_flags: { code: string; severity: string; message: string | null }[];
+  road_counts: RoadCount[];
   roads: {
     name: string | null;
     road_class: string | null;

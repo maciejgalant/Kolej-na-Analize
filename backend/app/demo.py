@@ -13,6 +13,7 @@ from datetime import date, timedelta
 import psycopg
 
 from app.analysis.run import RunSummary, run_analysis
+from app.etl import intersection_counts as ic
 from app.etl import road_counts as rc
 from app.etl import topology_import as topo
 from app.etl.bdot10k import GROUND_LEVEL, Segment
@@ -64,6 +65,8 @@ CROSSINGS = [
 # Fikcyjny punkt pomiaru ruchu drogowego: 150 m od DEMO-02, na tej samej ulicy.
 DEMO_ROAD_SOURCE = "demo_road_counts"
 DEMO_STATION = ("DEMO-APR-1", "Demonstracyjna 02", 631400.0, MAIN_N + 150, 21500)
+# Fikcyjne skrzyżowanie z pomiarem godzinowym: 110 m od DEMO-04, na tej samej ulicy.
+DEMO_INTERSECTION = ("DEMO-SKRZ-1", "ul. Demonstracyjna 04 - ul. Fikcyjna", 633300.0, MAIN_N - 110)
 # kursy na dobę: (dni robocze, weekend)
 TRIPS = {"MAIN": (120, 80), "BRANCH": (24, 12)}
 
@@ -197,6 +200,42 @@ def _load_road_counts(conn: psycopg.Connection, week: list[date]) -> None:
         rc.save(conn, source_id, summary, stations)
 
 
+def _load_intersection(conn: psycopg.Connection, week: list[date]) -> None:
+    """Fikcyjny pomiar skrzyżowania w formacie warstw ZDM; źródło oznaczone jako demo."""
+    point_id, name, east, north = DEMO_INTERSECTION
+    lon, lat = _lonlat(conn, east, north)
+    summary_row = {"ID": point_id, "Nazwa_skrzyżowania": name, "Długość_geograficzna": lon,
+                   "Szerokość_geograficzna": lat, "Data_wykonania": week[1].isoformat(),
+                   "Klasa_drogi_nadrzędnej": "L", "Sygnalizacja_świetlna": "nie"}  # fmt: skip
+    hourly = [
+        {"ID": point_id, "GG": gg, "SO": so, "SD": 60, "S_C_": heavy, "SCP": 4, "BUS": 12,
+         "Piesi": peds, "Rowerzyści": bikes}
+        for gg, so, heavy, peds, bikes in (
+            ("7.00-8.00", 520, 18, 64, 22),
+            ("12.00-13.00", 310, 26, 41, 15),
+            ("16.00-17.00", 580, 14, 88, 30),
+        )
+    ]  # fmt: skip
+    items = ic.parse([summary_row], hourly)
+    with conn.transaction():
+        source_id = conn.execute(
+            """
+            INSERT INTO system.sources (code, name, provider, is_demo)
+            VALUES ('demo_intersections',
+                    'Fikcyjne pomiary na skrzyżowaniach (zestaw demonstracyjny)', 'RailSafe AI',
+                    true)
+            ON CONFLICT (code) DO UPDATE SET is_demo = true
+            RETURNING source_id
+            """
+        ).fetchone()[0]
+        summary = ic.IntersectionSummary(
+            job_id=rc.start_job(conn, source_id, {"demo": True}),
+            intersections=items,
+            matches=ic.match(conn, items, rc.crossing_streets(conn)),
+        )
+        ic.save(conn, source_id, summary)
+
+
 def load_demo(conn: psycopg.Connection, today: date | None = None) -> RunSummary:
     """Ładuje zestaw i liczy ranking. Powtórne wywołanie odświeża zestaw."""
     if real_data_present(conn):
@@ -234,6 +273,7 @@ def load_demo(conn: psycopg.Connection, today: date | None = None) -> RunSummary
         topo.finish_job(conn, summary)
     import_train_flow(conn, _feed(conn, week), week)
     _load_road_counts(conn, week)
+    _load_intersection(conn, week)
     # Zadania importu noszą etykietę DEMO, żeby pochodzenie było widoczne także w bazie.
     conn.execute("UPDATE system.import_jobs SET snapshot_label = %s", (DEMO_LABEL,))
     return run_analysis(conn, is_demo=True)

@@ -66,6 +66,11 @@ def test_demo_set_gives_a_complete_labelled_ranking(db):
     assert db.execute(
         "SELECT bool_and(is_demo) FROM system.sources WHERE code = 'demo_road_counts'"
     ).fetchone()[0]
+    # fikcyjne skrzyżowanie z pomiarem godzinowym przy DEMO-04
+    demo04 = client.get(f"/api/v1/crossings/{props['DEMO-04']['crossing_id']}").json()
+    intersection = demo04["road_counts"][0]
+    assert intersection["kind"] == "intersection" and intersection["is_demo"] is True
+    assert (intersection["peak_vehicles"], intersection["pedestrians_max"]) == (670, 88)
 
     with psycopg.connect(
         **get_settings().database_connect_kwargs, row_factory=dict_row
