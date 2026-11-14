@@ -119,6 +119,13 @@ Mapa z lat 2019–2022 zawiera w warstwach tylko lokalizacje (liczby są w PDF),
 
 **Demo.** `load-demo` dodaje fikcyjne skrzyżowanie 110 m od DEMO-04 (źródło `demo_intersections`, `is_demo`).
 
+### Pociągi w ciągu doby — RSA-018 (2026-11-14), metoda `gtfs-time-1`
+Liczone przy `import-schedule` z tego samego zbioru GTFS: import czyta dodatkowo `stops.txt` i `stop_times.txt`, ale tylko dla kursów, których trasa przecina Warszawę (strumieniowo). Rozkład podaje godziny tylko na przystankach, więc godzina przejazdu jest wyznaczana tak: przejazd i przystanki kursu są rzutowane na trasę, a czas interpolowany liniowo między odjazdem z przystanku przed przejazdem a przyjazdem do następnego. Dokładność kilku minut wystarcza do przydziału do godziny.
+
+Wynik: `rail.crossing_flow.hourly_profile` — 24 liczby pociągów dla każdego dnia tygodnia odniesienia (dzień kalendarzowy przejazdu; kurs po północy trafia do wczesnych godzin dnia następnego, więc suma profilu może nieznacznie odbiegać od liczby kursów według dnia kursowania) oraz `hourly_unplaced` — kursy bez wyznaczonej godziny (np. przystanki bez czasu).
+
+Karta przejazdu pokazuje średni profil dnia roboczego, godzinę z największą liczbą pociągów, liczbę pociągów w szczycie drogowym i nocą. Szczyt drogowy to 5 najbardziej ruchliwych godzin z licznika ZDM użytego w RPS (`direct`), a bez niego przyjęte godziny rozpoczynające się o 7, 8, 15, 16 i 17. Raport `DATA_AUDIT_trains.md` ma sekcję „Rozkład w ciągu doby”. RPS się nie zmienia (wskaźnik jednoczesności jest kandydatem na przyszły składnik).
+
 ## Komercyjne API ruchu (TomTom, HERE) — decyzja RSA-008 (2026-11-13)
 **NO-GO na etapie konkursu.** Sprawdzone dokumenty:
 - TomTom Traffic API (Flow Segment Data) i HERE Traffic API v7 zwracają prędkość, prędkość swobodną i wskaźnik zatłoczenia (`jamFactor` 0–10), a nie liczbę pojazdów. Nie nadają się do składnika T (zasada jakości 3).
