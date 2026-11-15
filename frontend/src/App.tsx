@@ -1,3 +1,4 @@
+import { MapIcon } from "./UiIcons";
 import { useEffect, useState } from "react";
 
 import {
@@ -182,6 +183,7 @@ export function App() {
           active={conversation.id}
           onSelect={(id) => chat.change((s) => ({ ...s, active: id }))}
           onNew={createConversation}
+          onMap={() => openMap()}
           onRename={(id, title) => chat.update(id, (c) => ({ ...c, title }))}
           onPin={(id) => chat.update(id, (c) => ({ ...c, pinned: !c.pinned }))}
           onDelete={(id) => {
@@ -217,9 +219,11 @@ export function App() {
             <strong>{conversation.title}</strong>
             <small>Analiza przejazdów kolejowo-drogowych · Warszawa</small>
           </div>
-          <button className="header-map" onClick={() => openMap()}>
-            ↗ Mapa
-          </button>
+          {!sidebar && (
+            <button className="header-map" onClick={() => openMap()}>
+              <MapIcon /> Mapa
+            </button>
+          )}
           <button onClick={() => setInfoOpen(true)}>O danych i metodzie</button>
           <div className="status-wrap">
             <button

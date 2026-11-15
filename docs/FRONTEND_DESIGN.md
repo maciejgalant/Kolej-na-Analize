@@ -52,3 +52,12 @@ Pasek danych demonstracyjnych jest widoczny w aplikacji i w oknie mapy. Przy nie
 
 `npm test` sprawdza logikę i trwałość historii. `npm run build` sprawdza typy i kompilację. `npm run test:e2e` uruchamia scenariusze Playwright z kontrolowanym API i fikcyjnymi danymi; nie jest to test prawdziwego modelu ani serwerów podkładów. Przy pierwszym uruchomieniu: `npx playwright install chromium`. Opcjonalnie `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` wskazuje istniejącą przeglądarkę. Testy działają również w CI.
 
+
+## Dopracowanie interfejsu — 2026-11-15
+Główny przycisk „Mapa przejazdów” znajduje się w granatowym panelu rozmów. Gdy panel jest zwinięty, przycisk mapy pozostaje dostępny w nagłówku. Zachowano otwieranie mapy z powitania i wyników odpowiedzi; usunięto powtórzony przycisk z pola wpisywania.
+
+Asystenta oznacza wektorowy piktogram uśmiechniętej postaci ze słuchawką. Podczas oczekiwania na model i ładowania mapy wyświetla się sygnalizacja przejazdu z naprzemiennie pulsującymi światłami. Animacja respektuje `prefers-reduced-motion` i nie jest przedstawiana jako procentowy postęp inferencji.
+
+Wiadomości użytkownika i asystenta można kopiować przyciskiem z ikoną dwóch kartek. Po udanym zapisie do schowka pojawia się znacznik i krótkie „Skopiowano”; błędy schowka mają komunikat tekstowy. Przyciski mają nazwy dostępności i podpowiedzi.
+
+Rama aplikacji, karty i okno mapy mają łagodniejsze zaokrąglenia. Pole pytania ma częściowo przezroczyste tło z rozmyciem, bez zmniejszania krycia tekstu. Subtelne tła, cienie i stany hover/focus porządkują interfejs; ograniczenie animacji wyłącza również dekoracyjne ruchy przycisków.
