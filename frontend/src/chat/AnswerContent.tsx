@@ -45,6 +45,9 @@ export function AnswerContent({
   if (!evidence) return null;
   return (
     <div className="answer-results">
+      {!!evidence.cards.length && (
+        <h3 className="answer-section-title">Przejazdy w tej analizie</h3>
+      )}
       {evidence.cards.length > 0 && (
         <div className="result-cards">
           {evidence.cards.map((c) => (
@@ -61,9 +64,17 @@ export function AnswerContent({
                 Kategoria {c.category ?? "nieznana"} ·{" "}
                 {c.rank === null ? "Poza rankingiem" : `Pozycja ${c.rank}`}
               </span>
+              <span className="card-score">
+                <span>
+                  Priorytet RPS <small>do dalszej oceny</small>
+                </span>
+                <b>{value(c.rps)}</b>
+                {c.rps !== null && <small>/ 100</small>}
+              </span>
               <span className="card-metrics">
                 <span>
-                  RPS <b>{value(c.rps)}</b>
+                  Pozycja w rankingu{" "}
+                  <b>{c.rank === null ? "Poza rankingiem" : `#${c.rank}`}</b>
                 </span>
                 <span>
                   Pociągi / dzień roboczy <b>{value(c.trains)}</b>

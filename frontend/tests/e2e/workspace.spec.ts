@@ -62,11 +62,22 @@ test("sidebar map, crossing signal, reduced motion and icon copying", async ({
   await expect(
     page.locator(".assistant-label .assistant-avatar svg"),
   ).toBeVisible();
+  await expect(page.locator(".assistant-name")).toHaveText("Asystent AI");
+  await expect(
+    page
+      .getByRole("button", { name: "Edytuj pytanie", exact: true })
+      .locator("svg"),
+  ).toHaveCount(1);
   const copyAnswer = page
     .locator(".assistant-message")
     .getByRole("button", { name: "Kopiuj wiadomość" });
   await expect(copyAnswer.locator("svg")).toHaveCount(1);
   await copyAnswer.click();
+  await expect(
+    page
+      .getByRole("button", { name: "Ponów odpowiedź", exact: true })
+      .locator("svg"),
+  ).toHaveCount(1);
   await expect(copyAnswer).toContainText("Skopiowano");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     reply().answer,
@@ -220,7 +231,9 @@ test("edit and regenerate retain branches after reload; titles, pinning, search 
   await expect(
     page.getByText("Wynik analizy przejazdu DEMO-7.", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Edytuj", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Edytuj pytanie", exact: true })
+    .click();
   await page
     .getByRole("textbox", { name: "Edytuj pytanie" })
     .fill("Zmienione pytanie");

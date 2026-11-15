@@ -1,4 +1,50 @@
 /** Small native SVGs stay crisp at UI sizes and inherit the application's palette. */
+function ActionIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="17"
+      height="17"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
+}
+export function EditIcon() {
+  return (
+    <ActionIcon>
+      <path d="m15 4 5 5M4 20l5-1L20 8a2.1 2.1 0 0 0-5-5L4 14v6Z" />
+    </ActionIcon>
+  );
+}
+export function RestartIcon() {
+  return (
+    <ActionIcon>
+      <path d="M20 10a8 8 0 1 0-2 8M20 4v6h-6" />
+    </ActionIcon>
+  );
+}
+export function PinIcon() {
+  return (
+    <ActionIcon>
+      <path d="m9 3 6 0-1 6 4 4v2H6v-2l4-4-1-6ZM12 15v6" />
+    </ActionIcon>
+  );
+}
+export function TrashIcon() {
+  return (
+    <ActionIcon>
+      <path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7" />
+    </ActionIcon>
+  );
+}
+
 export function MapIcon() {
   return (
     <svg

@@ -3,12 +3,14 @@ import type { Category, CrossingFeature, DistrictFeature } from "./api";
 import type { Attachment, MapState } from "./chat/model";
 import { CrossingCard } from "./CrossingCard";
 import { Dialog } from "./Dialog";
+import { MapAssistant } from "./MapAssistant";
 import { MapView } from "./MapView";
 import { crossingTitle, CATEGORY_DESCRIPTION } from "./labels";
 interface Props {
   crossings: CrossingFeature[];
   districts: DistrictFeature[];
   demo: boolean;
+  modelReady: boolean;
   loading: boolean;
   error: boolean;
   onRetry: () => void;
@@ -23,6 +25,7 @@ export function MapExplorer({
   crossings,
   districts,
   demo,
+  modelReady,
   loading,
   error,
   onRetry,
@@ -148,6 +151,23 @@ export function MapExplorer({
             savedState={saved}
             onStateChange={onSave}
             fitCrossingIds={scope}
+          />
+          <MapAssistant
+            key={selected ?? "all"}
+            modelReady={modelReady}
+            crossing={
+              feature
+                ? {
+                    id: feature.id,
+                    label: [
+                      feature.properties.street,
+                      crossingTitle(feature.properties),
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
+                  }
+                : undefined
+            }
           />
         </div>
         {selected !== null && (
