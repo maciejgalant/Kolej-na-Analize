@@ -1,3 +1,4 @@
+import { CrossingSignal } from "./UiIcons";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
 
@@ -276,7 +277,7 @@ export function MapView({
       />
       {loading && (
         <div className="map-loading" role="status">
-          <span className="spinner" aria-hidden="true" />
+          <CrossingSignal />
           Wczytywanie mapy przejazdów…
         </div>
       )}

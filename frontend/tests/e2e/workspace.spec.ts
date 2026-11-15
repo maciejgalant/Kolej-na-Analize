@@ -11,6 +11,75 @@ async function send(page, text = "Pokaż ranking") {
 const saved = (page) =>
   page.evaluate(() => JSON.parse(localStorage.getItem("railsafe.chat.v1")!));
 
+test("sidebar map, crossing signal, reduced motion and icon copying", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mockApi(page);
+  let finish: () => void;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  await page.route("**/api/v1/assistant/chat", async (route) => {
+    await pending;
+    await route.fulfill({ json: reply() });
+  });
+  await page.goto("/");
+  await expect(
+    page
+      .getByRole("complementary", { name: "Rozmowy" })
+      .getByRole("button", { name: "Mapa przejazdów" }),
+  ).toBeVisible();
+  await expect(page.locator(".header-map")).toHaveCount(0);
+  await page.getByRole("button", { name: "Zwiń listę rozmów" }).click();
+  await page.getByRole("button", { name: "Mapa", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Mapa przejazdów" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Rozwiń listę rozmów" }).click();
+  await send(page);
+  const signal = page.locator(".answer-pending").getByTestId("crossing-signal");
+  await expect(signal).toBeVisible();
+  await expect
+    .poll(() =>
+      signal
+        .locator(".crossing-light-left")
+        .evaluate((el) => getComputedStyle(el).animationName),
+    )
+    .toBe("crossing-pulse");
+  await page.screenshot({ path: "test-results/loading.png" });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect
+    .poll(() =>
+      signal
+        .locator(".crossing-light-left")
+        .evaluate((el) => getComputedStyle(el).animationName),
+    )
+    .toBe("none");
+  finish!();
+  await expect(
+    page.locator(".assistant-label .assistant-avatar svg"),
+  ).toBeVisible();
+  const copyAnswer = page
+    .locator(".assistant-message")
+    .getByRole("button", { name: "Kopiuj wiadomość" });
+  await expect(copyAnswer.locator("svg")).toHaveCount(1);
+  await copyAnswer.click();
+  await expect(copyAnswer).toContainText("Skopiowano");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    reply().answer,
+  );
+  await page
+    .locator(".user-message")
+    .getByRole("button", { name: "Kopiuj wiadomość" })
+    .click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "Pokaż ranking",
+  );
+});
+
 test("welcome, full-width answers, evidence and map scoped to an answer", async ({
   page,
 }) => {
@@ -39,7 +108,9 @@ test("welcome, full-width answers, evidence and map scoped to an answer", async 
     page.getByText("DANE DEMONSTRACYJNE.", { exact: true }),
   ).toBeVisible();
   await page.screenshot({ path: "test-results/welcome.png" });
-  await page.getByRole("button", { name: "↗ Mapa", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Mapa przejazdów", exact: true })
+    .click();
   const map = page.getByRole("dialog", { name: "Mapa przejazdów" });
   await expect(map).toBeVisible();
   await expect(map.locator(".leaflet-marker-icon")).toHaveCount(3);
@@ -90,7 +161,9 @@ test("manual map attaches crossing, preserves state per conversation and sends o
     if (r.url().endsWith("/assistant/chat")) requests.push(r.postDataJSON());
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "↗ Mapa", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Mapa przejazdów", exact: true })
+    .click();
   const map = page.getByRole("dialog", { name: "Mapa przejazdów" });
   await map.getByLabel("Dzielnica", { exact: true }).selectOption("1");
   await map.getByLabel("Kategoria przejazdu").selectOption("B");
@@ -110,7 +183,9 @@ test("manual map attaches crossing, preserves state per conversation and sends o
     page.getByText("Wynik analizy przejazdu DEMO-7.", { exact: true }),
   ).toBeVisible();
   expect(requests[0]).toMatchObject({ crossing_id: 7 });
-  await page.getByRole("button", { name: "↗ Mapa", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Mapa przejazdów", exact: true })
+    .click();
   await expect(map.getByLabel("Dzielnica", { exact: true })).toHaveValue("1");
   await expect(map.getByLabel("Kategoria przejazdu")).toHaveValue("B");
   await expect(map.locator('[title="Podkład: ortofoto"]')).toHaveAttribute(
@@ -125,7 +200,9 @@ test("manual map attaches crossing, preserves state per conversation and sends o
   await page
     .getByRole("button", { name: "＋ Nowa rozmowa", exact: true })
     .click();
-  await page.getByRole("button", { name: "↗ Mapa", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Mapa przejazdów", exact: true })
+    .click();
   await expect(map.getByLabel("Dzielnica", { exact: true })).toHaveValue("");
   await expect(map.getByLabel("Kategoria przejazdu")).toHaveValue("");
   await page.keyboard.press("Escape");
@@ -256,7 +333,9 @@ test("unavailable model still permits map use; empty inventory is explained", as
   await expect(
     page.getByRole("button", { name: "Wyślij pytanie", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "↗ Mapa", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Mapa przejazdów", exact: true })
+    .click();
   await expect(page.getByText(/Brak przejazdów w tym zakresie/)).toBeVisible();
 });
 

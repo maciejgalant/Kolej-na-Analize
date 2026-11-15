@@ -1,3 +1,4 @@
+import { AssistantAvatar, CopyIcon, CrossingSignal } from "./UiIcons";
 import { APP_NAME, BRAND_LOGO } from "./brand";
 import { useEffect, useRef, useState } from "react";
 import { AnswerContent, AnswerText } from "./chat/AnswerContent";
@@ -31,6 +32,7 @@ export function Assistant({
 }: Props) {
   const [editing, setEditing] = useState<Message | null>(null),
     [editText, setEditText] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState(""),
     [now, setNow] = useState(Date.now());
   const input = useRef<HTMLTextAreaElement>(null),
@@ -61,10 +63,19 @@ export function Assistant({
   useEffect(() => {
     if (attachment) input.current?.focus();
   }, [attachment]);
+  useEffect(() => {
+    if (!copiedId) return;
+    const timer = window.setTimeout(() => {
+      setCopiedId(null);
+      setNotice("");
+    }, 2400);
+    return () => window.clearTimeout(timer);
+  }, [copiedId]);
   async function copy(message: Message) {
     try {
       await navigator.clipboard.writeText(message.content);
-      setNotice("Skopiowano odpowiedź.");
+      setCopiedId(message.id);
+      setNotice("Skopiowano wiadomość.");
     } catch {
       setNotice(
         "Nie udało się skopiować. Zaznacz tekst odpowiedzi i skopiuj ręcznie.",
@@ -129,7 +140,11 @@ export function Assistant({
               >
                 {message.role === "assistant" && (
                   <div className="assistant-label">
-                    <span aria-hidden="true">K</span> {APP_NAME}
+                    <AssistantAvatar />{" "}
+                    <span className="assistant-name">
+                      {APP_NAME}
+                      <small>Asystent AI</small>
+                    </span>
                   </div>
                 )}
                 {message.attachment && (
@@ -169,8 +184,12 @@ export function Assistant({
                   </form>
                 ) : message.status === "pending" ? (
                   <div className="answer-pending" role="status">
-                    <span className="spinner" /> Analizuję dane…{" "}
-                    <span>
+                    <CrossingSignal />
+                    <div className="pending-description">
+                      <strong>Analizuję dane</strong>
+                      <small>Sprawdzam informacje o przejazdach…</small>
+                    </div>
+                    <span className="pending-elapsed">
                       {Math.max(0, Math.floor((now - message.created) / 1000))}{" "}
                       s
                     </span>
@@ -214,6 +233,21 @@ export function Assistant({
                   </>
                 )}
                 <div className="message-actions">
+                  {message.status !== "pending" && (
+                    <button
+                      className={`copy-message-button ${copiedId === message.id ? "is-copied" : ""}`}
+                      aria-label="Kopiuj wiadomość"
+                      title={
+                        copiedId === message.id
+                          ? "Skopiowano"
+                          : "Kopiuj wiadomość"
+                      }
+                      onClick={() => void copy(message)}
+                    >
+                      <CopyIcon done={copiedId === message.id} />
+                      {copiedId === message.id && <span>Skopiowano</span>}
+                    </button>
+                  )}
                   {message.status !== "pending" &&
                     (message.role === "user" ? (
                       <button
@@ -227,9 +261,6 @@ export function Assistant({
                       </button>
                     ) : (
                       <>
-                        <button onClick={() => void copy(message)}>
-                          Kopiuj
-                        </button>
                         <button
                           disabled={busy || !modelReady}
                           onClick={() => onRegenerate(message)}
@@ -336,9 +367,9 @@ export function Assistant({
               }}
             />
             <div className="composer-tools">
-              <button type="button" onClick={() => onMap()}>
-                ↗ Otwórz mapę
-              </button>
+              <span className="composer-key-hint">
+                Enter — wyślij · Shift+Enter — nowy wiersz
+              </span>
               <span>{draft.length}/500</span>
               {busy ? (
                 <button className="stop-button" type="button" onClick={onStop}>

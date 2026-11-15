@@ -1,3 +1,4 @@
+import { MapIcon } from "../UiIcons";
 import { APP_NAME, BRAND_LOGO } from "../brand";
 import { useState } from "react";
 import type { Conversation } from "./model";
@@ -6,6 +7,7 @@ interface Props {
   active: string;
   onSelect: (id: string) => void;
   onNew: () => void;
+  onMap: () => void;
   onRename: (id: string, title: string) => void;
   onPin: (id: string) => void;
   onDelete: (id: string) => void;
@@ -15,6 +17,7 @@ export function ConversationList({
   active,
   onSelect,
   onNew,
+  onMap,
   onRename,
   onPin,
   onDelete,
@@ -45,6 +48,13 @@ export function ConversationList({
       </div>
       <button className="primary new-conversation" onClick={onNew}>
         ＋ Nowa rozmowa
+      </button>
+      <button className="sidebar-map-button" onClick={onMap}>
+        <MapIcon />
+        <span>Mapa przejazdów</span>
+        <span className="sidebar-map-arrow" aria-hidden="true">
+          ↗
+        </span>
       </button>
       <label className="sr-only" htmlFor="conversation-search">
         Szukaj w rozmowach
