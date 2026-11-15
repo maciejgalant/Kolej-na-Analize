@@ -1,8 +1,14 @@
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
 
+import type { MapState } from "./chat/model";
 import type { Category, CrossingFeature, DistrictFeature } from "./api";
-import { BASEMAPS, type BasemapId, storeBasemap, storedBasemap } from "./basemaps";
+import {
+  BASEMAPS,
+  type BasemapId,
+  storeBasemap,
+  storedBasemap,
+} from "./basemaps";
 import { CategoryPin } from "./CategoryPin";
 import { CATEGORY_DESCRIPTION, crossingTitle } from "./labels";
 import { categoryLabel, pinHtml } from "./pictograms";
@@ -22,6 +28,9 @@ interface Props {
   layoutKey: string;
   /** Margines dopasowania widoku, gdy okna zasłaniają boki mapy (px). */
   fitPadding?: { left: number; right: number } | null;
+  savedState?: MapState;
+  onStateChange?: (patch: Partial<MapState>) => void;
+  fitCrossingIds?: number[];
 }
 
 function markerIcon(feature: CrossingFeature, selected: boolean): L.DivIcon {
@@ -77,9 +86,18 @@ export function MapView({
   demo,
   layoutKey,
   fitPadding = null,
+  savedState,
+  onStateChange,
+  fitCrossingIds,
 }: Props) {
   const [legendOpen, setLegendOpen] = useState(false);
-  const [basemap, setBasemap] = useState<BasemapId>(storedBasemap);
+  const [basemap, setBasemap] = useState<BasemapId>(
+    () => savedState?.basemap ?? storedBasemap(),
+  );
+  const initialState = useRef(savedState);
+  const stateChange = useRef(onStateChange);
+  stateChange.current = onStateChange;
+  const previousDistrict = useRef(selectedDistrictId);
   const tileLayer = useRef<L.TileLayer | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -91,14 +109,29 @@ export function MapView({
   useEffect(() => {
     if (!container.current) return;
     const instance = L.map(container.current, {
-      center: WARSAW_CENTER,
-      zoom: 11,
+      center: initialState.current?.center ?? WARSAW_CENTER,
+      zoom: initialState.current?.zoom ?? 11,
       // własne przyciski powiększenia są na pasku narzędzi mapy (nie pod oknami)
       zoomControl: false,
+      // Modal maps can close during zoom; Leaflet's CSS transition timer outlives remove().
+      zoomAnimation: false,
     });
     markerLayer.current = L.layerGroup().addTo(instance);
     map.current = instance;
+    instance.on("moveend", () => {
+      const center = instance.getCenter();
+      stateChange.current?.({
+        center: [center.lat, center.lng],
+        zoom: instance.getZoom(),
+      });
+    });
+    const observer = new ResizeObserver(() => {
+      if (map.current === instance) instance.invalidateSize();
+    });
+    observer.observe(container.current);
     return () => {
+      observer.disconnect();
+      instance.stop();
       instance.remove();
       map.current = null;
     };
@@ -113,6 +146,7 @@ export function MapView({
     tileLayer.current = definition.create().addTo(instance);
     tileLayer.current.bringToBack();
     storeBasemap(basemap);
+    stateChange.current?.({ basemap });
   }, [basemap]);
 
   useEffect(() => {
@@ -144,7 +178,10 @@ export function MapView({
               (d) => d.id === selectedDistrictId,
             ) as unknown as GeoJSON.Feature[],
           ).getBounds();
-    if (target.isValid())
+    const shouldFit =
+      !initialState.current || previousDistrict.current !== selectedDistrictId;
+    previousDistrict.current = selectedDistrictId;
+    if (shouldFit && target.isValid())
       instance.fitBounds(
         target,
         fitPadding
@@ -172,6 +209,8 @@ export function MapView({
       const [lon, lat] = feature.geometry.coordinates;
       const selected = feature.id === selectedCrossingId;
       const label = markerLabel(feature);
+      const tooltip = document.createElement("span");
+      tooltip.textContent = label;
       const marker = L.marker([lat, lon], {
         icon: markerIcon(feature, selected),
         alt: label,
@@ -179,7 +218,7 @@ export function MapView({
         zIndexOffset: selected ? 1000 : 0,
         riseOnHover: true,
       })
-        .bindTooltip(label, { direction: "top", offset: [0, -16] })
+        .bindTooltip(tooltip, { direction: "top", offset: [0, -16] })
         .on("click", () => onSelect.current(feature.id))
         .addTo(layer);
       // Znak to element HTML (divIcon), więc opis dla czytników ekranu nadajemy sami.
@@ -198,6 +237,28 @@ export function MapView({
     // Tylko przy zmianie wyboru, nie przy każdej zmianie listy.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCrossingId]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !fitCrossingIds?.length) return;
+    const points = crossings
+      .filter((c) => fitCrossingIds.includes(c.id))
+      .map((c) => {
+        const [lon, lat] = c.geometry.coordinates;
+        return L.latLng(lat, lon);
+      });
+    // Child effects run before dialog.showModal(): defer until its container is visible.
+    const frame = requestAnimationFrame(() => {
+      if (map.current !== instance || !points.length) return;
+      instance.invalidateSize();
+      instance.fitBounds(L.latLngBounds(points), {
+        padding: [48, 48],
+        maxZoom: 16,
+        animate: false,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [fitCrossingIds, crossings]);
 
   // Po zmianie układu kolumn Leaflet musi poznać nowy rozmiar kontenera.
   useEffect(() => {
@@ -254,7 +315,12 @@ export function MapView({
             onClick={() => map.current?.zoomOut()}
           >
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-              <path d="M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M3 8h10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
           <button
@@ -265,7 +331,12 @@ export function MapView({
             onClick={() => map.current?.zoomIn()}
           >
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-              <path d="M3 8h10M8 3v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M3 8h10M8 3v10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         </div>
@@ -275,7 +346,9 @@ export function MapView({
             <button
               key={b.id}
               type="button"
-              className={b.id === basemap ? "basemap basemap-active" : "basemap"}
+              className={
+                b.id === basemap ? "basemap basemap-active" : "basemap"
+              }
               aria-pressed={b.id === basemap}
               title={`Podkład: ${b.label.toLowerCase()}`}
               onClick={() => setBasemap(b.id)}
@@ -291,7 +364,11 @@ export function MapView({
         <span className="toolbar-sep" aria-hidden="true" />
         <button
           type="button"
-          className={legendOpen ? "tool-button tool-text tool-active" : "tool-button tool-text"}
+          className={
+            legendOpen
+              ? "tool-button tool-text tool-active"
+              : "tool-button tool-text"
+          }
           aria-expanded={legendOpen}
           aria-controls="map-legend"
           onClick={() => setLegendOpen((value) => !value)}

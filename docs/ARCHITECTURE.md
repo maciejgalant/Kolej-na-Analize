@@ -57,7 +57,7 @@ Schemat JSON intencji: `ranking|filter|compare|explain|timeseries`; `district_id
 Precompute analiz bazowych i cyklicznych w workerze; odświeżanie danych „na żądanie” przez kontrolowany job. Odpowiedzi UI korzystają z ostatniego ukończonego run; nie z częściowo przeliczonego zestawu.
 
 ## Asystent AI — implementacja (RSA-013, 2026-11-12)
-- **Endpoint:** `POST /api/v1/assistant/chat` z polami `message` (do 500 znaków) i `history` (do 8 wiadomości `user`/`assistant`). Odpowiedź: `answer`, `model`, `grounded`, `tool_calls`, `disclaimer`.
+- **Endpoint:** `POST /api/v1/assistant/chat` z polami `message` (do 500 znaków) i `history` (do 8 wiadomości `user`/`assistant`). Odpowiedź: `answer`, `model`, `grounded`, `tool_calls`, `disclaimer` oraz `evidence` (od etapu interfejsu rozmów).
 - **Model:** lokalny `qwen3:4b-instruct` (wariant bez rozumowania) przez Ollama (`/api/chat`, bez strumieniowania, temperatura 0,1). Jeśli model ma tryb rozumowania (np. `qwen3:4b-thinking` rozumuje zawsze), aplikacja prosi Ollamę o oddzielenie rozumowania i pokazuje tylko odpowiedź; ucięte rozumowanie nigdy nie jest pokazywane jako odpowiedź. Żadne dane nie wychodzą poza komputer.
 - **Bezpieczne funkcje** (`backend/app/assistant/tools.py`), wyłącznie odczyt z ostatniego zakończonego przebiegu analizy: `get_ranking`, `get_crossing`, `compare_crossings`, `list_districts`, `get_method`. Model nie pisze SQL i nie ma dostępu do bazy; może tylko wybrać funkcję z listy, a argumenty są walidowane. Nieznana funkcja lub złe argumenty wracają do modelu jako błąd.
 - **Pętla:** najwyżej cztery rundy wywołań funkcji; w ostatniej rundzie model nie dostaje funkcji i musi odpowiedzieć tekstem. Pusta odpowiedź jest zastępowana komunikatem zastępczym.
@@ -65,3 +65,15 @@ Precompute analiz bazowych i cyklicznych w workerze; odświeżanie danych „na 
 - **Zasady w komunikacie systemowym:** odpowiedzi tylko z wyników funkcji, jawne „brak danych", RPS jako priorytet oceny (nie prognoza), pytania spoza zakresu są odrzucane, tekst użytkownika nie zmienia zasad. Rola `system` w historii od klienta jest odrzucana.
 - **Niedostępność:** gdy Ollama nie odpowiada lub model nie jest pobrany, endpoint zwraca 503 z czytelnym komunikatem; mapa i ranking działają niezależnie.
 - **Ograniczenia:** jakość odpowiedzi zależy od małego modelu (4 mld parametrów) — może źle dobrać funkcję albo niedokładnie streścić wynik. Na komputerze bez GPU odpowiedź może trwać minutę lub dłużej.
+
+
+## Interfejs rozmów (2026-11-15)
+Główny frontend to historia i aktywna rozmowa; mapa jest oknem modalnym. Drzewo wiadomości, aktywna gałąź, szkic i stan mapy są zapisywane wyłącznie w przeglądarce. Backend nie przechowuje sesji czatu.
+
+Opcjonalny `crossing_id` jest rozwiązywany na dane w bazie przed inferencją i przekazywany modelowi jako zaufany wynik odczytu `attached_crossing`. Nie jest nową funkcją do swobodnego wywołania przez model. Pięć dotychczasowych narzędzi zachowuje swoje uprawnienia tylko do odczytu.
+
+`assistant/presentation.py` buduje typowany `evidence` z wyników udanych narzędzi i szczegółów przejazdów. Identyfikatory akcji mapy pochodzą wyłącznie z SQL. Liczby kart i tabel pochodzą z odczytów narzędzi; wykresy i źródła z aktualnych szczegółów tych samych obiektów. Odpowiedź nie otwiera mapy automatycznie. Brak zmian schematu bazy.
+
+Zatrzymanie przez klienta przerywa oczekiwanie i odrzuca spóźniony wynik. Obecna synchroniczna pętla Ollamy może nadal pracować po rozłączeniu. Wynik żądania jest przypisywany do jego oryginalnej wiadomości, niezależnie od aktualnie oglądanej rozmowy.
+
+Pełne zachowanie UI: `FRONTEND_DESIGN.md`; format danych: `DATA_CONTRACT.md`.
