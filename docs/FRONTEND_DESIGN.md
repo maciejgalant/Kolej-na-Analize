@@ -61,3 +61,24 @@ Asystenta oznacza wektorowy piktogram uśmiechniętej postaci ze słuchawką. Po
 Wiadomości użytkownika i asystenta można kopiować przyciskiem z ikoną dwóch kartek. Po udanym zapisie do schowka pojawia się znacznik i krótkie „Skopiowano”; błędy schowka mają komunikat tekstowy. Przyciski mają nazwy dostępności i podpowiedzi.
 
 Rama aplikacji, karty i okno mapy mają łagodniejsze zaokrąglenia. Pole pytania ma częściowo przezroczyste tło z rozmyciem, bez zmniejszania krycia tekstu. Subtelne tła, cienie i stany hover/focus porządkują interfejs; ograniczenie animacji wyłącza również dekoracyjne ruchy przycisków.
+# Dopracowanie rozmów i asystent na mapie
+
+Rozmowy są grupowane jako przypięte, dzisiejsze, wczorajsze i starsze. Akcje edycji,
+ponowienia odpowiedzi, przypinania i usuwania mają spójne ikony SVG z etykietami
+dostępności i podpowiedziami. Podpis przy awatarze brzmi „Asystent AI”.
+
+Karty wyróżniają liczbowy priorytet RPS (do dalszej oceny, bez sugerowania
+prawdopodobieństwa wypadku), pozycję w rankingu i ruch pasażerski. Pierwszy akapit
+odpowiedzi jest wyróżniony, źródła pozostają rozwijane, a pod ostatnią odpowiedzią
+znajdują się propozycje dalszych pytań. Nagłówek pozostaje widoczny przy przewijaniu.
+Oznaczenie danych demonstracyjnych ma bursztynowy kolor. Przejścia trwają 180 ms
+i są wyłączone przy ograniczeniu ruchu.
+
+Mapa ma niezależny czat tymczasowy. Kliknięcie przejazdu pokazuje uprzejmą propozycję
+pomocy; samo kliknięcie nie wysyła żądania do LLM. Użytkownik otwiera panel i zadaje
+pytanie albo wybiera sugestię. Zapytanie korzysta z tego samego walidowanego API,
+przekazuje crossing_id i maksymalnie osiem poprzednich wiadomości. Pod odpowiedzią
+można sprawdzić jej podstawę i źródła. Dostępne jest zatrzymanie i komunikat błędu.
+Historia pozostaje wyłącznie w pamięci panelu: zamknięcie mapy lub zmiana wybranego
+przejazdu usuwa ją i anuluje aktywne żądanie. Zwinięcie panelu zachowuje rozmowę.
+Dotychczasowy przycisk „Zapytaj o ten przejazd” nadal dołącza obiekt do głównej rozmowy.

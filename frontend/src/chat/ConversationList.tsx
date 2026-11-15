@@ -1,4 +1,4 @@
-import { MapIcon } from "../UiIcons";
+import { MapIcon, EditIcon, PinIcon, TrashIcon } from "../UiIcons";
 import { APP_NAME, BRAND_LOGO } from "../brand";
 import { useState } from "react";
 import type { Conversation } from "./model";
@@ -34,6 +34,18 @@ export function ConversationList({
     .sort(
       (a, b) => Number(b.pinned) - Number(a.pinned) || b.updated - a.updated,
     );
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const group = (c: Conversation) =>
+    c.pinned
+      ? "Przypięte"
+      : c.updated >= today.getTime()
+        ? "Dzisiaj"
+        : c.updated >= yesterday.getTime()
+          ? "Wczoraj"
+          : "Starsze";
   return (
     <aside className="conversation-sidebar" aria-label="Rozmowy">
       <div className="sidebar-brand">
@@ -70,89 +82,96 @@ export function ConversationList({
         Twoje rozmowy <span>{conversations.length}</span>
       </div>
       <ul className="conversation-items">
-        {visible.map((c) => (
-          <li
-            key={c.id}
-            className={`conversation-row ${c.id === active ? "selected" : ""}`}
-          >
-            {renaming === c.id ? (
-              <form
-                className="rename-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (title.trim()) {
-                    onRename(c.id, title.trim());
-                    setRenaming(null);
-                  }
-                }}
+        {visible.map((c, i) => (
+          <li className="conversation-group" key={c.id + "-group"}>
+            {(i === 0 || group(visible[i - 1]) !== group(c)) && (
+              <h3>{group(c)}</h3>
+            )}
+            <ul>
+              <li
+                key={c.id}
+                className={`conversation-row ${c.id === active ? "selected" : ""}`}
               >
-                <input
-                  aria-label="Tytuł rozmowy"
-                  autoFocus
-                  value={title}
-                  maxLength={100}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") setRenaming(null);
-                  }}
-                />
-                <button type="submit">Zapisz</button>
-                <button type="button" onClick={() => setRenaming(null)}>
-                  Anuluj
-                </button>
-              </form>
-            ) : (
-              <>
-                <button
-                  className="conversation-select"
-                  aria-current={c.id === active ? "page" : undefined}
-                  onClick={() => onSelect(c.id)}
-                >
-                  <span>
-                    {c.pinned ? "◆ " : ""}
-                    {c.title}
-                  </span>
-                  <small>
-                    {new Date(c.updated).toLocaleDateString("pl-PL", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                    {c.messages.some((m) => m.status === "pending")
-                      ? " · Odpowiadam…"
-                      : ""}
-                  </small>
-                </button>
-                <div className="conversation-actions">
-                  <button
-                    aria-label={
-                      c.pinned ? "Odepnij rozmowę" : "Przypnij rozmowę"
-                    }
-                    title={c.pinned ? "Odepnij" : "Przypnij"}
-                    aria-pressed={c.pinned}
-                    onClick={() => onPin(c.id)}
-                  >
-                    ◆
-                  </button>
-                  <button
-                    title="Zmień tytuł"
-                    aria-label="Zmień tytuł"
-                    onClick={() => {
-                      setTitle(c.title);
-                      setRenaming(c.id);
+                {renaming === c.id ? (
+                  <form
+                    className="rename-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (title.trim()) {
+                        onRename(c.id, title.trim());
+                        setRenaming(null);
+                      }
                     }}
                   >
-                    ✎
-                  </button>
-                  <button
-                    title="Usuń rozmowę"
-                    aria-label="Usuń rozmowę"
-                    onClick={() => onDelete(c.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              </>
-            )}
+                    <input
+                      aria-label="Tytuł rozmowy"
+                      autoFocus
+                      value={title}
+                      maxLength={100}
+                      onChange={(e) => setTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") setRenaming(null);
+                      }}
+                    />
+                    <button type="submit">Zapisz</button>
+                    <button type="button" onClick={() => setRenaming(null)}>
+                      Anuluj
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <button
+                      className="conversation-select"
+                      aria-current={c.id === active ? "page" : undefined}
+                      onClick={() => onSelect(c.id)}
+                    >
+                      <span>
+                        {c.pinned && <PinIcon />}
+                        {c.title}
+                      </span>
+                      <small>
+                        {new Date(c.updated).toLocaleDateString("pl-PL", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                        {c.messages.some((m) => m.status === "pending")
+                          ? " · Odpowiadam…"
+                          : ""}
+                      </small>
+                    </button>
+                    <div className="conversation-actions">
+                      <button
+                        aria-label={
+                          c.pinned ? "Odepnij rozmowę" : "Przypnij rozmowę"
+                        }
+                        title={c.pinned ? "Odepnij" : "Przypnij"}
+                        aria-pressed={c.pinned}
+                        onClick={() => onPin(c.id)}
+                      >
+                        <PinIcon />
+                      </button>
+                      <button
+                        title="Zmień tytuł"
+                        aria-label="Zmień tytuł"
+                        onClick={() => {
+                          setTitle(c.title);
+                          setRenaming(c.id);
+                        }}
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        title="Usuń rozmowę"
+                        aria-label="Usuń rozmowę"
+                        onClick={() => onDelete(c.id)}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            </ul>
           </li>
         ))}
       </ul>

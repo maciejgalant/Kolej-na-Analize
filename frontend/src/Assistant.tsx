@@ -1,4 +1,10 @@
-import { AssistantAvatar, CopyIcon, CrossingSignal } from "./UiIcons";
+import {
+  AssistantAvatar,
+  CopyIcon,
+  CrossingSignal,
+  EditIcon,
+  RestartIcon,
+} from "./UiIcons";
 import { APP_NAME, BRAND_LOGO } from "./brand";
 import { useEffect, useRef, useState } from "react";
 import { AnswerContent, AnswerText } from "./chat/AnswerContent";
@@ -141,10 +147,7 @@ export function Assistant({
                 {message.role === "assistant" && (
                   <div className="assistant-label">
                     <AssistantAvatar />{" "}
-                    <span className="assistant-name">
-                      {APP_NAME}
-                      <small>Asystent AI</small>
-                    </span>
+                    <span className="assistant-name">Asystent AI</span>
                   </div>
                 )}
                 {message.attachment && (
@@ -232,6 +235,35 @@ export function Assistant({
                     )}
                   </>
                 )}
+                {message.role === "assistant" &&
+                  !message.status &&
+                  message.id === last?.id && (
+                    <div
+                      className="followup-questions"
+                      aria-label="Propozycje dalszych pytań"
+                    >
+                      {[
+                        "Wyjaśnij wynik RPS",
+                        "Porównaj z innymi przejazdami",
+                      ].map((question) => (
+                        <button
+                          key={question}
+                          disabled={busy || !modelReady}
+                          onClick={() =>
+                            onSend(
+                              question,
+                              message.attachment ??
+                                [...path]
+                                  .reverse()
+                                  .find((m) => m.role === "user")?.attachment,
+                            )
+                          }
+                        >
+                          {question} <span aria-hidden="true">↗</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 <div className="message-actions">
                   {message.status !== "pending" && (
                     <button
@@ -252,20 +284,26 @@ export function Assistant({
                     (message.role === "user" ? (
                       <button
                         disabled={busy}
+                        aria-label="Edytuj pytanie"
+                        title="Edytuj pytanie"
+                        className="icon-action"
                         onClick={() => {
                           setEditing(message);
                           setEditText(message.content);
                         }}
                       >
-                        Edytuj
+                        <EditIcon />
                       </button>
                     ) : (
                       <>
                         <button
                           disabled={busy || !modelReady}
+                          className="icon-action"
+                          aria-label="Ponów odpowiedź"
+                          title="Ponów odpowiedź"
                           onClick={() => onRegenerate(message)}
                         >
-                          Ponów odpowiedź
+                          <RestartIcon />
                         </button>
                       </>
                     ))}

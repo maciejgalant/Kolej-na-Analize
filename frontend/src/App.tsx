@@ -282,6 +282,7 @@ export function App() {
           crossings={data.kind === "ready" ? data.crossings : []}
           districts={data.kind === "ready" ? data.districts : []}
           demo={demo}
+          modelReady={modelReady}
           loading={data.kind === "loading"}
           error={data.kind === "error"}
           onRetry={reload}
