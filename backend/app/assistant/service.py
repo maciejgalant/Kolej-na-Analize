@@ -204,4 +204,3 @@ def chat(
             "Spróbuj zadać pytanie inaczej, np. o ranking w wybranej dzielnicy."
         )
     return reply
-

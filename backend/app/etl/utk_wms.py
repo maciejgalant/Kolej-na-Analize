@@ -178,4 +178,3 @@ class UtkWmsClient:
             }
         )
         return parse_feature_info(response.text)
-

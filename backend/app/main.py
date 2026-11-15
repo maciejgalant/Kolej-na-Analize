@@ -20,4 +20,3 @@ app = FastAPI(
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(crossings.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
-

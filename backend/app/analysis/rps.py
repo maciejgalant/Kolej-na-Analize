@@ -225,4 +225,3 @@ def score_crossings(inputs: list[CrossingInputs], sensitivity_step: float = 0.2)
             score.rank_best = min(spans[score.crossing_id])
             score.rank_worst = max(spans[score.crossing_id])
     return scores
-
