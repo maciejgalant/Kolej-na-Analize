@@ -113,6 +113,8 @@ export function MapView({
       zoom: initialState.current?.zoom ?? 11,
       // własne przyciski powiększenia są na pasku narzędzi mapy (nie pod oknami)
       zoomControl: false,
+      // Modal maps can close during zoom; Leaflet's CSS transition timer outlives remove().
+      zoomAnimation: false,
     });
     markerLayer.current = L.layerGroup().addTo(instance);
     map.current = instance;
@@ -123,10 +125,13 @@ export function MapView({
         zoom: instance.getZoom(),
       });
     });
-    const observer = new ResizeObserver(() => instance.invalidateSize());
+    const observer = new ResizeObserver(() => {
+      if (map.current === instance) instance.invalidateSize();
+    });
     observer.observe(container.current);
     return () => {
       observer.disconnect();
+      instance.stop();
       instance.remove();
       map.current = null;
     };
@@ -242,11 +247,17 @@ export function MapView({
         const [lon, lat] = c.geometry.coordinates;
         return L.latLng(lat, lon);
       });
-    if (points.length)
+    // Child effects run before dialog.showModal(): defer until its container is visible.
+    const frame = requestAnimationFrame(() => {
+      if (map.current !== instance || !points.length) return;
+      instance.invalidateSize();
       instance.fitBounds(L.latLngBounds(points), {
         padding: [48, 48],
         maxZoom: 16,
+        animate: false,
       });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [fitCrossingIds, crossings]);
 
   // Po zmianie układu kolumn Leaflet musi poznać nowy rozmiar kontenera.

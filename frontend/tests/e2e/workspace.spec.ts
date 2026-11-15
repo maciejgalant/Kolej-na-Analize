@@ -278,3 +278,37 @@ test("corrupt saved history is retained; API errors can be retried", async ({
     page.getByText("Wynik analizy przejazdu DEMO-7.", { exact: true }),
   ).toBeVisible();
 });
+
+test("multiple answer objects fit the visible modal at desktop widths", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await mockApi(page);
+  await page.route("**/api/v1/assistant/chat", (route) => {
+    const body = reply();
+    body.evidence.map_ids = [7, 9];
+    return route.fulfill({ json: body });
+  });
+  await page.goto("/");
+  await send(page);
+  await page.getByRole("button", { name: /Pokaż na mapie/ }).click();
+  const map = page.getByRole("dialog", { name: "Mapa przejazdów" });
+  await expect(map.locator(".leaflet-marker-icon")).toHaveCount(2);
+  await expect
+    .poll(async () => (await saved(page)).conversations[0].map.zoom)
+    .toBeGreaterThan(11);
+  for (const width of [1024, 1280, 1920]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect(map).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBeTruthy();
+  }
+  await page.screenshot({ path: "test-results/map.png" });
+  await page.keyboard.press("Escape");
+  await expect(map).not.toBeVisible();
+  expect(errors).toEqual([]);
+});
