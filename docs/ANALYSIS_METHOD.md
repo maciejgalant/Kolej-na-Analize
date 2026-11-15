@@ -1,8 +1,8 @@
-# Metodyka analizy RailSafe AI (v1.0, szkic do walidacji)
+# Metodyka analizy Kolej na Analizę (v1.0, szkic do walidacji)
 
 ## 1. Dwie niezależne miary
 A. **Ekspozycja na ruch**: liczba przejazdów pociągów przez konkretny przejazd w jednostce czasu oraz liczba pojazdów drogowych w zgodnym przedziale. Wskaźniki przechowywane osobno z jednostkami i niepewnością.
-B. **RailSafe Priority Score (RPS)**: *autorski priorytet do dalszej kontroli*, nie prawdopodobieństwo wypadku, nie oficjalna kategoria przejazdu.
+B. **Wskaźnik priorytetu do dalszej oceny (RPS)**: *autorski priorytet do dalszej kontroli*, nie prawdopodobieństwo wypadku, nie oficjalna kategoria przejazdu.
 
 ## 2. Iloczyn ruchu
 Jeżeli dane i przedział spełniają wymogi odpowiedniej metodyki prawnej, można wyliczyć iloczyn ruchu zgodnie z aktualnym rozporządzeniem. Dla danych innych niż wymagane pomiarowo stosować wyłącznie etykietę **szacunkowy wskaźnik ekspozycji**, bez sugerowania urzędowej klasyfikacji. Zweryfikować aktualny tekst i wzory rozporządzenia przed implementacją.
@@ -58,3 +58,4 @@ Wersja eksperymentalna; wagi i tabele punktowe są założeniami autorskimi, nie
 **Każdy przebieg** zapisuje wersję metody, wagi, tabele, okres danych i liczbę obiektów w `analysis.runs`; API i interfejs pokazują ostatni zakończony przebieg.
 
 **Czego ta wersja nie robi:** nie liczy urzędowego iloczynu ruchu, nie używa wykonania kursów ani danych o zdarzeniach, nie ocenia widoczności. Pomiary drogowe ZDM wchodzą tylko dla przejazdów z punktem na tej samej ulicy do 300 m; profil godzinowy jest zapisywany, ale jeszcze nie wpływa na wynik.
+

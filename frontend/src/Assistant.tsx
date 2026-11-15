@@ -1,3 +1,4 @@
+import { APP_NAME, BRAND_LOGO } from "./brand";
 import { useEffect, useRef, useState } from "react";
 import { AnswerContent, AnswerText } from "./chat/AnswerContent";
 import { activePath, branchLeaf } from "./chat/model";
@@ -81,10 +82,14 @@ export function Assistant({
         <div className="message-column">
           {!path.length && (
             <div className="chat-welcome">
-              <span className="welcome-symbol" aria-hidden="true">
-                R
-              </span>
-              <p className="eyebrow">RAILSAFE AI · WARSZAWA</p>
+              <img
+                className="welcome-logo"
+                src={BRAND_LOGO}
+                alt={APP_NAME}
+                width="2172"
+                height="724"
+              />
+              <p className="eyebrow">ASYSTENT ANALIZY PRZEJAZDÓW · WARSZAWA</p>
               <h1>Przyjrzyjmy się przejazdom.</h1>
               <p>
                 Zapytaj o ruch, porównaj przejazdy i poznaj podstawy ich
@@ -119,12 +124,12 @@ export function Assistant({
                 aria-label={
                   message.role === "user"
                     ? "Pytanie użytkownika"
-                    : "Odpowiedź RailSafe AI"
+                    : `Odpowiedź ${APP_NAME}`
                 }
               >
                 {message.role === "assistant" && (
                   <div className="assistant-label">
-                    <span aria-hidden="true">R</span> RailSafe AI
+                    <span aria-hidden="true">K</span> {APP_NAME}
                   </div>
                 )}
                 {message.attachment && (
@@ -309,7 +314,7 @@ export function Assistant({
               </div>
             )}
             <label className="sr-only" htmlFor="chat-question">
-              Pytanie do RailSafe AI
+              Pytanie do {APP_NAME}
             </label>
             <textarea
               id="chat-question"

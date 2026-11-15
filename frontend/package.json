@@ -1,5 +1,5 @@
 {
-  "name": "railsafe-frontend",
+  "name": "kolej-na-analize-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -26,3 +26,4 @@
     "vite": "^6.0.7"
   }
 }
+

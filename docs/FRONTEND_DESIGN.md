@@ -1,4 +1,4 @@
-# Frontend RailSafe AI — aplikacja rozmów (v2, 2026-11-15)
+# Frontend Kolej na Analizę — aplikacja rozmów (v2, 2026-11-15)
 
 ## Układ i stylistyka
 Głównym ekranem jest rozmowa. Po lewej znajduje się zwijany panel historii, a po prawej aktywny wątek. Mapa nie jest tłem aplikacji: użytkownik otwiera ją w dużym oknie modalnym nad rozmową. Projekt obejmuje obecnie komputer, od szerokości 820 px; osobny układ telefonu pozostaje poza tym etapem.
@@ -51,3 +51,4 @@ Pasek danych demonstracyjnych jest widoczny w aplikacji i w oknie mapy. Przy nie
 - `chat.css`: wygląd nowego obszaru rozmów; wspólne style mapy/kart pozostają w `styles.css`.
 
 `npm test` sprawdza logikę i trwałość historii. `npm run build` sprawdza typy i kompilację. `npm run test:e2e` uruchamia scenariusze Playwright z kontrolowanym API i fikcyjnymi danymi; nie jest to test prawdziwego modelu ani serwerów podkładów. Przy pierwszym uruchomieniu: `npx playwright install chromium`. Opcjonalnie `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` wskazuje istniejącą przeglądarkę. Testy działają również w CI.
+

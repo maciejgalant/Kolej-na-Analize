@@ -141,7 +141,7 @@ Mapa z lat 2019–2022 zawiera w warstwach tylko lokalizacje (liczby są w PDF),
 - TomTom / HERE: prawo do prezentacji warstwy, map matching, własnego scoringu, cache i retencji należy sprawdzić **oddzielnie** w aktualnym planie. Nie umieszczać w repo treści pobranych z płatnego API.
 - PKP PLK: sprawdzić warunki klucza, licencji, limitów i przypisania źródła.
 - Dane zewnętrzne w PostGIS: przechowywać tylko dozwolony zakres i TTL; własne wyniki pochodne też mogą podlegać ograniczeniom.
-- Branding: RailSafe AI jest niezależnym projektem; nie umieszczać logotypów ani znaków PKP Intercity jako własnych.
+- Branding: Kolej na Analizę jest niezależnym projektem; nie umieszczać logotypów ani znaków PKP Intercity jako własnych.
 
 ## Pierwszy eksperyment danych (spike)
 **Cel:** zbudować tabelę 10–20 ręcznie zweryfikowanych przejazdów w Warszawie i wykazać, dla ilu jest dostępna miara kolejowa, drogowa i infrastrukturalna. Raport `docs/DATA_AUDIT.md` powinien zawierać liczbę obiektów w każdej kategorii, przykłady błędów map matching, licencje, statystyki kompletności i decyzję GO/NO-GO dla rankingu.
@@ -153,3 +153,4 @@ Mapa z lat 2019–2022 zawiera w warstwach tylko lokalizacje (liczby są w PDF),
 - https://docs.here.com/traffic-api/
 - https://www.openstreetmap.org/copyright
 Linki wskazują kandydatów i dokumentację, nie potwierdzają automatycznie licencji wszystkich zastosowań.
+

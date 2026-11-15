@@ -1,4 +1,4 @@
-# RailSafe AI — specyfikacja projektu (v1.0)
+# Kolej na Analizę — specyfikacja projektu (v1.0)
 Data: 2026-11-11. Status: projekt; decyzje techniczne do weryfikacji w spike'ach danych.
 
 ## 1. Cel i problem
@@ -49,3 +49,4 @@ Predykcja wypadków, pełna historia ruchu live, wszystkie pociągi towarowe, ko
 
 ## 8. Wykorzystane projekty
 GeoGraph Demo 3: wzorce Docker/PostGIS/FastAPI/Ollama i katalogu analiz. PSIP MG L1: wzorce importu BDOT10k i analiz przestrzennych. Nowe repo nie narusza źródłowych projektów.
+
