@@ -79,6 +79,7 @@ def test_tool_definitions_follow_ollama_schema():
         "compare_crossings",
         "list_districts",
         "get_method",
+        "get_data_quality",
     ]
     for tool in TOOL_DEFINITIONS:
         assert tool["type"] == "function"
@@ -107,6 +108,7 @@ def test_crossing_tool_gives_components_and_handles_spacing(db):
     assert result["skladniki"]["P"] == {
         "wartosc": 30.0,
         "status": "ok",
+        "waga": 0.3,
         "szczegoly": {"category": "B"},
     }
     assert result["skladniki"]["H"]["wartosc"] is None
@@ -178,7 +180,7 @@ def test_chat_runs_tool_then_answers_from_its_result(db):
         "user",
         "user",
     ]  # bez "system" z historii
-    assert len(first["tools"]) == 5
+    assert len(first["tools"]) == 6
     tool_message = second["messages"][-1]
     assert (tool_message["role"], tool_message["tool_name"]) == ("tool", "get_ranking")
     assert json.loads(tool_message["content"])["ranking"][0]["numer"] == "old-track"
@@ -215,7 +217,7 @@ def test_chat_accepts_arguments_as_json_string(db):
 def test_chat_raises_when_model_is_unavailable(db):
     down = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(404)))
     with pytest.raises(AssistantUnavailable):
-        chat(db, down, "http://ollama.test", "qwen3:4b", "Cześć")
+        chat(db, down, "http://ollama.test", "qwen3:4b", "Pokaż ranking")
 
 
 def test_endpoint_returns_answer_and_tool_trace(db):
@@ -245,7 +247,7 @@ def test_endpoint_validation_and_unavailable_model(db):
     down = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(500)))
     app.dependency_overrides[get_http_client] = lambda: down
     try:
-        response = client.post("/api/v1/assistant/chat", json={"message": "Cześć"})
+        response = client.post("/api/v1/assistant/chat", json={"message": "Pokaż ranking"})
     finally:
         app.dependency_overrides.clear()
     assert response.status_code == 503
@@ -351,3 +353,36 @@ def test_ranking_still_rejects_unknown_or_ambiguous_district(db):
     for name in ("Atlantyda", "Praga", "Urs"):
         with pytest.raises(ToolError, match="Dostępne"):
             call_tool(db, "get_ranking", {"district": name})
+
+
+def test_quality_tool_reads_scope_limit_and_missing_components(db):
+    quality = call_tool(db, "get_data_quality", {"district": "Alfa", "limit": 1})
+    assert quality["zakres"] == "Alfa"
+    assert [r["numer"] for r in quality["przejazdy"]] == ["ok"]
+    row = quality["przejazdy"][0]
+    assert "H" in row["jakosc_danych"]["brakujace_skladniki"]
+    assert row["jakosc_danych"]["ruch_drogowy"] in ("pomiar", "model")
+    assert row["jakosc_danych"]["kompletnosc_proc"] == row["kompletnosc_proc"]
+    single = call_tool(db, "get_data_quality", {"number": "boundary-ped"})["przejazdy"][0]
+    assert single["jakosc_danych"]["poza_rankingiem"]
+    for arguments in ({"limit": True}, {"limit": 16}, {"number": "ok", "district": "Alfa"}):
+        with pytest.raises(ToolError):
+            call_tool(db, "get_data_quality", arguments)
+
+
+def test_comparison_rejects_same_object_and_explains_differences(db):
+    with pytest.raises(ToolError, match="różne"):
+        call_tool(db, "compare_crossings", {"number_a": "ok", "number_b": "ok"})
+    pair = call_tool(db, "compare_crossings", {"number_a": "ok", "number_b": "old-track"})
+    assert pair["roznica_rps_a_minus_b"] == round(pair["a"]["rps"] - pair["b"]["rps"], 2)
+    assert len(pair["skladniki_porownania"]) == 4
+
+
+def test_quality_chat_tool_produces_audit_table(db):
+    fake = FakeOllama(
+        tool_call("get_data_quality", district="Alfa"), text("Brakuje historii zdarzeń.")
+    )
+    reply = ask(db, fake, message="Sprawdź jakość danych w Alfa")
+    assert reply.grounded and reply.tool_calls[0].name == "get_data_quality"
+    assert reply.evidence.tables[0].title == "Jakość danych — lista do weryfikacji"
+    assert reply.evidence.map_ids

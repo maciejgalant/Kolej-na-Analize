@@ -8,11 +8,14 @@ import {
 import { APP_NAME, BRAND_LOGO } from "./brand";
 import { useEffect, useRef, useState } from "react";
 import { AnswerContent, AnswerText } from "./chat/AnswerContent";
+import { AnalysisShortcuts } from "./chat/AnalysisShortcuts";
+import type { CrossingFeature } from "./api";
 import { activePath, branchLeaf } from "./chat/model";
 import type { Attachment, Conversation, Message } from "./chat/model";
 interface Props {
   conversation: Conversation;
   modelReady: boolean;
+  crossings: CrossingFeature[];
   onDraft: (draft: string) => void;
   onAttachment: (a?: Attachment) => void;
   onSend: (
@@ -28,6 +31,7 @@ interface Props {
 export function Assistant({
   conversation,
   modelReady,
+  crossings,
   onDraft,
   onAttachment,
   onSend,
@@ -134,6 +138,16 @@ export function Assistant({
               (m) => m.parent === message.parent && m.role === message.role,
             );
             const index = siblings.findIndex((m) => m.id === message.id);
+            const onlyCard =
+              message.reply?.evidence?.cards.length === 1
+                ? message.reply.evidence.cards[0]
+                : undefined;
+            const contextAttachment =
+              message.attachment ??
+              [...path].reverse().find((m) => m.role === "user")?.attachment ??
+              (onlyCard
+                ? { id: onlyCard.crossing_id, label: onlyCard.title }
+                : undefined);
             return (
               <article
                 key={message.id}
@@ -209,28 +223,30 @@ export function Assistant({
                           onMap={(ids) => onMap(ids)}
                           onCard={(id) => onMap([id], id)}
                         />
-                        {message.reply && (
-                          <details className="answer-trace">
-                            <summary>
-                              {message.reply.grounded
-                                ? "✓ Odpowiedź na podstawie danych"
-                                : "! Odpowiedź bez odczytu danych"}
-                            </summary>
-                            <ul>
-                              {message.reply.tool_calls.map((call, i) => (
-                                <li key={i}>
-                                  {call.name}:{" "}
-                                  {call.ok
-                                    ? "odczyt zakończony"
-                                    : "błąd odczytu"}
-                                </li>
-                              ))}
-                            </ul>
-                            {message.reply.disclaimer && (
-                              <p>{message.reply.disclaimer}</p>
-                            )}
-                          </details>
-                        )}
+                        {message.reply &&
+                          (message.reply.tool_calls.length > 0 ||
+                            message.reply.disclaimer) && (
+                            <details className="answer-trace">
+                              <summary>
+                                {message.reply.grounded
+                                  ? "✓ Odpowiedź na podstawie danych"
+                                  : "! Odpowiedź bez odczytu danych"}
+                              </summary>
+                              <ul>
+                                {message.reply.tool_calls.map((call, i) => (
+                                  <li key={i}>
+                                    {call.name}:{" "}
+                                    {call.ok
+                                      ? "odczyt zakończony"
+                                      : "błąd odczytu"}
+                                  </li>
+                                ))}
+                              </ul>
+                              {message.reply.disclaimer && (
+                                <p>{message.reply.disclaimer}</p>
+                              )}
+                            </details>
+                          )}
                       </>
                     )}
                   </>
@@ -243,21 +259,15 @@ export function Assistant({
                       aria-label="Propozycje dalszych pytań"
                     >
                       {[
-                        "Wyjaśnij wynik RPS",
-                        "Porównaj z innymi przejazdami",
+                        "Wyjaśnij prościej ten wynik",
+                        contextAttachment
+                          ? "Sprawdź jakość danych tego przejazdu"
+                          : "Które przejazdy mają niepełne dane?",
                       ].map((question) => (
                         <button
                           key={question}
                           disabled={busy || !modelReady}
-                          onClick={() =>
-                            onSend(
-                              question,
-                              message.attachment ??
-                                [...path]
-                                  .reverse()
-                                  .find((m) => m.role === "user")?.attachment,
-                            )
-                          }
+                          onClick={() => onSend(question, contextAttachment)}
                         >
                           {question} <span aria-hidden="true">↗</span>
                         </button>
@@ -354,6 +364,11 @@ export function Assistant({
       </div>
       <div className="composer-area">
         <div className="composer-inner">
+          <AnalysisShortcuts
+            crossings={crossings}
+            disabled={busy || !modelReady}
+            onSend={(text) => onSend(text)}
+          />
           {!modelReady && (
             <p className="model-unavailable" role="status">
               Asystent jest niedostępny. Nadal możesz otworzyć mapę i sprawdzić
