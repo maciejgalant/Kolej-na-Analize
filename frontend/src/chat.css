@@ -839,3 +839,30 @@ button:disabled {
     scroll-behavior: auto;
   }
 }
+
+/* Full approved wordmark stays legible on the navy sidebar. */
+.sidebar-brand {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin: 0 0 24px;
+}
+.brand-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+}
+.sidebar-brand > small {
+  padding: 0 8px;
+  color: #b9c9dc;
+  font-size: 11px;
+}
+.welcome-logo {
+  display: block;
+  width: min(360px, 100%);
+  height: auto;
+  margin: 0 0 28px;
+}

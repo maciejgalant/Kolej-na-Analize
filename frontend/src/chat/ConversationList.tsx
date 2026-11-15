@@ -1,3 +1,4 @@
+import { APP_NAME, BRAND_LOGO } from "../brand";
 import { useState } from "react";
 import type { Conversation } from "./model";
 interface Props {
@@ -33,13 +34,14 @@ export function ConversationList({
   return (
     <aside className="conversation-sidebar" aria-label="Rozmowy">
       <div className="sidebar-brand">
-        <span className="rail-mark" aria-hidden="true">
-          R
-        </span>
-        <div>
-          <strong>RailSafe AI</strong>
-          <small>Asystent analizy przejazdów</small>
-        </div>
+        <img
+          className="brand-logo"
+          src={BRAND_LOGO}
+          alt={APP_NAME}
+          width="2172"
+          height="724"
+        />
+        <small>Asystent analizy przejazdów</small>
       </div>
       <button className="primary new-conversation" onClick={onNew}>
         ＋ Nowa rozmowa

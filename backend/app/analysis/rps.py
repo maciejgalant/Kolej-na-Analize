@@ -1,4 +1,4 @@
-"""RailSafe Priority Score (RPS) — wersja eksperymentalna `rps-0.5-exp`.
+"""Wskaźnik priorytetu do dalszej oceny (RPS) — wersja eksperymentalna `rps-0.5-exp`.
 
 RPS to autorski *priorytet do dalszej oceny*, a nie prawdopodobieństwo wypadku ani
 urzędowa klasyfikacja przejazdu. Wagi i tabele poniżej są założeniami roboczymi,

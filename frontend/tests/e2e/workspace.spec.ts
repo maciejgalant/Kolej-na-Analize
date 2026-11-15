@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mockApi, reply } from "./fixtures";
 const input = (page) =>
-  page.getByRole("textbox", { name: "Pytanie do RailSafe AI" });
+  page.getByRole("textbox", { name: "Pytanie do Kolej na Analizę" });
 async function send(page, text = "Pokaż ranking") {
   await input(page).fill(text);
   await page
@@ -18,6 +18,17 @@ test("welcome, full-width answers, evidence and map scoped to an answer", async 
   page.on("pageerror", (e) => errors.push(e.message));
   await mockApi(page);
   await page.goto("/");
+  await expect(page).toHaveTitle(/Kolej na Analizę/);
+  const brand = page.locator(".brand-logo");
+  await expect(brand).toHaveAttribute("alt", "Kolej na Analizę");
+  await expect
+    .poll(async () =>
+      brand.evaluate(
+        (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+      ),
+    )
+    .toBeTruthy();
+
   await expect(
     page.getByRole("heading", { name: "Przyjrzyjmy się przejazdom." }),
   ).toBeVisible();

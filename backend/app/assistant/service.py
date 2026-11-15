@@ -14,7 +14,7 @@ from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool
 MAX_TOOL_ROUNDS = 4
 MAX_TOOL_RESULT_CHARS = 6000
 SYSTEM_PROMPT = (
-    "Jesteś asystentem aplikacji RailSafe AI, która porządkuje przejazdy kolejowo-drogowe "
+    "Jesteś asystentem aplikacji Kolej na Analizę, która porządkuje przejazdy kolejowo-drogowe "
     "w Warszawie według eksperymentalnego priorytetu do dalszej oceny (RPS). "
     "Zasady:\n"
     "1. Odpowiadaj po polsku, zwięźle, wyłącznie na podstawie wyników funkcji. "

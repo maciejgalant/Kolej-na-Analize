@@ -1,4 +1,6 @@
-# RailSafe AI
+# Kolej na Analizę
+
+<img src="frontend/public/brand/kolej-na-analize-logo.png" alt="Kolej na Analizę" width="520" />
 
 **System analizy ekspozycji na ruch oraz priorytetów bezpieczeństwa przejazdów kolejowo-drogowych w Warszawie.**
 
@@ -104,3 +106,16 @@ Warszawa i 18 dzielnic; weryfikowane lokalizacje przejazdów; planowane i (gdy d
 
 **Data specyfikacji:** 2026-11-11.
 
+
+
+## Nazwa projektu i aktualizacja lokalnej kopii
+Repozytorium: https://github.com/maciejgalant/Kolej-na-Analize.
+
+Po zmianie nazwy repozytorium w istniejącej kopii ustaw adres:
+
+```bash
+git remote set-url origin https://github.com/maciejgalant/Kolej-na-Analize.git
+git pull --ff-only origin main
+```
+
+Nazwa katalogu lokalnego może pozostać dotychczasowa. Identyfikatory Docker Compose, bazy, wolumenów i zapisu rozmów pozostają zgodne z istniejącymi instalacjami; nie trzeba przenosić danych. Szczegóły: [BRANDING.md](docs/BRANDING.md).

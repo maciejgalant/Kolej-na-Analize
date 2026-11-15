@@ -180,8 +180,8 @@ def _load_road_counts(conn: psycopg.Connection, week: list[date]) -> None:
         source_id = conn.execute(
             """
             INSERT INTO system.sources (code, name, provider, is_demo)
-            VALUES (%s, 'Fikcyjne pomiary ruchu drogowego (zestaw demonstracyjny)', 'RailSafe AI',
-                    true)
+            VALUES (%s, 'Fikcyjne pomiary ruchu drogowego (zestaw demonstracyjny)',
+                    'Kolej na Analizę', true)
             ON CONFLICT (code) DO UPDATE SET is_demo = true
             RETURNING source_id
             """,
@@ -222,8 +222,8 @@ def _load_intersection(conn: psycopg.Connection, week: list[date]) -> None:
             """
             INSERT INTO system.sources (code, name, provider, is_demo)
             VALUES ('demo_intersections',
-                    'Fikcyjne pomiary na skrzyżowaniach (zestaw demonstracyjny)', 'RailSafe AI',
-                    true)
+                    'Fikcyjne pomiary na skrzyżowaniach (zestaw demonstracyjny)',
+                    'Kolej na Analizę', true)
             ON CONFLICT (code) DO UPDATE SET is_demo = true
             RETURNING source_id
             """
