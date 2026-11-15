@@ -9,6 +9,7 @@ Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Ap
 > Status: **ewidencja przejazdów, planowy ruch pociągów, pomiary ruchu drogowego ZDM, eksperymentalny ranking RPS z mapą i asystent AI na lokalnym modelu**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
+- [Porównania, jakość danych i krótkie rozmowy](docs/ASSISTANT_CAPABILITIES.md)
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
 - [Architektura i model danych](docs/ARCHITECTURE.md)
 - [Źródła danych, jakość i licencje](docs/DATA_SOURCES.md)
@@ -42,7 +43,7 @@ Na **pustej** bazie jedno polecenie ładuje 11 fikcyjnych przejazdów (`DEMO-01`
 docker compose run --rm worker python -m app.worker load-demo
 ```
 
-Nie wymaga sieci ani kluczy API. Aplikacja pokazuje wtedy czerwony pasek „DANE DEMONSTRACYJNE”, a ranking ma znacznik `is_demo`. Zestaw przechodzi przez te same funkcje importu i analizy co dane rzeczywiste, więc pokazuje działanie aplikacji, a nie stan sieci kolejowej. Danych fikcyjnych i rzeczywistych nie da się zmieszać: `load-demo` odmawia pracy na bazie z prawdziwymi przejazdami, a polecenia `import-*` — na bazie demonstracyjnej. Żeby mieć obie, użyj osobnego projektu Compose (osobny wolumen), np. `docker compose -p railsafe-demo ...` z innymi portami w `.env`.
+Nie wymaga sieci ani kluczy API. Aplikacja pokazuje wtedy bursztynowy pasek „DANE DEMONSTRACYJNE”, a ranking ma znacznik `is_demo`. Zestaw przechodzi przez te same funkcje importu i analizy co dane rzeczywiste, więc pokazuje działanie aplikacji, a nie stan sieci kolejowej. Danych fikcyjnych i rzeczywistych nie da się zmieszać: `load-demo` odmawia pracy na bazie z prawdziwymi przejazdami, a polecenia `import-*` — na bazie demonstracyjnej. Żeby mieć obie, użyj osobnego projektu Compose (osobny wolumen), np. `docker compose -p railsafe-demo ...` z innymi portami w `.env`.
 
 ### Import ewidencji przejazdów (RSA-004)
 ```bash
@@ -81,7 +82,7 @@ docker compose run --rm worker python -m app.worker run-analysis
 Uruchamiać po imporcie rozkładu. Liczy eksperymentalny wskaźnik RPS dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/RPS_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
 
 ### Asystent AI (RSA-013)
-Głównym ekranem jest rozmowa z lokalnym modelem Qwen (Ollama), z historią w lewym panelu. Mapa otwiera się ręcznie lub przyciskiem „Pokaż na mapie” w odpowiedzi. Z karty przejazdu można dołączyć obiekt do kolejnego pytania. Historia, gałęzie i stan mapy są zapisywane wyłącznie w tej przeglądarce, bez logowania. Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez pięć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Głównym ekranem jest rozmowa z lokalnym modelem Qwen (Ollama), z historią w lewym panelu. Mapa otwiera się ręcznie lub przyciskiem „Pokaż na mapie” w odpowiedzi. Z karty przejazdu można dołączyć obiekt do kolejnego pytania. Historia, gałęzie i stan mapy są zapisywane wyłącznie w tej przeglądarce, bez logowania. Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez sześć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 

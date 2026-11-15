@@ -259,6 +259,7 @@ export function App() {
           key={conversation.id}
           conversation={conversation}
           modelReady={modelReady}
+          crossings={data.kind === "ready" ? data.crossings : []}
           onDraft={(draft) =>
             chat.update(conversation.id, (c) => ({ ...c, draft }))
           }

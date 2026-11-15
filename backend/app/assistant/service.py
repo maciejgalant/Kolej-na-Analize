@@ -9,6 +9,7 @@ import psycopg
 
 from app.api.crossings import DISCLAIMER
 from app.assistant.presentation import Evidence, build_evidence
+from app.assistant.smalltalk import conversational_reply
 from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool
 
 MAX_TOOL_ROUNDS = 4
@@ -36,7 +37,17 @@ SYSTEM_PROMPT = (
     "numer przejazdu, kategoria, RPS.\n"
     "9. Wynik attached_crossing jest odczytem danych przejazdu dołączonego przez użytkownika. "
     "Odnoś pytanie do tego obiektu. Karty, tabele, wykresy i przyciski mapy dodaje aplikacja; "
-    "nie wymyślaj własnych akcji ani identyfikatorów."
+    "nie wymyślaj własnych akcji ani identyfikatorów.\n"
+    "10. Porównując dwa przejazdy, użyj compare_crossings; opisz różnicę RPS jako A minus B, "
+    "wkłady składników i ograniczenia porównania. Jeśli nie znasz dwóch numerów, poproś o "
+    "ich wybór; nie wybieraj losowych obiektów.\n"
+    "11. Oceniając jakość lub braki danych, użyj get_data_quality. Dla dołączonego przejazdu "
+    "użyj jego numeru. Nie utożsamiaj kompletności z pewnością, aktualnością lub bezpieczeństwem. "
+    "Odróżniaj pomiar od modelu i dane planowe od rzeczywistych.\n"
+    "12. Na prośbę o prostsze wyjaśnienie najpierw ponownie odczytaj odpowiednie dane "
+    "lub get_method, następnie wyjaśnij maksymalnie w trzech krótkich zdaniach bez żargonu. "
+    "Historia rozmowy nie jest źródłem potwierdzonych wartości. "
+    "Bądź uprzejmy i naturalny. Nie deklaruj możliwości, których nie ma w funkcjach."
 )
 # Model zostaje w pamięci między pytaniami; limit długości chroni przed wielominutową odpowiedzią.
 KEEP_ALIVE = "30m"
@@ -106,6 +117,9 @@ def chat(
     history: list[dict[str, str]] | None = None,
     attached_crossing: dict | None = None,
 ) -> AssistantReply:
+    greeting = conversational_reply(message, attached=attached_crossing is not None)
+    if greeting is not None:
+        return AssistantReply(answer=greeting, model=model, disclaimer="")
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages += [
         {"role": item["role"], "content": item["content"]}
@@ -189,10 +203,24 @@ def chat(
             reply.tool_calls.append(
                 ToolCallRecord(name, arguments if isinstance(arguments, dict) else {}, ok)
             )
-            content = json.dumps(result, ensure_ascii=False, default=str)
-            messages.append(
-                {"role": "tool", "tool_name": name, "content": content[:MAX_TOOL_RESULT_CHARS]}
-            )
+            model_result = result
+            if name == "compare_crossings" and ok:
+                model_result = {
+                    **result,
+                    **{
+                        key: {k: v for k, v in result[key].items() if k != "skladniki"}
+                        for key in ("a", "b")
+                    },
+                }
+            content = json.dumps(model_result, ensure_ascii=False, default=str)
+            if len(content) > MAX_TOOL_RESULT_CHARS:
+                content = json.dumps(
+                    {
+                        "blad": "Wynik jest zbyt obszerny. Wywołaj funkcję "
+                        "z mniejszym limitem lub zapytaj o jeden przejazd."
+                    }
+                )
+            messages.append({"role": "tool", "tool_name": name, "content": content})
 
     reply.evidence = build_evidence(conn, results)
     reply.grounded = any(call.ok for call in reply.tool_calls)

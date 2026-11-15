@@ -79,6 +79,114 @@ def build_evidence(
             rows = [result]
         elif name == "compare_crossings":
             rows = [result["a"], result["b"]]
+            parts = result.get("skladniki_porownania", [])
+            if parts:
+                statuses = {"ok": "dostępny", "modelled": "modelowany", "unknown": "brak danych"}
+                evidence.tables.append(
+                    Table(
+                        title="Porównanie składników: A minus B",
+                        columns=[
+                            "Składnik",
+                            f"A: {result['a'].get('numer')}",
+                            "Status A",
+                            f"B: {result['b'].get('numer')}",
+                            "Status B",
+                            "Różnica A−B",
+                            "Wkład do RPS A",
+                            "Wkład do RPS B",
+                        ],
+                        rows=[
+                            [
+                                statuses.get(p.get(k), p.get(k))
+                                if k.startswith("status_")
+                                else p.get(k)
+                                for k in (
+                                    "skladnik",
+                                    "a",
+                                    "status_a",
+                                    "b",
+                                    "status_b",
+                                    "roznica_a_minus_b",
+                                    "wklad_do_rps_a",
+                                    "wklad_do_rps_b",
+                                )
+                            ]
+                            for p in parts
+                        ],
+                    )
+                )
+                evidence.tables.append(
+                    Table(
+                        title="Jakość danych porównywanych przejazdów",
+                        columns=[
+                            "Przejazd",
+                            "Kompletność składników (%)",
+                            "Ruch drogowy",
+                            "Brakujące składniki",
+                        ],
+                        rows=[
+                            [
+                                result[key].get("numer"),
+                                result[f"jakosc_{key}"]["kompletnosc_proc"],
+                                result[f"jakosc_{key}"]["ruch_drogowy"],
+                                ", ".join(
+                                    COMPONENTS[k]
+                                    for k in result[f"jakosc_{key}"]["brakujace_skladniki"]
+                                )
+                                or "Brak",
+                            ]
+                            for key in ("a", "b")
+                        ],
+                    )
+                )
+                a, b = rows
+                evidence.notes.extend(
+                    [
+                        f"A: {a.get('numer')}; B: {b.get('numer')}.",
+                        result["uwaga"],
+                        "Różnica RPS A−B: "
+                        + (
+                            str(result["roznica_rps_a_minus_b"])
+                            if result.get("roznica_rps_a_minus_b") is not None
+                            else "brak porównania liczbowego — przejazd poza rankingiem."
+                        ),
+                    ]
+                )
+        elif name == "get_data_quality":
+            rows = result.get("przejazdy", [])
+            evidence.tables.append(
+                Table(
+                    title="Jakość danych — lista do weryfikacji",
+                    columns=[
+                        "Przejazd",
+                        "Kompletność składników (%)",
+                        "Ruch drogowy",
+                        "Składniki modelowane",
+                        "Brakujące składniki",
+                    ],
+                    rows=[
+                        [
+                            r.get("numer"),
+                            r["jakosc_danych"]["kompletnosc_proc"],
+                            r["jakosc_danych"]["ruch_drogowy"],
+                            ", ".join(
+                                COMPONENTS[k]
+                                for k in r["jakosc_danych"]["modelowane_skladniki"]
+                                if k in COMPONENTS
+                            )
+                            or "Brak",
+                            ", ".join(
+                                COMPONENTS[k]
+                                for k in r["jakosc_danych"]["brakujace_skladniki"]
+                                if k in COMPONENTS
+                            )
+                            or "Brak",
+                        ]
+                        for r in rows
+                    ],
+                )
+            )
+            evidence.notes.append(result["uwaga"])
         elif name == "list_districts":
             evidence.tables.append(
                 Table(
@@ -121,7 +229,7 @@ def build_evidence(
                 ),
             )
             cards[crossing_id] = card
-            if name != "get_ranking":
+            if name not in ("get_ranking", "get_data_quality"):
                 detailed.add(crossing_id)
             evidence.notes.extend(row.get("ostrzezenia", []))
     evidence.cards = list(cards.values())

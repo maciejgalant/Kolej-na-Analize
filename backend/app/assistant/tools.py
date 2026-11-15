@@ -13,6 +13,7 @@ import psycopg
 
 from app.analysis import rps
 from app.api.crossings import DISCLAIMER, LATEST_RUN_SQL
+from app.assistant.insights import comparison, quality_summary
 
 MAX_LIMIT = 15
 
@@ -79,6 +80,8 @@ def _find_crossing(conn: psycopg.Connection, number: Any) -> dict:
     ).fetchall()
     if not rows:
         raise ToolError(f"Nie ma w ewidencji przejazdu o numerze '{number}'.")
+    if len(rows) > 1:
+        raise ToolError("Numer przejazdu jest niejednoznaczny w ewidencji. Wymaga weryfikacji.")
     return rows[0]
 
 
@@ -120,10 +123,11 @@ def _crossing_summary(conn: psycopg.Connection, crossing_id: int) -> dict:
             c["component"]: {
                 "wartosc": None if c["value"] is None else float(c["value"]),
                 "status": c["status"],
+                "waga": float(c["weight"]),
                 "szczegoly": c["detail"],
             }
             for c in conn.execute(
-                "SELECT component, value, status, detail FROM analysis.components "
+                "SELECT component, value, status, weight, detail FROM analysis.components "
                 "WHERE run_id = %s AND crossing_id = %s",
                 (run_id, crossing_id),
             )
@@ -189,7 +193,54 @@ def get_crossing(conn: psycopg.Connection, number: Any = None) -> dict:
 
 
 def compare_crossings(conn: psycopg.Connection, number_a: Any = None, number_b: Any = None) -> dict:
-    return {"a": get_crossing(conn, number_a), "b": get_crossing(conn, number_b)}
+    a, b = get_crossing(conn, number_a), get_crossing(conn, number_b)
+    if a["crossing_id"] == b["crossing_id"]:
+        raise ToolError("Wybierz dwa różne przejazdy do porównania.")
+    return comparison(a, b)
+
+
+def get_data_quality(
+    conn: psycopg.Connection, district: str | None = None, number: Any = None, limit: Any = 5
+) -> dict:
+    if number is not None and district:
+        raise ToolError("Podaj numer przejazdu albo dzielnicę, nie oba naraz.")
+    if type(limit) is not int or not 1 <= limit <= MAX_LIMIT:
+        raise ToolError(f"limit musi być liczbą całkowitą w zakresie 1-{MAX_LIMIT}.")
+    district_id, district_name = _district_id(conn, district)
+    if number is not None:
+        rows = [get_crossing(conn, number)]
+    else:
+        ids = conn.execute(
+            f"""
+            SELECT c.crossing_id FROM spatial.crossings c
+            LEFT JOIN analysis.risk_scores s
+                ON s.crossing_id = c.crossing_id AND s.run_id = ({LATEST_RUN_SQL})
+            WHERE c.district_id IS NOT NULL AND c.verification_status = 'verified'
+              AND c.category IS DISTINCT FROM 'E'
+              AND (%(district)s::int IS NULL OR c.district_id = %(district)s)
+            ORDER BY s.completeness_pct ASC NULLS FIRST,
+              (SELECT count(*) FROM analysis.components p
+               WHERE p.crossing_id = c.crossing_id AND p.run_id = s.run_id
+                 AND p.status = 'modelled') DESC, c.crossing_id
+            LIMIT %(limit)s
+            """,
+            {"district": district_id, "limit": limit},
+        ).fetchall()
+        rows = [_crossing_summary(conn, r["crossing_id"]) for r in ids]
+    for row in rows:
+        row["jakosc_danych"] = quality_summary(row)
+        row.pop(
+            "skladniki", None
+        )  # diagnostics retain statuses without large raw geometry payloads
+    return {
+        "zakres": str(number) if number is not None else district_name or "cała Warszawa",
+        "przejazdy": rows,
+        "uwaga": "Lista do przeglądu danych: najpierw brak analizy lub najniższa kompletność, "
+        "następnie więcej składników modelowanych. To nie ranking bezpieczeństwa ani pomiar "
+        "wiarygodności. Przejścia kategorii E są poza rankingiem RPS z założenia. "
+        "Kompletność opisuje dostępność składników, nie ich aktualność. "
+        "Do potwierdzenia aktualności sprawdź okresy w źródłach.",
+    }
 
 
 def list_districts(conn: psycopg.Connection) -> dict:
@@ -279,6 +330,20 @@ REGISTRY: dict[str, tuple[Callable[..., dict], str, dict]] = {
         get_method,
         "Opis metody RPS: wzór, składniki, wagi, okres danych i ograniczenia.",
         _schema({}, []),
+    ),
+    "get_data_quality": (
+        get_data_quality,
+        "Braki i jakość danych: kompletność RPS, modelowane składniki, źródło ruchu. "
+        "Dla jednego numeru albo dzielnicy; bez argumentów dla Warszawy. "
+        "Użyj przy pytaniach o niepełne dane, niepewność lub co należy zweryfikować.",
+        _schema(
+            {
+                "district": {"type": "string"},
+                "number": NUMBER,
+                "limit": {"type": "integer", "minimum": 1, "maximum": MAX_LIMIT},
+            },
+            [],
+        ),
     ),
 }
 
