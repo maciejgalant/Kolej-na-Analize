@@ -85,7 +85,7 @@ def _find_crossing(conn: psycopg.Connection, number: Any) -> dict:
 def _crossing_summary(conn: psycopg.Connection, crossing_id: int) -> dict:
     row = conn.execute(
         f"""
-        SELECT c.name AS numer, c.category AS kategoria, d.name AS dzielnica,
+        SELECT c.crossing_id, c.name AS numer, c.category AS kategoria, d.name AS dzielnica,
                c.verification_status AS status_weryfikacji,
                (SELECT round(avg(f.train_count))::int FROM rail.crossing_flow f
                  WHERE f.crossing_id = c.crossing_id AND f.evidence_type = 'planned'
@@ -102,6 +102,8 @@ def _crossing_summary(conn: psycopg.Connection, crossing_id: int) -> dict:
         """,
         (crossing_id,),
     ).fetchone()
+    if row is None:
+        raise ToolError("Nie ma przejazdu o takim identyfikatorze w obszarze analizy.")
     run_id = row.pop("run_id")
     row["przejscie_dla_pieszych_poza_rankingiem"] = row["kategoria"] == "E"
     row["ulice"] = [
@@ -148,7 +150,7 @@ def get_ranking(conn: psycopg.Connection, district: str | None = None, limit: An
     district_id, district_name = _district_id(conn, district)
     rows = conn.execute(
         f"""
-        SELECT s.rank AS pozycja, c.name AS numer, c.category AS kategoria,
+        SELECT c.crossing_id, s.rank AS pozycja, c.name AS numer, c.category AS kategoria,
                d.name AS dzielnica, s.rps::float AS rps,
                s.rank_best AS pozycja_najlepsza, s.rank_worst AS pozycja_najgorsza,
                (SELECT round(avg(f.train_count))::int FROM rail.crossing_flow f
@@ -300,3 +302,8 @@ def call_tool(conn: psycopg.Connection, name: str, arguments: Any) -> dict:
     if missing:
         raise ToolError(f"Brakuje argumentów: {missing}.")
     return function(conn, **arguments)
+
+
+def get_attached_crossing(conn: psycopg.Connection, crossing_id: int) -> dict:
+    """Resolve an explicit UI attachment using its database ID, not a model-supplied name."""
+    return _crossing_summary(conn, crossing_id)

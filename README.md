@@ -79,7 +79,7 @@ docker compose run --rm worker python -m app.worker run-analysis
 Uruchamiać po imporcie rozkładu. Liczy eksperymentalny wskaźnik RPS dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/RPS_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
 
 ### Asystent AI (RSA-013)
-Pole na dole aplikacji wysyła pytania do lokalnego modelu Qwen (Ollama). Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez pięć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Głównym ekranem jest rozmowa z lokalnym modelem Qwen (Ollama), z historią w lewym panelu. Mapa otwiera się ręcznie lub przyciskiem „Pokaż na mapie” w odpowiedzi. Z karty przejazdu można dołączyć obiekt do kolejnego pytania. Historia, gałęzie i stan mapy są zapisywane wyłącznie w tej przeglądarce, bez logowania. Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez pięć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 
@@ -91,6 +91,7 @@ API ewidencji: `GET /api/v1/districts`, `GET /api/v1/crossings` (filtry `distric
 - Backend: `cd backend && pip install -r requirements-dev.txt && ruff check . && pytest`
 - Testy migracji wymagają PostGIS i bazy o nazwie kończącej się na `_test`: `RAILSAFE_TEST_DB=1 POSTGRES_HOST=… POSTGRES_DB=railsafe_test pytest` (bez tej zmiennej są pomijane)
 - Frontend: `cd frontend && npm ci && npm run dev` (proxy `/api` → `127.0.0.1:8765`)
+- Testy frontendu: `npm test`, `npm run build`; interfejs z atrapą API: `npx playwright install chromium`, następnie `npm run test:e2e` (w katalogu `frontend`).
 
 ## Wykorzystanie istniejących projektów
 - [GeoGraph Demo 3](https://github.com/maciejgalant/GeoGraph-demo-03): inspiracja dla FastAPI/PostGIS/Ollama, selektora analiz i Docker Compose.
@@ -102,3 +103,4 @@ Kod i dane są przenoszone wyłącznie po sprawdzeniu licencji, zależności i p
 Warszawa i 18 dzielnic; weryfikowane lokalizacje przejazdów; planowane i (gdy dostępne) potwierdzone przejazdy kolejowe; publiczne pomiary ruchu drogowego; licencjonowane źródła live jako opcjonalne; ranking **priorytetu do dalszej oceny**, mapa i asystent AI odpowiadający na podstawie danych z backendu.
 
 **Data specyfikacji:** 2026-11-11.
+

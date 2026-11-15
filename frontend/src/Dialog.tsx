@@ -1,15 +1,37 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 interface Props {
   title: string;
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  className?: string;
 }
 
 /** Okno modalne na natywnym <dialog>: fokus, Esc i tło obsługuje przeglądarka. */
-export function Dialog({ title, open, onClose, children }: Props) {
+export function Dialog({
+  title,
+  open,
+  onClose,
+  children,
+  className = "",
+}: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  useEffect(() => {
+    const previous = document.activeElement;
+    return () => {
+      queueMicrotask(() => {
+        if (
+          !ref.current?.isConnected &&
+          previous instanceof HTMLElement &&
+          previous.isConnected &&
+          document.activeElement === document.body
+        )
+          previous.focus();
+      });
+    };
+  }, []);
 
   useEffect(() => {
     const node = ref.current;
@@ -21,8 +43,8 @@ export function Dialog({ title, open, onClose, children }: Props) {
   return (
     <dialog
       ref={ref}
-      className="dialog"
-      aria-labelledby="dialog-title"
+      className={`dialog ${className}`}
+      aria-labelledby={titleId}
       onClose={onClose}
       onClick={(event) => {
         // Kliknięcie w tło (sam element dialog, nie jego zawartość) zamyka okno.
@@ -31,7 +53,7 @@ export function Dialog({ title, open, onClose, children }: Props) {
     >
       <div className="dialog-body">
         <header className="dialog-head">
-          <h2 id="dialog-title">{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           <button
             type="button"
             className="icon-button"

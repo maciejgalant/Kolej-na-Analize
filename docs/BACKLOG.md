@@ -14,7 +14,7 @@ Data odniesienia: 2026-11-11. Zakładany termin zgłoszenia: 2026-11-22 (potwier
 | RSA-009 | Matchowanie kursów i ruchu do przejazdu | 004–007 | P0 | Testy topologii, czasu i deduplikacji | zrobione (plan) |
 | RSA-010 | RPS, brakujące dane i analiza wrażliwości | 009 | P0 | Wersja metody i walidacja | zrobione (rps-0.5-exp) |
 | RSA-011 | API dla przejazdów i rankingów | 003,010 | P0 | Kontrakt OpenAPI i testy | zrobione |
-| RSA-012 | Dashboard w stylistyce kolejowej | 011 | P0 | Mapa, filtry, karty i wykresy | częściowo: brak wykresów i porównania dzielnic |
+| RSA-012 | Interfejs analityczny w stylistyce kolejowej | 011 | P0 | Mapa, filtry, karty i wykresy | rozszerzony o interfejs rozmów; porównanie dzielnic w tabeli, osobny dashboard porównawczy poza tym etapem |
 | RSA-013 | Qwen: wybór bezpiecznych funkcji i wyjaśnienia | 011 | P0 | Test 5 intencji i odmowy przy brakach | zrobione |
 | RSA-014 | Testy integracyjne, syntetyczny demo-set | 010–013 | P0 | Uruchomienie bez kluczy API | zrobione |
 | RSA-015 | Dokumentacja konkursowa i prezentacja | 010–014 | P0 | Jasne źródła, ograniczenia, wpływ na bezpieczeństwo | do zrobienia |
@@ -41,3 +41,15 @@ Jeśli danych brakuje, ograniczyć wiarygodny zakres analizowanych obiektów, za
 
 ## Zasady pracy
 Osobne branche `feature/RSA-###-opis`, PR + CI, brak bezpośrednich edycji main bez review; jawne migracje; niedestrukcyjne testy; dla danych realnych snapshoty z metadanymi i licencją; bez sekretów w Git. Zmiany kontraktów API i schematów wymagają uzgodnienia przed równoległą implementacją.
+
+
+## Etap interfejsu rozmów — 2026-11-15
+| ID | Zakres | Kryterium |
+|---|---|---|
+| RSA-CHAT-01 | Układ rozmów i kolejowa stylistyka | Historia po lewej, czat po prawej, powitanie, szkic i kopiowanie |
+| RSA-CHAT-02 | Historia i gałęzie | Zapis po odświeżeniu, zmiana tytułu, wyszukiwanie, przypinanie, usuwanie, edycja i ponawianie bez utraty poprzednich wersji |
+| RSA-CHAT-03 | Mapa modalna i kontekst | Ręczne otwarcie, filtry, podkłady, szczegóły, dołączenie przejazdu bez automatycznej wysyłki, stan mapy per rozmowa |
+| RSA-CHAT-04 | Wyniki asystenta | Walidowany kontrakt kart/tabel/wykresów/źródeł i ID mapy wyłącznie z danych backendu |
+| RSA-CHAT-05 | Weryfikacja i dokumentacja | Testy logiki historii, kontraktu backendu, scenariusze Playwright i build w CI |
+
+Zakres wyłączony z tego etapu: konta, synchronizacja historii, wersja mobilna, eksporty, strumieniowanie i gwarantowane anulowanie inferencji w Ollamie.

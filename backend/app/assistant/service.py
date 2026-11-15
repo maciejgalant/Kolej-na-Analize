@@ -8,6 +8,7 @@ import httpx
 import psycopg
 
 from app.api.crossings import DISCLAIMER
+from app.assistant.presentation import Evidence, build_evidence
 from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool
 
 MAX_TOOL_ROUNDS = 4
@@ -32,7 +33,10 @@ SYSTEM_PROMPT = (
     "7. Nazwy dzielnic przekazuj do funkcji tak, jak napisał użytkownik; funkcja sama "
     "rozpozna odmianę (np. „Targówka” to Targówek).\n"
     "8. Pisz zwykłym tekstem, bez tabel i nagłówków; przy rankingu podaj listę: pozycja, "
-    "numer przejazdu, kategoria, RPS."
+    "numer przejazdu, kategoria, RPS.\n"
+    "9. Wynik attached_crossing jest odczytem danych przejazdu dołączonego przez użytkownika. "
+    "Odnoś pytanie do tego obiektu. Karty, tabele, wykresy i przyciski mapy dodaje aplikacja; "
+    "nie wymyślaj własnych akcji ani identyfikatorów."
 )
 # Model zostaje w pamięci między pytaniami; limit długości chroni przed wielominutową odpowiedzią.
 KEEP_ALIVE = "30m"
@@ -63,6 +67,7 @@ class AssistantReply:
     model: str
     tool_calls: list[ToolCallRecord] = field(default_factory=list)
     disclaimer: str = DISCLAIMER
+    evidence: Evidence = field(default_factory=Evidence)
     grounded: bool = False  # czy odpowiedź opiera się na co najmniej jednym udanym wywołaniu
 
 
@@ -99,6 +104,7 @@ def chat(
     model: str,
     message: str,
     history: list[dict[str, str]] | None = None,
+    attached_crossing: dict | None = None,
 ) -> AssistantReply:
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages += [
@@ -108,6 +114,26 @@ def chat(
     ]
     messages.append({"role": "user", "content": message})
     reply = AssistantReply(answer="", model=model)
+    results: list[tuple[str, dict]] = []
+    if attached_crossing is not None:
+        # A trusted read initiated by the user's explicit attachment, before inference.
+        arguments = {"crossing_id": attached_crossing["crossing_id"]}
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [{"function": {"name": "attached_crossing", "arguments": arguments}}],
+            }
+        )
+        messages.append(
+            {
+                "role": "tool",
+                "tool_name": "attached_crossing",
+                "content": json.dumps(attached_crossing, ensure_ascii=False, default=str),
+            }
+        )
+        reply.tool_calls.append(ToolCallRecord("attached_crossing", arguments, True))
+        results.append(("attached_crossing", attached_crossing))
     thinks = model_thinks(http, base_url, model)
     truncated = False
 
@@ -157,6 +183,7 @@ def chat(
             try:
                 result = call_tool(conn, name, arguments)
                 ok = True
+                results.append((name, result))
             except ToolError as error:
                 result, ok = {"blad": str(error)}, False
             reply.tool_calls.append(
@@ -167,6 +194,7 @@ def chat(
                 {"role": "tool", "tool_name": name, "content": content[:MAX_TOOL_RESULT_CHARS]}
             )
 
+    reply.evidence = build_evidence(conn, results)
     reply.grounded = any(call.ok for call in reply.tool_calls)
     if truncated:
         reply.answer = TRUNCATED_ANSWER
