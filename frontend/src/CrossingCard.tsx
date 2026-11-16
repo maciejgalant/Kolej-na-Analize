@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
-import { type CrossingDetail, fetchCrossingDetail, type RoadCount } from "./api";
+import {
+  type CrossingDetail,
+  fetchCrossingDetail,
+  type RoadCount,
+} from "./api";
 import {
   attributeLabel,
   CATEGORY_DESCRIPTION,
@@ -84,15 +88,17 @@ function componentNote(
         : "";
       const label =
         m?.source === "zdm_apr" ? "pomiar ZDM" : "pomiar fikcyjny (demo)";
-      return `${trains} × ${Number(detail.vehicles_per_day_measured).toLocaleString(
+      return `${trains} × ${Number(
+        detail.vehicles_per_day_measured,
+      ).toLocaleString(
         "pl-PL",
       )} poj./dobę (${label}${where}; model z klasy drogi: ${Number(
         detail.vehicles_per_day_model,
       ).toLocaleString("pl-PL")})`;
     }
-    return `${trains} × ok. ${Number(detail.vehicles_per_day_model).toLocaleString(
-      "pl-PL",
-    )} poj./dobę (model z klasy drogi)`;
+    return `${trains} × ok. ${Number(
+      detail.vehicles_per_day_model,
+    ).toLocaleString("pl-PL")} poj./dobę (model z klasy drogi)`;
   }
   if (c.component === "P") return `kategoria ${detail.category}`;
   if (c.component === "G")
@@ -132,20 +138,70 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
             </span>
           </p>
         ) : (
-          <p className="priority-head">
-            <span className="priority-score">{p.rps.toFixed(1)}</span>
-            <span>
-              <span className="priority-label">
-                Priorytet do dalszej oceny (RPS)
-              </span>
+          <div className="priority-hero">
+            <div
+              className="score-dial"
+              role="img"
+              aria-label={`Priorytet RPS ${p.rps.toFixed(1)} na 100`}
+            >
+              <svg viewBox="0 0 104 104" aria-hidden="true">
+                <circle className="dial-track" cx="52" cy="52" r="44" />
+                <circle
+                  className="dial-value"
+                  cx="52"
+                  cy="52"
+                  r="44"
+                  pathLength="100"
+                  strokeDasharray={`${Math.max(0, Math.min(100, p.rps))} 100`}
+                />
+              </svg>
+              <div>
+                <strong>{fmt1(p.rps)}</strong>
+                <small>RPS / 100</small>
+              </div>
+            </div>
+            <div className="priority-hero-copy">
+              <span className="eyebrow">Priorytet do dalszej oceny</span>
               <strong>
-                pozycja {p.rank} z {p.ranked_total}
+                #{p.rank} <small>z {p.ranked_total} w rankingu</small>
               </strong>
-            </span>
-          </p>
+              <p>Wskaźnik porównawczy, nie ocena niebezpieczeństwa.</p>
+            </div>
+          </div>
         )}
       </section>
-      <Section title="Skąd ten wynik" summary="składniki priorytetu" open>
+      <div
+        className="component-overview"
+        aria-label="Składniki priorytetu — podsumowanie"
+      >
+        {p.components.map((c) => (
+          <div className="component-mini" key={c.component}>
+            <span>{COMPONENT_LABEL[c.component]}</span>
+            <strong>{c.value === null ? "—" : Math.round(c.value)}</strong>
+            <div className="mini-track">
+              <i
+                className={c.status === "modelled" ? "modelled" : ""}
+                style={{
+                  width: `${Math.max(0, Math.min(100, c.value ?? 0))}%`,
+                }}
+              />
+            </div>
+            <small>
+              {c.value === null
+                ? "brak danych"
+                : c.status === "modelled"
+                  ? "model"
+                  : "dane dostępne"}
+            </small>
+          </div>
+        ))}
+      </div>
+      <div className="completeness-line">
+        <span>Kompletność składników</span>
+        <strong>{Math.round(p.completeness_pct)}%</strong>
+        <progress max="100" value={p.completeness_pct} />
+      </div>
+      <Section title="Jak obliczono RPS" summary="wagi, dane i ograniczenia">
         <ul className="components">
           {p.components.map((c) => (
             <li key={c.component}>
@@ -200,7 +256,90 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
 
 const pl = (value: number) => value.toLocaleString("pl-PL");
 const fmt1 = (value: number | null) =>
-  value === null ? "—" : value.toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+  value === null
+    ? "—"
+    : value.toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+
+function TrafficOverview({ detail: d }: { detail: CrossingDetail }) {
+  const t = d.priority?.components.find((c) => c.component === "T")?.detail;
+  const g = d.priority?.components.find((c) => c.component === "G")?.detail;
+  const measured = t?.vehicles_source === "measured";
+  const vehicles = measured
+    ? t?.vehicles_per_day_measured
+    : t?.vehicles_per_day_model;
+  const flow = d.rail_flow;
+  const days = [
+    { label: "Roboczy", value: flow?.weekday_avg ?? null },
+    { label: "Sobota", value: flow?.saturday ?? null },
+    { label: "Niedziela", value: flow?.sunday ?? null },
+  ];
+  const max = Math.max(1, ...days.map((x) => x.value ?? 0));
+  return (
+    <>
+      <section
+        className="traffic-overview"
+        aria-label="Najważniejsze dane o ruchu"
+      >
+        <div>
+          <small>Pociągi / dzień roboczy</small>
+          <strong>{fmt1(flow?.weekday_avg ?? null)}</strong>
+          <span>pasażerskie · plan</span>
+        </div>
+        <div>
+          <small>Pojazdy / dobę</small>
+          <strong>{typeof vehicles === "number" ? pl(vehicles) : "—"}</strong>
+          <span>
+            {typeof vehicles !== "number"
+              ? "brak danych"
+              : measured
+                ? "pomiar"
+                : "szacunek z klasy drogi"}
+          </span>
+        </div>
+        <div>
+          <small>Liczba torów</small>
+          <strong>{typeof g?.tracks === "number" ? g.tracks : "—"}</strong>
+          <span>na podstawie geometrii</span>
+        </div>
+        <div>
+          <small>Kategoria</small>
+          <strong>{d.category ?? "—"}</strong>
+          <span>
+            {d.category ? CATEGORY_DESCRIPTION[d.category] : "brak danych"}
+          </span>
+        </div>
+      </section>
+      {flow && (
+        <figure className="week-chart">
+          <figcaption>
+            Planowy ruch pasażerski <small>pociągi / dobę</small>
+          </figcaption>
+          <div
+            className="week-bars"
+            role="img"
+            aria-label={days
+              .map((x) => `${x.label}: ${x.value ?? "brak danych"}`)
+              .join("; ")}
+          >
+            {days.map((x) => (
+              <div key={x.label}>
+                <strong>{fmt1(x.value)}</strong>
+                <span className="week-track">
+                  <i
+                    style={{
+                      height: `${x.value === null ? 0 : (x.value / max) * 100}%`,
+                    }}
+                  />
+                </span>
+                <small>{x.label}</small>
+              </div>
+            ))}
+          </div>
+        </figure>
+      )}
+    </>
+  );
+}
 
 /** Pociągi w każdej godzinie dnia roboczego; tło = szczyt drogowy, linia = ruch drogowy. */
 function DayProfile({
@@ -224,7 +363,9 @@ function DayProfile({
     ?.map(
       (v, h) =>
         `${h === 0 ? "M" : "L"}${(pad.l + bar * (h + 0.5)).toFixed(1)},${(
-          pad.t + plotH - (v / roadMax) * plotH
+          pad.t +
+          plotH -
+          (v / roadMax) * plotH
         ).toFixed(1)}`,
     )
     .join(" ");
@@ -250,7 +391,13 @@ function DayProfile({
           />
         ))}
         {[0, max].map((v) => (
-          <text key={v} x={pad.l - 4} y={y(v) + 3} className="day-profile-axis" textAnchor="end">
+          <text
+            key={v}
+            x={pad.l - 4}
+            y={y(v) + 3}
+            className="day-profile-axis"
+            textAnchor="end"
+          >
             {fmt1(v)}
           </text>
         ))}
@@ -289,7 +436,8 @@ function DayProfile({
         </span>
         {road && (
           <span>
-            <i className="swatch swatch-road" /> ruch drogowy (licznik ZDM, skala względna)
+            <i className="swatch swatch-road" /> ruch drogowy (licznik ZDM,
+            skala względna)
           </span>
         )}
       </figcaption>
@@ -303,28 +451,38 @@ function RoadCountItem({ count: r }: { count: RoadCount }) {
     return (
       <li>
         <strong>Skrzyżowanie {r.name}</strong>
-        <span className="muted"> — {Math.round(r.distance_m)} m od przejazdu</span>
+        <span className="muted">
+          {" "}
+          — {Math.round(r.distance_m)} m od przejazdu
+        </span>
         <br />
         {r.peak_vehicles !== null && (
           <>
-            w szczycie {pl(r.peak_vehicles)} poj./h ({r.peak_hour}, całe skrzyżowanie)
+            w szczycie {pl(r.peak_vehicles)} poj./h ({r.peak_hour}, całe
+            skrzyżowanie)
           </>
         )}
         {r.heavy_share !== null && (
           <>, ciężarowe i autobusy {Math.round(r.heavy_share * 100)}%</>
         )}
-        {r.pedestrians_max !== null && <>, piesi do {pl(r.pedestrians_max)}/h</>}
+        {r.pedestrians_max !== null && (
+          <>, piesi do {pl(r.pedestrians_max)}/h</>
+        )}
         {r.cyclists_max !== null && <>, rowerzyści do {pl(r.cyclists_max)}/h</>}
         <span className="muted small">
           {" "}
-          · {who}, pomiar {r.measured_on} ({r.hours} godz.); nie zmienia rankingu
+          · {who}, pomiar {r.measured_on} ({r.hours} godz.); nie zmienia
+          rankingu
         </span>
       </li>
     );
   return (
     <li>
       <strong>Licznik {r.name}</strong>
-      <span className="muted"> — {Math.round(r.distance_m)} m od przejazdu</span>
+      <span className="muted">
+        {" "}
+        — {Math.round(r.distance_m)} m od przejazdu
+      </span>
       <br />
       {r.vehicles_per_day !== null
         ? `${pl(r.vehicles_per_day)} poj./dobę (oba kierunki${r.day_type ? `, dni: ${r.day_type}` : ""})`
@@ -408,7 +566,8 @@ export function CrossingCard({
       <header className="card-head">
         <div>
           <h3 className="card-title">
-            {street ?? `${d.is_pedestrian ? "Przejście" : "Przejazd"} ${crossingTitle(d)}`}
+            {street ??
+              `${d.is_pedestrian ? "Przejście" : "Przejazd"} ${crossingTitle(d)}`}
           </h3>
           {street && (
             <p className="card-number">
@@ -426,19 +585,26 @@ export function CrossingCard({
       </header>
 
       {warnings.length > 0 && (
-        <ul className="warnings" aria-label="Ostrzeżenia o danych">
-          {warnings.map((f) => (
-            <li key={f.code}>
-              <strong>! {FLAG_LABEL[f.code] ?? f.code}.</strong> {f.message}
-            </li>
-          ))}
-        </ul>
+        <details className="data-notices">
+          <summary>
+            Uwagi o danych <span>{warnings.length}</span>
+          </summary>
+          <ul className="warnings" aria-label="Ostrzeżenia o danych">
+            {warnings.map((f) => (
+              <li key={f.code}>
+                <strong>{FLAG_LABEL[f.code] ?? f.code}.</strong> {f.message}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       <PriorityBlock detail={d} />
+      <TrafficOverview detail={d} />
 
       <Section
         title="Ruch kolejowy"
+        open
         summary={
           d.rail_flow === null
             ? "brak danych"
@@ -451,14 +617,21 @@ export function CrossingCard({
           </p>
         ) : (
           <>
-            <dl>
-              <Row label="Dzień roboczy">
-                <strong>{Math.round(d.rail_flow.weekday_avg)}</strong> pociągów
-                pasażerskich na dobę
-              </Row>
-              <Row label="Sobota">{d.rail_flow.saturday ?? "brak danych"}</Row>
-              <Row label="Niedziela">{d.rail_flow.sunday ?? "brak danych"}</Row>
-            </dl>
+            <details className="supporting-data">
+              <summary>Wartości dobowe i rozkład</summary>
+              <dl>
+                <Row label="Dzień roboczy">
+                  <strong>{Math.round(d.rail_flow.weekday_avg)}</strong>{" "}
+                  pociągów pasażerskich na dobę
+                </Row>
+                <Row label="Sobota">
+                  {d.rail_flow.saturday ?? "brak danych"}
+                </Row>
+                <Row label="Niedziela">
+                  {d.rail_flow.sunday ?? "brak danych"}
+                </Row>
+              </dl>
+            </details>
             {d.rail_flow.hourly_weekday && (
               <DayProfile
                 trains={d.rail_flow.hourly_weekday}
@@ -469,32 +642,36 @@ export function CrossingCard({
                 }
               />
             )}
-            {d.rail_flow.hourly_weekday && d.rail_flow.max_hour !== null && (
-              <p className="small">
-                Najwięcej pociągów: <strong>{fmt1(d.rail_flow.max_per_hour)}</strong>{" "}
-                w godzinie {d.rail_flow.max_hour}:00–{d.rail_flow.max_hour + 1}:00. W
-                godzinach szczytu drogowego (
-                {d.rail_flow.road_peak_source === "zdm"
-                  ? "według licznika ZDM"
-                  : "przyjęte 7–9 i 15–18"}
-                ): <strong>{fmt1(d.rail_flow.in_road_peaks)}</strong> z{" "}
-                {Math.round(d.rail_flow.weekday_avg)} (
-                {d.rail_flow.weekday_avg > 0
-                  ? Math.round(
-                      (100 * (d.rail_flow.in_road_peaks ?? 0)) /
-                        d.rail_flow.weekday_avg,
-                    )
-                  : 0}
-                %). Nocą (22–6): {fmt1(d.rail_flow.at_night)}.
+            <details className="supporting-data">
+              <summary>Szczyt ruchu i okres danych</summary>
+              {d.rail_flow.hourly_weekday && d.rail_flow.max_hour !== null && (
+                <p className="small">
+                  Najwięcej pociągów:{" "}
+                  <strong>{fmt1(d.rail_flow.max_per_hour)}</strong> w godzinie{" "}
+                  {d.rail_flow.max_hour}:00–{d.rail_flow.max_hour + 1}:00. W
+                  godzinach szczytu drogowego (
+                  {d.rail_flow.road_peak_source === "zdm"
+                    ? "według licznika ZDM"
+                    : "przyjęte 7–9 i 15–18"}
+                  ): <strong>{fmt1(d.rail_flow.in_road_peaks)}</strong> z{" "}
+                  {Math.round(d.rail_flow.weekday_avg)} (
+                  {d.rail_flow.weekday_avg > 0
+                    ? Math.round(
+                        (100 * (d.rail_flow.in_road_peaks ?? 0)) /
+                          d.rail_flow.weekday_avg,
+                      )
+                    : 0}
+                  %). Nocą (22–6): {fmt1(d.rail_flow.at_night)}.
+                </p>
+              )}
+              <p className="muted small">
+                Rozkład planowy, tydzień {d.rail_flow.period_start} –{" "}
+                {d.rail_flow.period_end}. Tylko pociągi pasażerskie
+                {d.rail_flow.weekday_avg === 0
+                  ? "; zero nie oznacza braku ruchu towarowego lub manewrowego."
+                  : "; bez towarowych i służbowych."}
               </p>
-            )}
-            <p className="muted small">
-              Rozkład planowy, tydzień {d.rail_flow.period_start} –{" "}
-              {d.rail_flow.period_end}. Tylko pociągi pasażerskie
-              {d.rail_flow.weekday_avg === 0
-                ? "; zero nie oznacza braku ruchu towarowego lub manewrowego."
-                : "; bez towarowych i służbowych."}
-            </p>
+            </details>
           </>
         )}
       </Section>

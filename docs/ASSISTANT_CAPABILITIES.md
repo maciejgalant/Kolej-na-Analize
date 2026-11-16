@@ -47,3 +47,24 @@ zastępuje źródła danych. Odpowiedzi analityczne nadal wymagają lokalnego mo
 Nie dodano symulacji inwestycji, analizy otoczenia szkół ani prognoz godzinowych.
 Wymagają osobnych założeń, danych i walidacji. Wyniki obecnych funkcji są wynikami
 eksperymentalnej metody RPS, a nie przewidywaniem wypadków.
+# Czytelna analiza i kontekst przejazdów (2026-11-16)
+
+Ranking domyślnie zawiera pięć pozycji w krótkiej liście i pytanie o szczegóły.
+Karty, wykresy i źródła są rozwijane; wyróżniony przycisk mapy jest widoczny od razu.
+Przeglądarka przekazuje identyfikatory ostatniej analizy w aktywnej gałęzi rozmowy.
+Prośba o więcej szczegółów ponownie odczytuje te same obiekty zamiast uruchamiać
+szerszy ranking. Jawnie wybrany przejazd ma pierwszeństwo przed kontekstem listy.
+
+Na mapie numer etykiety odpowiada kolejności przejazdów w odpowiedzi, a wynik RPS
+jest opisany osobno. Wykrzykniki nie są renderowane na symbolach; uwagi o danych
+pozostają dostępne w karcie. Domyślny podkład jest kolorowy. Okno mapy ma animację
+otwarcia i zamknięcia, z uwzględnieniem preferencji ograniczenia ruchu.
+
+Karta pokazuje wskaźnik RPS, kompletność składników, miniwykresy składników,
+najważniejsze dane o ruchu i wykresy rozkładu. Wagi, źródła i szczegóły techniczne
+są schowane w rozwijanych sekcjach. Wartości są odczytywane z API, nie wpisane na stałe.
+
+Pytanie o rekomendacje dla dołączonego przejazdu albo ostatniej analizy daje
+propozycje weryfikacji podczas audytu, powiązane z dostępnymi danymi. Propozycje
+nie potwierdzają usterek ani nie zastępują decyzji zarządcy.
+

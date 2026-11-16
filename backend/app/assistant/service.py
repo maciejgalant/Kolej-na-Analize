@@ -8,9 +8,17 @@ import httpx
 import psycopg
 
 from app.api.crossings import DISCLAIMER
+from app.assistant.narrative import (
+    detail_request,
+    detail_text,
+    plain,
+    ranking_text,
+    recommendation_request,
+    recommendation_text,
+)
 from app.assistant.presentation import Evidence, build_evidence
 from app.assistant.smalltalk import conversational_reply
-from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool
+from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool, get_attached_crossing
 
 MAX_TOOL_ROUNDS = 4
 MAX_TOOL_RESULT_CHARS = 6000
@@ -34,7 +42,8 @@ SYSTEM_PROMPT = (
     "7. Nazwy dzielnic przekazuj do funkcji tak, jak napisał użytkownik; funkcja sama "
     "rozpozna odmianę (np. „Targówka” to Targówek).\n"
     "8. Pisz zwykłym tekstem, bez tabel i nagłówków; przy rankingu podaj listę: pozycja, "
-    "numer przejazdu, kategoria, RPS.\n"
+    "numer przejazdu, dzielnica, kategoria, RPS. Domyślnie pokaż 5 przejazdów "
+    "i zapytaj, czy użytkownik chce szczegóły.\n"
     "9. Wynik attached_crossing jest odczytem danych przejazdu dołączonego przez użytkownika. "
     "Odnoś pytanie do tego obiektu. Karty, tabele, wykresy i przyciski mapy dodaje aplikacja; "
     "nie wymyślaj własnych akcji ani identyfikatorów.\n"
@@ -116,10 +125,43 @@ def chat(
     message: str,
     history: list[dict[str, str]] | None = None,
     attached_crossing: dict | None = None,
+    analysis_crossing_ids: list[int] | None = None,
 ) -> AssistantReply:
     greeting = conversational_reply(message, attached=attached_crossing is not None)
     if greeting is not None:
         return AssistantReply(answer=greeting, model=model, disclaimer="")
+    # Re-read exact UI context, never infer IDs or values from previous prose.
+    wants_recommendations = recommendation_request(message)
+    ids = list(dict.fromkeys(analysis_crossing_ids or []))[:15]
+    explicit_number = re.search(r"\b\d{3}\s*\d{3}\s*\d{3}\b|\bWK\s*\d{6,}\b", message, re.I)
+    if (wants_recommendations or detail_request(message)) and (
+        attached_crossing or (ids and not explicit_number)
+    ):
+        try:
+            rows = (
+                [attached_crossing]
+                if attached_crossing
+                else [get_attached_crossing(conn, crossing_id) for crossing_id in ids]
+            )
+            results = [("get_crossing", row) for row in rows]
+            return AssistantReply(
+                answer=recommendation_text(rows) if wants_recommendations else detail_text(rows),
+                model=model,
+                grounded=True,
+                tool_calls=[
+                    ToolCallRecord("attached_crossing", {"crossing_id": row["crossing_id"]}, True)
+                    for row in rows
+                ],
+                evidence=build_evidence(conn, results),
+            )
+        except ToolError:
+            return AssistantReply(
+                answer=(
+                    "Nie udało się ponownie odczytać wszystkich przejazdów tej analizy. "
+                    "Odśwież ranking lub wybierz przejazd ponownie."
+                ),
+                model=model,
+            )
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages += [
         {"role": item["role"], "content": item["content"]}
@@ -195,6 +237,10 @@ def chat(
                 except ValueError:
                     arguments = {}
             try:
+                if name == "get_ranking" and isinstance(arguments, dict):
+                    # Keep the initial answer small unless the user explicitly asks for a count.
+                    if not re.search(r"\b\d{1,2}\b", message):
+                        arguments = {**arguments, "limit": 5}
                 result = call_tool(conn, name, arguments)
                 ok = True
                 results.append((name, result))
@@ -224,6 +270,21 @@ def chat(
 
     reply.evidence = build_evidence(conn, results)
     reply.grounded = any(call.ok for call in reply.tool_calls)
+    rankings = [result for name, result in results if name == "get_ranking"]
+    if (
+        rankings
+        and attached_crossing is None
+        and not detail_request(message)
+        and not wants_recommendations
+        and "porown" not in plain(message)
+    ):
+        rows = rankings[-1].get("ranking", [])
+        if rows:
+            # One ranking result determines both the list and map scope.
+            reply.evidence = build_evidence(conn, [("get_ranking", rankings[-1])])
+            reply.evidence.presentation = "ranking_summary"
+            reply.answer = ranking_text(rows)
+            return reply
     if truncated:
         reply.answer = TRUNCATED_ANSWER
     elif not reply.answer:

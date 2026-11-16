@@ -16,6 +16,7 @@ const {
   initialState,
   appendQuestion,
   activePath,
+  analysisContext,
   branchLeaf,
   replaceMessage,
   decodeState,
@@ -146,4 +147,29 @@ test("text-only replies stay valid; malformed structured payloads are rejected",
   assert.equal(validReply(reply), true);
   assert.equal(validReply({ ...reply, evidence: { cards: null } }), false);
   assert.equal(validReply({ ...reply, tool_calls: [null] }), false);
+});
+
+test("new maps default to color and analysis IDs stay on their own branch", () => {
+  const c = initialState().conversations[0];
+  assert.equal(c.map.basemap, "color");
+  const first = appendQuestion(c, "Ranking");
+  const scoped = {
+    ...first.conversation,
+    messages: first.conversation.messages.map((m) =>
+      m.id === first.response.id
+        ? {
+            ...m,
+            status: undefined,
+            content: "Pięć przejazdów",
+            reply: {
+              evidence: { map_ids: [5, 2, 8, 9, 3] },
+            },
+          }
+        : m,
+    ),
+  };
+  assert.deepEqual(analysisContext(scoped), [5, 2, 8, 9, 3]);
+  const separate = appendQuestion(scoped, "Inna analiza", undefined, null);
+  assert.deepEqual(analysisContext(separate.conversation), []);
+  assert.deepEqual(analysisContext(c), []);
 });

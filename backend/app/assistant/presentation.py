@@ -45,6 +45,7 @@ class Chart(Payload):
 
 
 class Evidence(Payload):
+    presentation: Literal["full", "ranking_summary"] = "full"
     cards: list[Card] = Field(default_factory=list)
     tables: list[Table] = Field(default_factory=list)
     charts: list[Chart] = Field(default_factory=list)

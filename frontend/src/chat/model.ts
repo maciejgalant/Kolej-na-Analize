@@ -29,6 +29,7 @@ export interface ResultChart {
   points: { label: string; value: number | null; status: string }[];
 }
 export interface Evidence {
+  presentation?: "full" | "ranking_summary";
   cards: ResultCard[];
   tables: ResultTable[];
   charts: ResultChart[];
@@ -78,7 +79,7 @@ export const uid = () => crypto.randomUUID();
 export const defaultMap = (): MapState => ({
   center: [52.2297, 21.0122],
   zoom: 11,
-  basemap: "gray",
+  basemap: "color",
   districtId: null,
   category: "",
 });
@@ -109,6 +110,21 @@ export function activePath(c: Conversation, leaf = c.leaf): Message[] {
     leaf = m.parent;
   }
   return path;
+}
+
+/** Scope follows only the active branch; another conversation cannot contribute IDs. */
+export function analysisContext(c: Conversation, parent = c.leaf): number[] {
+  const path = activePath(c, parent);
+  for (const message of [...path].reverse()) {
+    if (
+      message.role === "assistant" &&
+      !message.status &&
+      message.reply?.evidence?.map_ids.length
+    ) {
+      return [...new Set(message.reply.evidence.map_ids)].slice(0, 15);
+    }
+  }
+  return [];
 }
 export function branchLeaf(c: Conversation, id: string): string {
   const seen = new Set<string>();
@@ -233,6 +249,8 @@ export function validEvidence(v: unknown): v is Evidence {
             typeof p.status === "string",
         ),
     ) &&
+    (v.presentation === undefined ||
+      ["full", "ranking_summary"].includes(String(v.presentation))) &&
     strings(v.sources) &&
     strings(v.notes) &&
     Array.isArray(v.map_ids) &&
