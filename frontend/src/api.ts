@@ -17,7 +17,10 @@ export interface Health {
 
 export type Category = "A" | "B" | "C" | "D" | "E" | "F";
 export type VerificationStatus =
-  "verified" | "unverified" | "rejected_grade_separated" | "rejected_other";
+  | "verified"
+  | "unverified"
+  | "rejected_grade_separated"
+  | "rejected_other";
 
 export interface DistrictProperties {
   district_id: number;
@@ -182,6 +185,33 @@ export const fetchCrossings = (signal?: AbortSignal) =>
 
 export const fetchCrossingDetail = (id: number, signal?: AbortSignal) =>
   getJson<CrossingDetail>(`/api/v1/crossings/${id}`, signal);
+
+export interface IncidentHistoryData {
+  source: string;
+  source_url: string;
+  coverage: "partial";
+  scope: "warsaw" | "street_candidates";
+  notice: string;
+  records: {
+    source_object_id: string;
+    occurred_on: string;
+    local_time: string;
+    address: string;
+    incident_type: string;
+    place: string;
+    injured: number | null;
+    killed: number | null;
+  }[];
+}
+
+export const fetchIncidentHistory = (
+  crossingId?: number,
+  signal?: AbortSignal,
+) =>
+  getJson<IncidentHistoryData>(
+    `/api/v1/incidents${crossingId === undefined ? "" : `?crossing_id=${crossingId}`}`,
+    signal,
+  );
 
 export interface AnalysisRun {
   run_id: number;

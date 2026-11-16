@@ -3,6 +3,7 @@ import type { Category, CrossingFeature, DistrictFeature } from "./api";
 import type { Attachment, MapState } from "./chat/model";
 import { CrossingCard } from "./CrossingCard";
 import { Dialog } from "./Dialog";
+import { IncidentHistory } from "./IncidentHistory";
 import { MapAssistant } from "./MapAssistant";
 import { MapView } from "./MapView";
 import { crossingTitle, CATEGORY_DESCRIPTION } from "./labels";
@@ -37,6 +38,7 @@ export function MapExplorer({
   onAsk,
 }: Props) {
   const [leaving, setLeaving] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const closeTimer = useRef<number>();
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
   function leave(after = onClose) {
@@ -122,6 +124,9 @@ export function MapExplorer({
         <span className="map-count" aria-live="polite">
           {visible.length} obiektów
         </span>
+        <button onClick={() => setHistoryOpen(true)}>
+          Historia zdarzeń · SEWiK
+        </button>
         {scope && (
           <button onClick={() => setScope(undefined)}>
             Pokaż wszystkie przejazdy
@@ -145,6 +150,16 @@ export function MapExplorer({
           Brak przejazdów w tym zakresie. Zmień filtry lub pokaż wszystkie
           przejazdy.
         </div>
+      )}
+      {historyOpen && (
+        <Dialog
+          title="Historia zdarzeń w Warszawie · SEWiK"
+          open
+          onClose={() => setHistoryOpen(false)}
+          className="incident-dialog"
+        >
+          <IncidentHistory />
+        </Dialog>
       )}
       <div
         className={`map-explorer-body ${selected !== null ? "has-detail" : ""}`}

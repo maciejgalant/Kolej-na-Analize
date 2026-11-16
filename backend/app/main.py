@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from app.api import assistant, crossings, health, rail
+from app.api import assistant, crossings, health, incidents, rail
 from app.config import APP_VERSION
 
 app = FastAPI(
@@ -21,3 +21,4 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(crossings.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(rail.router, prefix="/api/v1")
+app.include_router(incidents.router, prefix="/api/v1")
