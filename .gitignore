@@ -27,3 +27,8 @@ data/cache/
 .vscode/
 .DS_Store
 Thumbs.db
+
+
+# Browser verification artifacts
+frontend/test-results/
+frontend/playwright-report/

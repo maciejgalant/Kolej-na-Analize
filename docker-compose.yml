@@ -1,4 +1,4 @@
-# RailSafe AI — środowisko lokalne (RSA-002).
+# Kolej na Analizę — środowisko lokalne (RSA-002).
 # Wszystkie porty hosta są wystawiane wyłącznie na 127.0.0.1.
 # Uruchomienie: cp .env.example .env && docker compose up -d --build
 
@@ -137,3 +137,4 @@ networks:
 volumes:
   postgis_data:
   ollama_models:
+

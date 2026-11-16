@@ -60,3 +60,23 @@ Poniższe szczegóły nie wynikały wprost z dokumentacji i zostały przyjęte p
 | 0007 | `road`: stations (punkty pomiarowe), crossing_stations (przejazd ↔ punkt, `direct`/`validation`); `road.measurements`: `day_type`, `hourly_profile` (24 wartości), `days_count` |
 | 0008 | `road.measurements`: `composition` (pojazdy według rodzaju), `pedestrians`, `cyclists`; `road.crossing_stations.match_type` + `intersection` |
 | 0009 | `rail.crossing_flow`: `hourly_profile` (24 wartości, dzień kalendarzowy przejazdu), `hourly_unplaced` |
+
+
+## Kontrakt rozmowy i wyników UI (2026-11-15)
+`POST /api/v1/assistant/chat` przyjmuje `message` (1–500 znaków), `history` (maks. 8 pozycji `user`/`assistant`, każda do 2000 znaków) i opcjonalny `crossing_id` (dodatnia liczba całkowita lub null). Dołączony przejazd jest odczytywany przez backend po ID; brak obiektu w obszarze analizy daje 404. Model nie otrzymuje uprawnień zapisu.
+
+Odpowiedź zachowuje `answer`, `model`, `grounded`, `tool_calls`, `disclaimer` i dodaje `evidence`:
+
+| Pole | Zawartość |
+|---|---|
+| `cards` | `crossing_id`, `title`, `district`, `category`, `rps`, `rank`, `trains` |
+| `tables` | `title`, `columns`, `rows` (komórka: tekst/liczba/null) |
+| `charts` | `title`, `unit`, `points`: `label`, `value` (liczba/null), `status` |
+| `sources` | Nazwy i atrybucje źródeł pobrane z bazy |
+| `notes` | Wyjaśnienia, okresy, kompletność i ograniczenia |
+| `map_ids` | Dodatnie ID przejazdów z udanych odczytów, bez duplikatów, maks. 60 |
+
+Status punktu wykresu: `ok`, `modelled`, `unknown`, `planned`, `measured`. Wartości liczbowe muszą być skończone. Null zachowuje znaczenie braku danych. Nie ma pola pozwalającego modelowi przesłać HTML, kod ani dowolne instrukcje do wykonania. Dane tworzy `assistant/presentation.py` z udanych odczytów narzędzi, a nie z parsowania tekstu LLM. Stare odpowiedzi tekstowe bez `evidence` pozostają obsługiwane przez frontend.
+
+Format przeglądarkowy ma `version: 1`, `active` i listę `conversations`. Rozmowa zawiera metadane, wiadomości z `id`/`parent`, `leaf`, szkic, opcjonalny kontekst i stan mapy. Odpowiedzi z `evidence` są zapisywane przy wiadomościach, więc przyciski starszych wyników działają po odświeżeniu. Ten zapis nie jest synchronizowany między urządzeniami ani kontami. Nie wymaga migracji PostGIS.
+

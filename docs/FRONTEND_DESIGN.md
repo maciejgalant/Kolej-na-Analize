@@ -1,78 +1,84 @@
-# Frontend RailSafe AI — wytyczne UI/UX (v1.0)
+# Frontend Kolej na Analizę — aplikacja rozmów (v2, 2026-11-15)
 
-## Inspiracja wizualna
-Referencja wskazana przez autora: https://www.intercity.pl/pl/ . Strona źródłowa może blokować automatyczny podgląd, dlatego poniżej zapisano **autorski kierunek inspirowany** czytelną estetyką kolejową: granat, biel, jasne tła, czerwone akcenty, prosta nawigacja i duże obszary informacji. Nie jest to pixel-perfect kopia. Nie używać logo, zdjęć, tekstów ani znaków towarowych PKP Intercity bez odrębnych uprawnień. Nagłówek musi oznaczać produkt jako „RailSafe AI — projekt edukacyjny, niezależny”.
+## Układ i stylistyka
+Głównym ekranem jest rozmowa. Po lewej znajduje się zwijany panel historii, a po prawej aktywny wątek. Mapa nie jest tłem aplikacji: użytkownik otwiera ją w dużym oknie modalnym nad rozmową. Projekt obejmuje obecnie komputer, od szerokości 820 px; osobny układ telefonu pozostaje poza tym etapem.
 
-## Tokeny design systemu (propozycja, do weryfikacji w przeglądarce)
-| Token | Kolor | Rola |
-|---|---|---|
-| navy-900 | #102B4E | nagłówek i główny tekst |
-| navy-700 | #174A7E | nawigacja, aktywne kontrolki |
-| blue-500 | #287BC1 | linki i stany focus |
-| red-600 | #C73A43 | CTA, akcent, nie domyślny znacznik ryzyka |
-| white | #FFFFFF | karty |
-| surface | #F3F6FA | tło aplikacji |
-| slate-600 | #526476 | tekst pomocniczy |
-| border | #D8E2EC | linie i obrysy |
+Granat `#102b4e`, biel i pomarańcz `#d9570b`, jasne obrysy i czytelna typografia. Pytania użytkownika znajdują się w dymkach po prawej, a odpowiedzi asystenta zajmują kolumnę wiadomości. Pole pytania jest przy dolnej krawędzi obszaru rozmowy. Nowy wątek pokazuje powitanie, trzy przykładowe pytania i przycisk „Otwórz mapę”. Aplikacja zachowuje oznaczenie niezależnego projektu edukacyjnego.
 
-Typografia: font systemowy Inter/Arial fallback; H1 ~28–32px, sekcje 18–22px, body 14–16px. Siatka 8px, karty zaokrąglone 8–12px, subtelne obrysy, mało cieni. WCAG AA dla kontrastów. Nie wyróżniać ryzyka samym kolorem.
+## Historia i gałęzie
+- Nowa rozmowa, automatyczny tytuł z pierwszego pytania, ręczna zmiana nazwy, wyszukiwanie po tytułach i wiadomościach, przypinanie oraz usuwanie po potwierdzeniu.
+- Historia jest zapisywana tylko w `localStorage`, pod kluczem `railsafe.chat.v1`. Nie ma kont ani zapisu rozmów po stronie serwera. Wyczyszczenie danych witryny usuwa historię.
+- Wiadomości tworzą drzewo (`id`, `parent`), a `leaf` wskazuje aktywną gałąź. Edycja pytania dodaje alternatywę z tym samym rodzicem. Ponowienie odpowiedzi dodaje alternatywną odpowiedź pod tym samym pytaniem. Poprzednie wiadomości i ich dalszy ciąg zostają zachowane.
+- Przełącznik wersji przy wiadomości otwiera wybraną alternatywę i jej najnowszą kontynuację. Do modelu trafia wyłącznie historia aktywnej gałęzi, ograniczona do ośmiu wiadomości zgodnie z API.
+- Szkic pytania, dołączony przejazd i stan mapy są zapisywane osobno dla każdej rozmowy.
+- Uszkodzony lub nieznany format historii nie jest nadpisywany. Użytkownik widzi komunikat, a bieżąca sesja działa bez zapisu. Błąd zapisu, np. przekroczenie pojemności przeglądarki, również jest sygnalizowany.
 
-## Główny ekran desktop
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│ RailSafe AI    Analiza przejazdów | Porównania | O projekcie   ● Dane    │
-├──────────────────────────────────────────────────────────────────────────┤
-│ Warszawa  > Wola      [Okres ▼] [Źródła ▼] [Aktualizuj]                   │
-├───────────────────────┬────────────────────────────────┬─────────────────┤
-│ FILTRY I RANKING      │ MAPA LEAFLET                   │ SZCZEGÓŁY       │
-│ 18 dzielnic           │ Punkty przejazdów              │ Przejazd X      │
-│ Status danych         │ Linie drogowe i kolejowe       │ RPS, składniki  │
-│ 1. Przejazd A         │ Granica dzielnicy              │ wykresy         │
-│ 2. Przejazd B         │ Interakcja z rankingiem        │ wiarygodność    │
-│ ...                   │                                │ źródła          │
-├───────────────────────┴────────────────────────────────┴─────────────────┤
-│ Asystent AI: [Pokaż przejazdy o najwyższym priorytecie na Woli ...] [→] │
-└──────────────────────────────────────────────────────────────────────────┘
-```
-Makieta tekstowa obrazuje relacje, nie docelowe proporcje. W ekranach węższych karta szczegółów i czat jako drawer/panel, a ranking jako zakładka.
+## Rozmowa z modelem
+Kopiowanie odpowiedzi, edycja pytania, ponowienie, informacja o oczekiwaniu z licznikiem oraz przycisk zatrzymania. Enter wysyła wiadomość, Shift+Enter dodaje wiersz. Błąd odpowiedzi można ponowić. Jedna rozmowa może mieć jedno aktywne żądanie; inne rozmowy działają niezależnie. Wynik jest przypisywany do identyfikatora rozmowy i wiadomości, także po przełączeniu wątku.
 
-## Interakcje
-- Kliknięcie punktu mapy podświetla wiersz rankingu i otwiera kartę przejazdu.
-- Wybór dzielnicy aktualizuje mapę, dane tabeli i wykresy.
-- Filtry: obszar, okres, plan/wykonanie, typ pomiaru, status jakości, dostępność cech.
-- Legenda oddziela **priorytet RPS** od **kompletności danych**. Punkty bez rankingu mają własny neutralny symbol.
-- Panel szczegółów: nazwa/ID przejazdu, kategoria i źródło, cztery komponenty RPS, ruch drogowy/kolejowy z jednostkami, czas aktualizacji, ostrzeżenia, pochodzenie.
-- AI: odpowiedź tekstowa plus obiekty `map_action` i `chart_action`; zawsze istnieją odpowiedniki manualne.
-- Tryb demo offline: widoczny pasek „Dane demonstracyjne”; nigdy nie przedstawiać fikcyjnych danych jako rzeczywistych.
+Zatrzymanie anuluje żądanie klienta i ignoruje późniejszy wynik. Synchroniczny backend/Ollama może jeszcze kończyć inferencję — interfejs mówi wprost o przerwaniu oczekiwania. Po odświeżeniu niedokończona wiadomość otrzymuje status przerwanej i może zostać ponowiona. Nie wprowadzono strumieniowania odpowiedzi.
 
-## Ekrany
-1. Dashboard analityczny (główny).
-2. Karta przejazdu (panel boczny).
-3. Porównania dzielnic i okresów.
-4. Źródła, jakość danych, metodologia.
-5. Informacje o projekcie, autorstwie i zastrzeżeniach.
+## Karty, tabele, wykresy i źródła
+Odpowiedź zawiera tekst oraz opcjonalny, walidowany obiekt `evidence`, budowany przez backend z wyników bezpiecznych funkcji. Interfejs nie wyciąga identyfikatorów ani liczb z tekstu modelu.
 
-## Dostępność i technologia
-React + TypeScript + Vite + Leaflet; wykresy np. Recharts; komponenty autorskie lub biblioteka z licencją zgodną z repo. Focus visible, sterowanie klawiaturą, etykiety formularzy, aria-live dla wyników AI, przyjazne stany loading/empty/error. UI nie zakłada pełnych danych dla wszystkich przejazdów.
+- Klikalne karty przejazdów otwierają szczegóły w oknie mapy.
+- Tabele pokazują odczytane przejazdy, ranking/porównanie lub liczby przejazdów w dzielnicach.
+- Wykresy pokazują planowy ruch pasażerski, a przy pytaniu o konkretny przejazd również składniki RPS, dostępne natężenie drogowe i rozkład dzień roboczy/sobota/niedziela.
+- Brak wartości to „Brak danych”, a nie zero. Dane planowe, pomiary i wartości modelowane mają opisy; wartości modelowane dodatkowo kreskowanie. Wykres ma opis dla czytnika ekranu i rozwijaną tabelę wartości.
+- Źródła, okresy, wyjaśnienia, kompletność i ograniczenia znajdują się w rozwijanej sekcji. RPS nie jest przedstawiany jako prawdopodobieństwo wypadku.
+- Tekst modelu jest escapowany przez React; obsługiwane są akapity, nowe wiersze i pogrubienie. Surowy HTML nie jest renderowany.
 
-## Stan wdrożenia (v1.1, listopad 2026)
-Układ odbiega od makiety powyżej na rzecz przejrzystości:
-- **Asystent AI** to okrągły przycisk w prawym dolnym rogu; rozmowa otwiera się w oknie-dymku (Esc zamyka, kropka sygnalizuje nową odpowiedź). W trakcie odpowiedzi widać animację i licznik sekund.
-- **Szczegóły przejazdu** pojawiają się jako wysuwany panel dopiero po wyborze obiektu. Na wierzchu jest wynik i pozycja; reszta (ruch kolejowy, droga i tory, dane ewidencyjne, źródła) w zwijanych sekcjach, których nagłówek pokazuje najważniejszą wartość.
-- **Filtry i kolejność**, **legenda** i **stan usług** są zwinięte; **opis danych, metody i ograniczeń** otwiera się w oknie „O danych i metodzie”.
-- **Ładowanie**: szkielety listy i karty, nakładka z kołem postępu na mapie. Przy `prefers-reduced-motion` animacje są wyłączone.
-- Pasek „DANE DEMONSTRACYJNE” pozostaje zawsze widoczny; nie wolno go chować w oknie.
+Na tym etapie wystarcza kopiowanie tekstu: brak eksportów CSV/PNG i importu/eksportu historii.
 
-## Piktogramy i podkłady (v1.2, listopad 2026)
-- **Znaki przejazdów** to piktogramy zamiast liter (`frontend/src/pictograms.ts`): A — pracownik kolei z tarczą sygnałową, B — rogatka z lampą, C — sygnalizator z dwiema lampami, D — krzyż św. Andrzeja, F — znak „droga wewnętrzna” (D-46), E — pieszy. Od v1.3 wszystkie znaki mają jeden pomarańczowy kolor (`#d9570b`, stylistyka kolejowa); kategorię rozróżnia wyłącznie rysunek, a przejście dla pieszych dodatkowo kształt zaokrąglonego kwadratu. Kolor nie niesie informacji o ryzyku ani pozycji w rankingu; mówi o tym notka w legendzie. Ten sam znak jest w legendzie i na liście.
-- Niezweryfikowany obiekt: przerywana obwódka i przezroczystość; ostrzeżenie o danych: żółte „!”; wybrany obiekt: większy znak z granatowym pierścieniem. Każdy znak ma podpowiedź (ulica, numer, kategoria, pozycja) i opis `aria-label`.
-- **Podkłady** (przełącznik z miniaturami na pasku narzędzi mapy, wybór zapamiętany w przeglądarce): *Szara* (domyślna; OpenStreetMap w odcieniach szarości przez filtr CSS — neutralne tło jak Esri Light Gray, ale bez klucza API; Esri i CARTO wymagają dziś kluczy), *Kolorowa* (OpenStreetMap) i *Ortofoto* (WMS ortofotomapy PZGiK/GUGiK, EPSG:3857, bez opłat; warunki usługi zabraniają tylko masowego pobierania obrazów). Na ortofotomapie granice dzielnic są białe, a wybrana dzielnica żółta.
-- **Lista przejazdów**: tytułem jest nazwa ulicy z BDOT10k (pole `street` w API), pod nią numer i dzielnica, dalej opis kategorii słowami i liczba pociągów. Po prawej pozycja w rankingu z paskiem RPS. Przy kolejności „według priorytetu” lista jest podzielona na grupy: *W rankingu*, *Bez pozycji* i *Przejścia dla pieszych*, z przyklejonymi nagłówkami.
+## Okno mapy
+- Ręczne otwarcie przywraca centrum, przybliżenie, podkład, dzielnicę i kategorię zapisane w tej rozmowie.
+- „Pokaż na mapie” jest propozycją działania. Mapa nie otwiera się automatycznie. Przycisk pokazuje tylko obiekty odczytane dla konkretnej odpowiedzi i dopasowuje do nich widok. Resetuje filtry dzielnicy i kategorii, aby nie ukryły tych obiektów.
+- W takim widoku przycisk „Pokaż wszystkie przejazdy” usuwa ograniczenie do obiektów odpowiedzi; pozostałe filtry nadal działają.
+- Filtry: dzielnica i kategoria A–F. Podkłady: szary, kolorowy i ortofotomapa. Zachowane są piktogramy kategorii, legenda i informacje o jakości.
+- Kliknięcie punktu otwiera szczegóły w bocznej części tego samego okna.
+- „Zapytaj o ten przejazd” zamyka mapę, dołącza usuwalną etykietę przejazdu do pola pytania i ustawia fokus. Nie wysyła pytania samoczynnie.
+- Mapa wykorzystuje aktualną ewidencję. Gdy obiekt ze starszej odpowiedzi nie jest już dostępny, pojawia się informacja o brakujących obiektach.
+- Natywny `dialog` zapewnia modalność, obsługę Escape i ograniczenie fokusu. Po zmianie rozmiaru Leaflet przelicza kontener.
 
-## Okna (v1.3)
-- Na szerokim ekranie (od 1100 px) mapa zajmuje cały obszar roboczy, a **Przejazdy**, **Szczegóły** i **Asystent** to okna nad nią (`frontend/src/FloatingWindow.tsx`). Okno można przesuwać za nagłówek, zmieniać jego szerokość i wysokość za każdą krawędź i narożnik, zwijać do paska tytułu (przycisk albo dwuklik nagłówka) i zamykać (szczegóły, asystent). Okno dociśnięte do krawędzi obszaru zmniejsza się zamiast z niego wychodzić. Kliknięte okno przechodzi na wierzch.
-- Układ każdego okna (położenie, rozmiar, zwinięcie) jest zapamiętywany w przeglądarce; przycisk **Układ okien** w nagłówku przywraca położenie domyślne: lista po lewej, szczegóły po prawej, asystent nad swoim przyciskiem.
-- Klawiatura: fokus na nagłówku okna, strzałki przesuwają (Shift — o 64 px), Alt + strzałki zmieniają rozmiar.
-- Powiększenie, podkłady i legenda są na jednym pasku narzędzi na dole mapy, pośrodku, żeby domyślne okna ich nie zasłaniały.
-- Na wąskim ekranie okna są zwykłymi panelami pod mapą: bez przesuwania, ale ze zwijaniem.
-- Karta szczegółów ma w tytule nazwę ulicy, a numer przejazdu pod nią.
+Pasek danych demonstracyjnych jest widoczny w aplikacji i w oknie mapy. Przy niedostępnym modelu można nadal korzystać z mapy i kart przejazdów. Stany braku danych, błędu pobierania i ponowienia są widoczne.
+
+## Podział kodu i sprawdzanie
+- `App.tsx`: połączenie widoków, stan usług i pobieranie ewidencji.
+- `Assistant.tsx`: rozmowa, edycja, wersje i pole pytania.
+- `chat/model.ts`, `chat/useConversations.ts`: drzewo, walidacja, zapis i żądania.
+- `chat/ConversationList.tsx`, `chat/AnswerContent.tsx`: historia i wyniki.
+- `MapExplorer.tsx`, `MapView.tsx`, `CrossingCard.tsx`: mapa i szczegóły.
+- `chat.css`: wygląd nowego obszaru rozmów; wspólne style mapy/kart pozostają w `styles.css`.
+
+`npm test` sprawdza logikę i trwałość historii. `npm run build` sprawdza typy i kompilację. `npm run test:e2e` uruchamia scenariusze Playwright z kontrolowanym API i fikcyjnymi danymi; nie jest to test prawdziwego modelu ani serwerów podkładów. Przy pierwszym uruchomieniu: `npx playwright install chromium`. Opcjonalnie `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` wskazuje istniejącą przeglądarkę. Testy działają również w CI.
+
+
+## Dopracowanie interfejsu — 2026-11-15
+Główny przycisk „Mapa przejazdów” znajduje się w granatowym panelu rozmów. Gdy panel jest zwinięty, przycisk mapy pozostaje dostępny w nagłówku. Zachowano otwieranie mapy z powitania i wyników odpowiedzi; usunięto powtórzony przycisk z pola wpisywania.
+
+Asystenta oznacza wektorowy piktogram uśmiechniętej postaci ze słuchawką. Podczas oczekiwania na model i ładowania mapy wyświetla się sygnalizacja przejazdu z naprzemiennie pulsującymi światłami. Animacja respektuje `prefers-reduced-motion` i nie jest przedstawiana jako procentowy postęp inferencji.
+
+Wiadomości użytkownika i asystenta można kopiować przyciskiem z ikoną dwóch kartek. Po udanym zapisie do schowka pojawia się znacznik i krótkie „Skopiowano”; błędy schowka mają komunikat tekstowy. Przyciski mają nazwy dostępności i podpowiedzi.
+
+Rama aplikacji, karty i okno mapy mają łagodniejsze zaokrąglenia. Pole pytania ma częściowo przezroczyste tło z rozmyciem, bez zmniejszania krycia tekstu. Subtelne tła, cienie i stany hover/focus porządkują interfejs; ograniczenie animacji wyłącza również dekoracyjne ruchy przycisków.
+# Dopracowanie rozmów i asystent na mapie
+
+Rozmowy są grupowane jako przypięte, dzisiejsze, wczorajsze i starsze. Akcje edycji,
+ponowienia odpowiedzi, przypinania i usuwania mają spójne ikony SVG z etykietami
+dostępności i podpowiedziami. Podpis przy awatarze brzmi „Asystent AI”.
+
+Karty wyróżniają liczbowy priorytet RPS (do dalszej oceny, bez sugerowania
+prawdopodobieństwa wypadku), pozycję w rankingu i ruch pasażerski. Pierwszy akapit
+odpowiedzi jest wyróżniony, źródła pozostają rozwijane, a pod ostatnią odpowiedzią
+znajdują się propozycje dalszych pytań. Nagłówek pozostaje widoczny przy przewijaniu.
+Oznaczenie danych demonstracyjnych ma bursztynowy kolor. Przejścia trwają 180 ms
+i są wyłączone przy ograniczeniu ruchu.
+
+Mapa ma niezależny czat tymczasowy. Kliknięcie przejazdu pokazuje uprzejmą propozycję
+pomocy; samo kliknięcie nie wysyła żądania do LLM. Użytkownik otwiera panel i zadaje
+pytanie albo wybiera sugestię. Zapytanie korzysta z tego samego walidowanego API,
+przekazuje crossing_id i maksymalnie osiem poprzednich wiadomości. Pod odpowiedzią
+można sprawdzić jej podstawę i źródła. Dostępne jest zatrzymanie i komunikat błędu.
+Historia pozostaje wyłącznie w pamięci panelu: zamknięcie mapy lub zmiana wybranego
+przejazdu usuwa ją i anuluje aktywne żądanie. Zwinięcie panelu zachowuje rozmowę.
+Dotychczasowy przycisk „Zapytaj o ten przejazd” nadal dołącza obiekt do głównej rozmowy.

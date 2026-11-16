@@ -15,7 +15,7 @@ DEFAULT_LAYERS = (
     "PGNiG_TERMIKA_SA",
     "CARGOTOR_Sp__z_o_o_",
 )
-USER_AGENT = "RailSafeAI/0.1 (projekt edukacyjny; github.com/maciejgalant/PKP_PROJEKT)"
+USER_AGENT = "KolejNaAnalize/0.1 (projekt edukacyjny; github.com/maciejgalant/Kolej-na-Analize)"
 
 
 @dataclass(frozen=True)

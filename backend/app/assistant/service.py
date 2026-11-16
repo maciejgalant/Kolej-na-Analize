@@ -8,12 +8,14 @@ import httpx
 import psycopg
 
 from app.api.crossings import DISCLAIMER
+from app.assistant.presentation import Evidence, build_evidence
+from app.assistant.smalltalk import conversational_reply
 from app.assistant.tools import TOOL_DEFINITIONS, ToolError, call_tool
 
 MAX_TOOL_ROUNDS = 4
 MAX_TOOL_RESULT_CHARS = 6000
 SYSTEM_PROMPT = (
-    "Jesteś asystentem aplikacji RailSafe AI, która porządkuje przejazdy kolejowo-drogowe "
+    "Jesteś asystentem aplikacji Kolej na Analizę, która porządkuje przejazdy kolejowo-drogowe "
     "w Warszawie według eksperymentalnego priorytetu do dalszej oceny (RPS). "
     "Zasady:\n"
     "1. Odpowiadaj po polsku, zwięźle, wyłącznie na podstawie wyników funkcji. "
@@ -32,7 +34,20 @@ SYSTEM_PROMPT = (
     "7. Nazwy dzielnic przekazuj do funkcji tak, jak napisał użytkownik; funkcja sama "
     "rozpozna odmianę (np. „Targówka” to Targówek).\n"
     "8. Pisz zwykłym tekstem, bez tabel i nagłówków; przy rankingu podaj listę: pozycja, "
-    "numer przejazdu, kategoria, RPS."
+    "numer przejazdu, kategoria, RPS.\n"
+    "9. Wynik attached_crossing jest odczytem danych przejazdu dołączonego przez użytkownika. "
+    "Odnoś pytanie do tego obiektu. Karty, tabele, wykresy i przyciski mapy dodaje aplikacja; "
+    "nie wymyślaj własnych akcji ani identyfikatorów.\n"
+    "10. Porównując dwa przejazdy, użyj compare_crossings; opisz różnicę RPS jako A minus B, "
+    "wkłady składników i ograniczenia porównania. Jeśli nie znasz dwóch numerów, poproś o "
+    "ich wybór; nie wybieraj losowych obiektów.\n"
+    "11. Oceniając jakość lub braki danych, użyj get_data_quality. Dla dołączonego przejazdu "
+    "użyj jego numeru. Nie utożsamiaj kompletności z pewnością, aktualnością lub bezpieczeństwem. "
+    "Odróżniaj pomiar od modelu i dane planowe od rzeczywistych.\n"
+    "12. Na prośbę o prostsze wyjaśnienie najpierw ponownie odczytaj odpowiednie dane "
+    "lub get_method, następnie wyjaśnij maksymalnie w trzech krótkich zdaniach bez żargonu. "
+    "Historia rozmowy nie jest źródłem potwierdzonych wartości. "
+    "Bądź uprzejmy i naturalny. Nie deklaruj możliwości, których nie ma w funkcjach."
 )
 # Model zostaje w pamięci między pytaniami; limit długości chroni przed wielominutową odpowiedzią.
 KEEP_ALIVE = "30m"
@@ -63,6 +78,7 @@ class AssistantReply:
     model: str
     tool_calls: list[ToolCallRecord] = field(default_factory=list)
     disclaimer: str = DISCLAIMER
+    evidence: Evidence = field(default_factory=Evidence)
     grounded: bool = False  # czy odpowiedź opiera się na co najmniej jednym udanym wywołaniu
 
 
@@ -99,7 +115,11 @@ def chat(
     model: str,
     message: str,
     history: list[dict[str, str]] | None = None,
+    attached_crossing: dict | None = None,
 ) -> AssistantReply:
+    greeting = conversational_reply(message, attached=attached_crossing is not None)
+    if greeting is not None:
+        return AssistantReply(answer=greeting, model=model, disclaimer="")
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages += [
         {"role": item["role"], "content": item["content"]}
@@ -108,6 +128,26 @@ def chat(
     ]
     messages.append({"role": "user", "content": message})
     reply = AssistantReply(answer="", model=model)
+    results: list[tuple[str, dict]] = []
+    if attached_crossing is not None:
+        # A trusted read initiated by the user's explicit attachment, before inference.
+        arguments = {"crossing_id": attached_crossing["crossing_id"]}
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [{"function": {"name": "attached_crossing", "arguments": arguments}}],
+            }
+        )
+        messages.append(
+            {
+                "role": "tool",
+                "tool_name": "attached_crossing",
+                "content": json.dumps(attached_crossing, ensure_ascii=False, default=str),
+            }
+        )
+        reply.tool_calls.append(ToolCallRecord("attached_crossing", arguments, True))
+        results.append(("attached_crossing", attached_crossing))
     thinks = model_thinks(http, base_url, model)
     truncated = False
 
@@ -157,16 +197,32 @@ def chat(
             try:
                 result = call_tool(conn, name, arguments)
                 ok = True
+                results.append((name, result))
             except ToolError as error:
                 result, ok = {"blad": str(error)}, False
             reply.tool_calls.append(
                 ToolCallRecord(name, arguments if isinstance(arguments, dict) else {}, ok)
             )
-            content = json.dumps(result, ensure_ascii=False, default=str)
-            messages.append(
-                {"role": "tool", "tool_name": name, "content": content[:MAX_TOOL_RESULT_CHARS]}
-            )
+            model_result = result
+            if name == "compare_crossings" and ok:
+                model_result = {
+                    **result,
+                    **{
+                        key: {k: v for k, v in result[key].items() if k != "skladniki"}
+                        for key in ("a", "b")
+                    },
+                }
+            content = json.dumps(model_result, ensure_ascii=False, default=str)
+            if len(content) > MAX_TOOL_RESULT_CHARS:
+                content = json.dumps(
+                    {
+                        "blad": "Wynik jest zbyt obszerny. Wywołaj funkcję "
+                        "z mniejszym limitem lub zapytaj o jeden przejazd."
+                    }
+                )
+            messages.append({"role": "tool", "tool_name": name, "content": content})
 
+    reply.evidence = build_evidence(conn, results)
     reply.grounded = any(call.ok for call in reply.tool_calls)
     if truncated:
         reply.answer = TRUNCATED_ANSWER

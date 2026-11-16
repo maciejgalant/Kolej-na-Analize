@@ -7,7 +7,9 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.assistant.presentation import Evidence
 from app.assistant.service import AssistantUnavailable, chat
+from app.assistant.tools import ToolError, get_attached_crossing
 from app.config import Settings, get_settings
 from app.db import get_connection
 
@@ -22,6 +24,7 @@ class HistoryItem(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=500)
     history: list[HistoryItem] = Field(default_factory=list, max_length=8)
+    crossing_id: int | None = Field(default=None, strict=True, gt=0)
 
 
 class ToolCallOut(BaseModel):
@@ -36,6 +39,7 @@ class ChatResponse(BaseModel):
     grounded: bool
     tool_calls: list[ToolCallOut]
     disclaimer: str
+    evidence: Evidence = Field(default_factory=Evidence)
 
 
 def get_http_client(
@@ -52,6 +56,12 @@ def assistant_chat(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> ChatResponse:
     try:
+        context = None
+        if body.crossing_id is not None:
+            try:
+                context = get_attached_crossing(conn, body.crossing_id)
+            except ToolError as error:
+                raise HTTPException(404, str(error)) from error
         reply = chat(
             conn,
             http,
@@ -59,6 +69,7 @@ def assistant_chat(
             settings.ollama_model,
             body.message.strip(),
             [item.model_dump() for item in body.history],
+            attached_crossing=context,
         )
     except AssistantUnavailable as error:
         raise HTTPException(
@@ -74,4 +85,5 @@ def assistant_chat(
         grounded=reply.grounded,
         tool_calls=[ToolCallOut(**vars(call)) for call in reply.tool_calls],
         disclaimer=reply.disclaimer,
+        evidence=reply.evidence,
     )

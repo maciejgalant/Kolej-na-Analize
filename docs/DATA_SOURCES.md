@@ -77,7 +77,9 @@ Uruchomienie (po `import-topology`): `docker compose run --rm worker python -m a
 
 **Pokrycie przejazdów: niewystarczające.** 254 lokalizacje w 128 punktach leżą głównie na trasach wylotowych, mostach i w centrum. Spośród 36 przejazdów drogowych punkt pomiarowy na tej samej ulicy ma trzy: `021 001 656` (Radzymińska, 75 m), `007 012 635` (Wydawnicza, 1,0 km) i `021 005 525` (Łodygowa, 1,2 km). Dla pozostałych najbliższy punkt leży na innej ulicy.
 
-**Decyzja z 2026-11-12 (zmieniona 2026-11-13).** Pierwotnie importu nie budowaliśmy. Pierwszy raport dla punktu przy `021 001 656` pokazał jednak, że model z klasy drogi myli się o rząd wielkości: ZDM klasyfikuje Radzymińską w tym miejscu jako drogę zbiorczą (Z), model przyjmuje dla niej 8 000 pojazdów/dobę, a pomiar z 29.10–12.11.2026 dał średnio ok. 35 000 (oba kierunki). Dlatego pomiary są importowane i tam, gdzie punkt leży blisko przejazdu, zastępują szacunek.
+**Decyzja z 2026-11-12 (zmieniona 2026-11-13).** Pierwotnie importu nie budowaliśmy. Pomiar przy `021 001 656` (punkt 5312, Radzymińska, odcinek Naczelnikowska – Wołomińska; dni miarodajne 16.10–12.11.2026) dał średnio **13 544 pojazdów/dobę** (oba kierunki, szczyt 956 poj./h), a model z klasy drogi przyjmuje dla drogi zbiorczej 8 000 — ok. 1,7 raza mniej. Na wschodnim odcinku tej samej ulicy (punkt 1354, Młodzieńcza – Krynoliny, ok. 3 km od przejazdu) jest 38 175 pojazdów/dobę: natężenie na jednej ulicy zmienia się kilkukrotnie, co pokazuje, że klasa drogi słabo je opisuje. Dlatego pomiary są importowane i tam, gdzie punkt leży blisko przejazdu, zastępują szacunek.
+
+*Korekta 2026-11-14:* pierwsza wersja tego opisu (PR #23) błędnie przypisywała przejazdowi `021 001 656` pomiar z punktu 1354 (ok. 35–38 tys.). Kod importu wybiera punkt według odległości i nie był objęty błędem.
 
 ### Import pomiarów ZDM — RSA-007 (2026-11-13), metoda `zdm-street-1`
 Polecenie: `docker compose run --rm worker python -m app.worker import-road-counts` → `reports/DATA_AUDIT_road.md`. Uruchamiać po `import-topology`, a po imporcie ponownie `run-analysis`.
@@ -148,7 +150,7 @@ Karta przejazdu pokazuje średni profil dnia roboczego, godzinę z największą 
 - TomTom / HERE: prawo do prezentacji warstwy, map matching, własnego scoringu, cache i retencji należy sprawdzić **oddzielnie** w aktualnym planie. Nie umieszczać w repo treści pobranych z płatnego API.
 - PKP PLK: sprawdzić warunki klucza, licencji, limitów i przypisania źródła.
 - Dane zewnętrzne w PostGIS: przechowywać tylko dozwolony zakres i TTL; własne wyniki pochodne też mogą podlegać ograniczeniom.
-- Branding: RailSafe AI jest niezależnym projektem; nie umieszczać logotypów ani znaków PKP Intercity jako własnych.
+- Branding: Kolej na Analizę jest niezależnym projektem; nie umieszczać logotypów ani znaków PKP Intercity jako własnych.
 
 ## Pierwszy eksperyment danych (spike)
 **Cel:** zbudować tabelę 10–20 ręcznie zweryfikowanych przejazdów w Warszawie i wykazać, dla ilu jest dostępna miara kolejowa, drogowa i infrastrukturalna. Raport `docs/DATA_AUDIT.md` powinien zawierać liczbę obiektów w każdej kategorii, przykłady błędów map matching, licencje, statystyki kompletności i decyzję GO/NO-GO dla rankingu.
@@ -160,3 +162,5 @@ Karta przejazdu pokazuje średni profil dnia roboczego, godzinę z największą 
 - https://docs.here.com/traffic-api/
 - https://www.openstreetmap.org/copyright
 Linki wskazują kandydatów i dokumentację, nie potwierdzają automatycznie licencji wszystkich zastosowań.
+
+
