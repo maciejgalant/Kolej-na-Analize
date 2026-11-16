@@ -9,6 +9,7 @@ Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Ap
 > Status: **ewidencja przejazdów, planowy ruch pociągów, pomiary ruchu drogowego ZDM, eksperymentalny ranking RPS z mapą i asystent AI na lokalnym modelu**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
 
 ## Dokumentacja
+- [Integracja API PKP PLK i konfiguracja klucza](docs/PKP_API.md)
 - [Porównania, jakość danych i krótkie rozmowy](docs/ASSISTANT_CAPABILITIES.md)
 - [Założenia i wymagania](docs/PROJECT_SPEC.md)
 - [Architektura i model danych](docs/ARCHITECTURE.md)

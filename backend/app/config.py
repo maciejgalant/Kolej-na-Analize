@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:4b-instruct"
 
     demo_mode: bool = True
+    plk_api_key: SecretStr = SecretStr("")
     healthcheck_timeout_s: float = 2.0
     # Model 4b na CPU potrafi odpowiadać kilkadziesiąt sekund, a pętla ma kilka rund.
     assistant_timeout_s: float = 240.0

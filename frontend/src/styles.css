@@ -2089,3 +2089,11 @@ body.is-resizing {
 .road-counts li + li {
   margin-top: 8px;
 }
+
+.rail-dialog { width: min(1100px, 96vw); max-width: 96vw; }
+.rail-panel form { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.rail-panel input, .rail-panel select { max-width: 100%; padding: 8px; }
+.rail-table { overflow-x: auto; }
+.rail-table table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+.rail-table th, .rail-table td { padding: 10px; text-align: left; border-bottom: 1px solid #dce3ec; vertical-align: top; }
+.rail-panel .muted { overflow-wrap: anywhere; }
