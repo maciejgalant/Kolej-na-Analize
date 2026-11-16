@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   activePath,
+  analysisContext,
   appendQuestion,
   decodeState,
   initialState,
@@ -15,7 +16,17 @@ export function useConversations() {
   const [loaded] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return { state: raw ? decodeState(raw) : initialState(), error: "" };
+      const state = raw ? decodeState(raw) : initialState();
+      if (localStorage.getItem("railsafe.map.palette.v2") !== "1") {
+        state.conversations = state.conversations.map((c) => ({
+          ...c,
+          map: {
+            ...c.map,
+            basemap: c.map.basemap === "gray" ? "color" : c.map.basemap,
+          },
+        }));
+      }
+      return { state, error: "" };
     } catch {
       return {
         state: initialState(),
@@ -45,6 +56,7 @@ export function useConversations() {
     if (loaded.error) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem("railsafe.map.palette.v2", "1");
       setStorageError("");
     } catch {
       setStorageError(
@@ -85,6 +97,7 @@ export function useConversations() {
           message: question.content,
           history,
           crossing_id: question.attachment?.id ?? null,
+          analysis_crossing_ids: analysisContext(c, question.parent),
         }),
       });
       const body = await result.json().catch(() => null);

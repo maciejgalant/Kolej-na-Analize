@@ -50,6 +50,9 @@ export function MapAssistant({
           message: question.content,
           history,
           crossing_id: crossing?.id ?? null,
+          analysis_crossing_ids:
+            [...turns].reverse().find((t) => t.reply?.evidence?.map_ids.length)
+              ?.reply?.evidence?.map_ids ?? [],
         }),
       });
       const body = await response.json().catch(() => null);
@@ -122,6 +125,11 @@ export function MapAssistant({
                   crossing
                     ? "Jakie dane są dostępne dla tego przejazdu?"
                     : "Jak korzystać z mapy?",
+                  ...(crossing
+                    ? [
+                        "Jakie działania warto rozważyć, aby poprawić bezpieczeństwo?",
+                      ]
+                    : []),
                 ].map((s) => (
                   <button
                     key={s}

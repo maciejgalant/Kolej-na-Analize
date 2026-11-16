@@ -25,6 +25,9 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=500)
     history: list[HistoryItem] = Field(default_factory=list, max_length=8)
     crossing_id: int | None = Field(default=None, strict=True, gt=0)
+    analysis_crossing_ids: list[Annotated[int, Field(strict=True, gt=0)]] = Field(
+        default_factory=list, max_length=15
+    )
 
 
 class ToolCallOut(BaseModel):
@@ -70,6 +73,7 @@ def assistant_chat(
             body.message.strip(),
             [item.model_dump() for item in body.history],
             attached_crossing=context,
+            analysis_crossing_ids=body.analysis_crossing_ids,
         )
     except AssistantUnavailable as error:
         raise HTTPException(

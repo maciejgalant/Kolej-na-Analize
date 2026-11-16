@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category, CrossingFeature, DistrictFeature } from "./api";
 import type { Attachment, MapState } from "./chat/model";
 import { CrossingCard } from "./CrossingCard";
@@ -36,6 +36,17 @@ export function MapExplorer({
   onClose,
   onAsk,
 }: Props) {
+  const [leaving, setLeaving] = useState(false);
+  const closeTimer = useRef<number>();
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+  function leave(after = onClose) {
+    if (closeTimer.current !== undefined) return;
+    setLeaving(true);
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    closeTimer.current = window.setTimeout(after, reduced ? 0 : 260);
+  }
   const [selected, setSelected] = useState<number | null>(
     initialSelected ?? null,
   );
@@ -59,8 +70,8 @@ export function MapExplorer({
     <Dialog
       title="Mapa przejazdów"
       open
-      onClose={onClose}
-      className="map-dialog"
+      onClose={() => leave()}
+      className={`map-dialog ${leaving ? "map-leaving" : ""}`}
     >
       {demo && (
         <div className="demo-bar demo-bar-strong">
@@ -177,17 +188,19 @@ export function MapExplorer({
               <button
                 className="primary"
                 onClick={() =>
-                  onAsk({
-                    id: selected,
-                    label: feature
-                      ? [
-                          feature.properties.street,
-                          crossingTitle(feature.properties),
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")
-                      : `#${selected}`,
-                  })
+                  leave(() =>
+                    onAsk({
+                      id: selected,
+                      label: feature
+                        ? [
+                            feature.properties.street,
+                            crossingTitle(feature.properties),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : `#${selected}`,
+                    }),
+                  )
                 }
               >
                 Zapytaj o ten przejazd

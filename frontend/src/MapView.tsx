@@ -34,18 +34,26 @@ interface Props {
   fitCrossingIds?: number[];
 }
 
-function markerIcon(feature: CrossingFeature, selected: boolean): L.DivIcon {
+function markerIcon(
+  feature: CrossingFeature,
+  selected: boolean,
+  analysisNumber?: number,
+): L.DivIcon {
   const p = feature.properties;
   const size = selected ? 40 : 32;
+  const pin = pinHtml({
+    category: p.category,
+    verified: p.verification_status === "verified",
+    selected,
+    size,
+  });
+  const rps = p.rps !== null && Number.isFinite(p.rps) ? p.rps : null;
+  const label = analysisNumber
+    ? `<span class="analysis-marker-label"><b>#${analysisNumber}</b><span>RPS ${rps === null ? "—" : rps.toLocaleString("pl-PL", { maximumFractionDigits: 1 })}</span><i style="--rps:${rps === null ? 0 : Math.max(0, Math.min(100, rps))}%"></i></span>`
+    : "";
   return L.divIcon({
-    className: "",
-    html: pinHtml({
-      category: p.category,
-      verified: p.verification_status === "verified",
-      warning: p.warnings > 0,
-      selected,
-      size,
-    }),
+    className: analysisNumber ? "analysis-marker" : "",
+    html: pin + label,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -55,6 +63,7 @@ function markerLabel(feature: CrossingFeature): string {
   const p = feature.properties;
   const parts = [p.street, crossingTitle(p), categoryLabel(p.category)];
   if (p.rank !== null) parts.push(`pozycja ${p.rank} w rankingu`);
+  if (p.rps !== null) parts.push(`RPS ${p.rps.toLocaleString("pl-PL")}`);
   return parts.filter(Boolean).join(", ");
 }
 
@@ -209,11 +218,15 @@ export function MapView({
     for (const feature of crossings) {
       const [lon, lat] = feature.geometry.coordinates;
       const selected = feature.id === selectedCrossingId;
-      const label = markerLabel(feature);
+      const index = fitCrossingIds?.indexOf(feature.id) ?? -1;
+      const analysisNumber = index >= 0 ? index + 1 : undefined;
+      const label =
+        (analysisNumber ? `nr ${analysisNumber} w analizie, ` : "") +
+        markerLabel(feature);
       const tooltip = document.createElement("span");
       tooltip.textContent = label;
       const marker = L.marker([lat, lon], {
-        icon: markerIcon(feature, selected),
+        icon: markerIcon(feature, selected, analysisNumber),
         alt: label,
         keyboard: true,
         zIndexOffset: selected ? 1000 : 0,
@@ -227,7 +240,7 @@ export function MapView({
       element?.setAttribute("role", "button");
       element?.setAttribute("aria-label", label);
     }
-  }, [crossings, selectedCrossingId]);
+  }, [crossings, selectedCrossingId, fitCrossingIds]);
 
   useEffect(() => {
     const instance = map.current;
@@ -253,7 +266,8 @@ export function MapView({
       if (map.current !== instance || !points.length) return;
       instance.invalidateSize();
       instance.fitBounds(L.latLngBounds(points), {
-        padding: [48, 48],
+        paddingTopLeft: [40, 60],
+        paddingBottomRight: [Math.min(130, instance.getSize().x / 3), 60],
         maxZoom: 16,
         animate: false,
       });
@@ -300,10 +314,11 @@ export function MapView({
             <CategoryPin category="B" verified={false} size={24} />
             <span>niezweryfikowany (przerywana obwódka)</span>
           </div>
-          <div className="legend-row">
-            <CategoryPin category="C" warning size={24} />
-            <span>ostrzeżenie o jakości danych</span>
-          </div>
+          <p className="legend-note">
+            W analizie: numer przy znaku odpowiada kolejności odpowiedzi, a RPS
+            oznacza priorytet do dalszej oceny. Uwagi o danych są w szczegółach
+            przejazdu.
+          </p>
         </div>
       )}
       <div className="map-toolbar" role="toolbar" aria-label="Narzędzia mapy">

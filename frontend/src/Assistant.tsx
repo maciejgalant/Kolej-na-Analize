@@ -221,7 +221,19 @@ export function Assistant({
                         <AnswerContent
                           evidence={message.reply?.evidence}
                           onMap={(ids) => onMap(ids)}
-                          onCard={(id) => onMap([id], id)}
+                          onCard={(id) =>
+                            onMap(message.reply?.evidence?.map_ids ?? [id], id)
+                          }
+                          onDetails={
+                            !busy && modelReady
+                              ? () =>
+                                  onSend(
+                                    "Pokaż więcej szczegółów o omawianych przejazdach.",
+                                    undefined,
+                                    message.id,
+                                  )
+                              : undefined
+                          }
                         />
                         {message.reply &&
                           (message.reply.tool_calls.length > 0 ||

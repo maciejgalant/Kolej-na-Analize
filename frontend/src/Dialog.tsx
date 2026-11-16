@@ -45,6 +45,10 @@ export function Dialog({
       ref={ref}
       className={`dialog ${className}`}
       aria-labelledby={titleId}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       onClose={onClose}
       onClick={(event) => {
         // Kliknięcie w tło (sam element dialog, nie jego zawartość) zamyka okno.

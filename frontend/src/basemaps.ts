@@ -76,9 +76,9 @@ export const BASEMAPS: Basemap[] = [
   },
 ];
 
-const STORAGE_KEY = "railsafe.basemap";
+const STORAGE_KEY = "railsafe.basemap.v2";
 
-/** Zapamiętany wybór podkładu; w razie braku dostępu do pamięci przeglądarki — szara. */
+/** Zapamiętany wybór podkładu; domyślnie mapa kolorowa. */
 export function storedBasemap(): BasemapId {
   try {
     const value = window.localStorage.getItem(STORAGE_KEY);
@@ -86,7 +86,7 @@ export function storedBasemap(): BasemapId {
   } catch {
     /* pamięć przeglądarki niedostępna */
   }
-  return "gray";
+  return "color";
 }
 
 export function storeBasemap(id: BasemapId): void {

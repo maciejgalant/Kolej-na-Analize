@@ -70,7 +70,9 @@ export function pictogramSvg(category: Category | null, size = 18): string {
 }
 
 export function categoryLabel(category: Category | null): string {
-  return category ? `kategoria ${category}: ${CATEGORY_SHORT[category]}` : "kategoria nieznana";
+  return category
+    ? `kategoria ${category}: ${CATEGORY_SHORT[category]}`
+    : "kategoria nieznana";
 }
 
 export interface PinOptions {
@@ -82,11 +84,10 @@ export interface PinOptions {
   size?: number;
 }
 
-/** Znak przejazdu: kolorowe kółko z piktogramem, opcjonalnie z ostrzeżeniem. */
+/** Znak przejazdu bez plakietek ostrzegawczych; uwagi pozostają w karcie danych. */
 export function pinHtml({
   category,
   verified = true,
-  warning = false,
   selected = false,
   size = 32,
 }: PinOptions): string {
@@ -99,6 +100,5 @@ export function pinHtml({
   ]
     .filter(Boolean)
     .join(" ");
-  const badge = warning ? '<span class="pin-warn" aria-hidden="true">!</span>' : "";
-  return `<span class="${classes}" style="--pin:${PIN_COLOR};width:${size}px;height:${size}px">${pictogramSvg(category, Math.round(size * 0.74))}${badge}</span>`;
+  return `<span class="${classes}" style="--pin:${PIN_COLOR};width:${size}px;height:${size}px">${pictogramSvg(category, Math.round(size * 0.74))}</span>`;
 }
