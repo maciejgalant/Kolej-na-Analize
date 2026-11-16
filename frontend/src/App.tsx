@@ -12,6 +12,7 @@ import {
   type Health,
 } from "./api";
 import { Assistant } from "./Assistant";
+import { RailPanel } from "./RailPanel";
 import { ConversationList } from "./chat/ConversationList";
 import { newConversation } from "./chat/model";
 
@@ -142,6 +143,7 @@ export function App() {
   const [data, reload] = useInventory();
   const chat = useConversations();
   const [sidebar, setSidebar] = useState(true);
+  const [railOpen, setRailOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false),
     [statusOpen, setStatusOpen] = useState(false);
   const [mapRequest, setMapRequest] = useState<{
@@ -224,6 +226,7 @@ export function App() {
               <MapIcon /> Mapa
             </button>
           )}
+          <button onClick={() => setRailOpen(true)}>Ruch kolejowy PKP PLK</button>
           <button onClick={() => setInfoOpen(true)}>O danych i metodzie</button>
           <div className="status-wrap">
             <button
@@ -303,6 +306,9 @@ export function App() {
           }}
         />
       )}
+      <Dialog title="Ruch kolejowy PKP PLK" open={railOpen} onClose={() => setRailOpen(false)} className="rail-dialog">
+        {railOpen && <RailPanel />}
+      </Dialog>
       <Dialog
         title="O danych i metodzie"
         open={infoOpen}
