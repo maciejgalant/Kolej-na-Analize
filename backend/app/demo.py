@@ -165,7 +165,33 @@ def _feed(conn: psycopg.Connection, week: list[date]) -> Feed:
         workday, weekend = TRIPS[shape_id]
         feed.trips_by_shape[shape_id] = ["WD"] * workday + ["WE"] * weekend
         feed.rail_trips += workday + weekend
+        # fikcyjne godziny: przystanki na końcach trasy, przejazd całej trasy w 10 minut
+        start, end = f"{shape_id}-A", f"{shape_id}-B"
+        feed.stops[start], feed.stops[end] = feed.shapes[shape_id][0], feed.shapes[shape_id][-1]
+        feed.trips[shape_id] = []
+        for service, count in (("WD", workday), ("WE", weekend)):
+            for index, departure in enumerate(_departures(count, rush=service == "WD")):
+                trip = f"{shape_id}-{service}-{index}"
+                feed.trips[shape_id].append((trip, service))
+                feed.stop_times[trip] = [(start, departure, departure),
+                                         (end, departure + 600, departure + 600)]  # fmt: skip
     return merge_feeds({"PL": feed})
+
+
+# Fikcyjny rozkład w ciągu doby: więcej kursów w szczytach (dni robocze), 5:00–23:00.
+_RUSH = [0, 0, 0, 0, 0, 2, 5, 8, 7, 4, 3, 3, 3, 3, 4, 6, 8, 7, 5, 4, 3, 2, 1, 0]
+_FLAT = [0, 0, 0, 0, 0, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 1, 0]
+
+
+def _departures(count: int, rush: bool) -> list[int]:
+    """`count` godzin odjazdu (sekundy od północy) rozłożonych według wag godzinowych."""
+    weights = _RUSH if rush else _FLAT
+    total = sum(weights)
+    result: list[int] = []
+    for hour in range(24):
+        share = round(count * sum(weights[: hour + 1]) / total) - len(result)
+        result += [hour * 3600 + (i * 3600) // max(share, 1) for i in range(share)]
+    return result[:count]
 
 
 def _load_road_counts(conn: psycopg.Connection, week: list[date]) -> None:

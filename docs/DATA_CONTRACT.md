@@ -59,6 +59,7 @@ Poniższe szczegóły nie wynikały wprost z dokumentacji i zostały przyjęte p
 | 0006 | `analysis.risk_scores`: rank_best, rank_worst (analiza wrażliwości wag) |
 | 0007 | `road`: stations (punkty pomiarowe), crossing_stations (przejazd ↔ punkt, `direct`/`validation`); `road.measurements`: `day_type`, `hourly_profile` (24 wartości), `days_count` |
 | 0008 | `road.measurements`: `composition` (pojazdy według rodzaju), `pedestrians`, `cyclists`; `road.crossing_stations.match_type` + `intersection` |
+| 0009 | `rail.crossing_flow`: `hourly_profile` (24 wartości, dzień kalendarzowy przejazdu), `hourly_unplaced` |
 
 
 ## Kontrakt rozmowy i wyników UI (2026-11-15)

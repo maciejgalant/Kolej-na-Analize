@@ -66,6 +66,10 @@ def test_demo_set_gives_a_complete_labelled_ranking(db):
     assert db.execute(
         "SELECT bool_and(is_demo) FROM system.sources WHERE code = 'demo_road_counts'"
     ).fetchone()[0]
+    # fikcyjny rozkład w ciągu doby: szczyty poranny i popołudniowy (RSA-018)
+    flow = demo02["rail_flow"]
+    assert sum(flow["hourly_weekday"]) == 120 and flow["max_hour"] in (7, 16)
+    assert flow["road_peak_source"] == "zdm"  # profil z fikcyjnego licznika DEMO-APR-1
     # fikcyjne skrzyżowanie z pomiarem godzinowym przy DEMO-04
     demo04 = client.get(f"/api/v1/crossings/{props['DEMO-04']['crossing_id']}").json()
     intersection = demo04["road_counts"][0]

@@ -26,6 +26,7 @@ from zoneinfo import ZoneInfo
 import psycopg
 
 from app.etl.gtfs import GTFS_URL, WKD_GTFS_URL, Feed, trips_on
+from app.etl.train_times import hourly_profile
 
 MATCH_M = 20.0
 NEAR_M = 10.0
@@ -49,6 +50,7 @@ class FlowSummary:
     with_trains: int = 0
     sensitive: int = 0
     extended: int = 0
+    unplaced: int = 0  # kursy bez wyznaczonej godziny przejazdu (suma po dniach)
     rows: list[dict] = field(default_factory=list)
 
 
@@ -104,6 +106,7 @@ class CrossingContext:
     own_line: str | None  # numer linii z numeru przejazdu PLK, np. "7"
     track_lines: set[str]  # numery linii torów powiązanych z przejazdem (BDOT10k)
     shapes: list[tuple[str, float]] = field(default_factory=list)  # (shape_id, odległość)
+    lonlat: tuple[float, float] | None = None  # punkt przejazdu w WGS84 (profil godzinowy)
 
     @property
     def on_foreign_line(self) -> bool:
@@ -138,13 +141,14 @@ def _match_shapes(conn: psycopg.Connection, feed: Feed) -> dict[int, CrossingCon
         )
     conn.execute("CREATE INDEX ON tmp_shapes USING gist (geom)")
     contexts: dict[int, CrossingContext] = {}
-    for crossing_id, source_object_id, name, lines in conn.execute(
+    for crossing_id, source_object_id, name, lines, lon, lat in conn.execute(
         """
         SELECT c.crossing_id, c.source_object_id, c.name,
                ARRAY(SELECT DISTINCT ltrim(r.line_number, '0')
                      FROM spatial.crossing_rail_segments l
                      JOIN spatial.rail_segments r USING (segment_id)
-                     WHERE l.crossing_id = c.crossing_id AND r.line_number IS NOT NULL)
+                     WHERE l.crossing_id = c.crossing_id AND r.line_number IS NOT NULL),
+               ST_X(ST_Transform(c.geom, 4326)), ST_Y(ST_Transform(c.geom, 4326))
         FROM spatial.crossings c WHERE c.district_id IS NOT NULL
         """
     ):
@@ -153,6 +157,7 @@ def _match_shapes(conn: psycopg.Connection, feed: Feed) -> dict[int, CrossingCon
             feed_prefix=FEED_BY_LAYER.get(layer),
             own_line=_own_line(layer, name),
             track_lines={line for line in lines if line},
+            lonlat=(lon, lat),
         )
     for crossing_id, shape_id, distance in conn.execute(
         "SELECT c.crossing_id, s.shape_id, ST_Distance(c.geom, s.geom) "
@@ -246,10 +251,19 @@ def import_train_flow(
                     f"W tygodniu przyjęto {sum(daily)} kursów (próg {MATCH_M:.0f} m), ale do "
                     f"{FAR_M:.0f} m przebiega {sum(far)} — możliwa linia równoległa.",
                 )
+            limit = FAR_M if extended else MATCH_M
+            used = [shape for shape, distance in context.shapes if distance <= limit]
             for day, count in zip(week, daily, strict=True):
                 start = datetime.combine(day, time.min, tzinfo=WARSAW_TZ)
                 end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=WARSAW_TZ)
-                flows.append((crossing_id, start, end, count, UNIT, METHOD_VERSION))
+                profile, unplaced = None, None
+                if feed.stop_times and context.lonlat is not None:
+                    profile, unplaced = hourly_profile(feed, used, context.lonlat, day)
+                    summary.unplaced += unplaced
+                flows.append(
+                    (crossing_id, start, end, count, UNIT, METHOD_VERSION,
+                     None if profile is None else json.dumps(profile), unplaced)
+                )  # fmt: skip
             summary.crossings += 1
             summary.with_trains += any(daily)
             summary.rows.append(
@@ -267,8 +281,8 @@ def import_train_flow(
         with conn.cursor() as cursor:
             cursor.executemany(
                 "INSERT INTO rail.crossing_flow (crossing_id, period_start, period_end, "
-                "train_count, unit, evidence_type, method_version) "
-                "VALUES (%s, %s, %s, %s, %s, 'planned', %s)",
+                "train_count, unit, evidence_type, method_version, hourly_profile, "
+                "hourly_unplaced) VALUES (%s, %s, %s, %s, %s, 'planned', %s, %s, %s)",
                 flows,
             )
         conn.execute(
@@ -339,6 +353,7 @@ def build_flow_report(conn: psycopg.Connection, feed: Feed, summary: FlowSummary
             rows,
         ),
         *_sensitive_section(summary, info),
+        *_hourly_section(conn, summary, info),
         "## Ograniczenia",
         "- Tylko pociągi pasażerskie z rozkładu; ruch towarowy, służbowy i manewry nie są "
         "ujęte. Zero oznacza brak kursów pasażerskich, a nie brak ruchu na torze.",
@@ -351,6 +366,74 @@ def build_flow_report(conn: psycopg.Connection, feed: Feed, summary: FlowSummary
         "- Warunki ponownego wykorzystania danych PLK/KM nie zostały jeszcze potwierdzone.",
     ]
     return "\n\n".join(parts) + "\n"
+
+
+def _hourly_section(conn: psycopg.Connection, summary: FlowSummary, info: dict) -> list[str]:
+    """Rozkład pociągów w ciągu dnia roboczego (RSA-018)."""
+    from app.etl.crossing_report import _table
+    from app.etl.train_times import METHOD_VERSION as TIME_METHOD
+    from app.etl.train_times import NIGHT_HOURS, ROAD_PEAK_HOURS, profile_stats
+
+    rows = []
+    placed_total = 0
+    for crossing_id, profiles in conn.execute(
+        """
+        SELECT crossing_id, array_agg(hourly_profile) FROM rail.crossing_flow
+        WHERE hourly_profile IS NOT NULL AND evidence_type = 'planned'
+          AND extract(isodow FROM period_start AT TIME ZONE 'Europe/Warsaw') < 6
+          AND crossing_id = ANY(%s)
+        GROUP BY crossing_id
+        """,
+        ([row["crossing_id"] for row in summary.rows],),
+    ):
+        profile = [sum(day[h] for day in profiles) / len(profiles) for h in range(24)]
+        stats = profile_stats(profile)
+        placed_total += stats["total"]
+        if stats["total"] == 0:
+            continue
+        rows.append(
+            (
+                stats["in_road_peaks"],
+                [
+                    info[crossing_id][0],
+                    f"{stats['total']:.0f}",
+                    f"{stats['max_per_hour']:.0f} ({stats['max_hour']}:00)",
+                    f"{stats['in_road_peaks']:.0f}",
+                    f"{100 * stats['in_road_peaks'] / stats['total']:.0f}%",
+                    f"{stats['at_night']:.0f}",
+                ],
+            )
+        )
+    if not rows:
+        return [
+            "## Rozkład w ciągu doby",
+            "Zbiór GTFS nie zawiera godzin przystanków (stop_times), więc profil dobowy "
+            "nie został wyznaczony.",
+        ]
+    peaks = ", ".join(f"{h}:00" for h in ROAD_PEAK_HOURS)
+    night = f"{NIGHT_HOURS[0]}:00–{NIGHT_HOURS[-1] + 1}:00"
+    unplaced = (
+        f" Kursów bez wyznaczonej godziny (w tygodniu, łącznie): {summary.unplaced}."
+        if summary.unplaced
+        else ""
+    )
+    return [
+        "## Rozkład w ciągu doby (RSA-018)",
+        f"Metoda `{TIME_METHOD}`: godzina przejazdu interpolowana między przystankami na trasie "
+        f"kursu. Średni dzień roboczy. Szczyt drogowy przyjęty jako godziny rozpoczynające się "
+        f"o {peaks}; noc {night}.{unplaced}",
+        _table(
+            [
+                "Numer",
+                "Pociągi/dzień rob.",
+                "Najwięcej w godzinie",
+                "W szczycie drogowym",
+                "Udział szczytu",
+                "Nocą",
+            ],
+            [row for _key, row in sorted(rows, key=lambda r: -r[0])],
+        ),  # fmt: skip
+    ]
 
 
 def _sensitive_section(summary: FlowSummary, info: dict) -> list[str]:

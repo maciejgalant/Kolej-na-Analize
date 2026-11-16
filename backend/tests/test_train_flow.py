@@ -191,6 +191,10 @@ def test_report_and_api_expose_planned_flow(conn):  # noqa: F811
         "unit": "passenger_trains/day", "evidence_type": "planned",
         "method_version": "gtfs-shape-2",
         "source": "Polish Trains GTFS - rozkład pociągów pasażerskich",
+        # zbiór bez godzin przystanków: brak profilu dobowego (RSA-018)
+        "hourly_weekday": None, "max_per_hour": None, "max_hour": None,
+        "in_road_peaks": None, "road_peak_hours": None, "road_peak_source": None,
+        "at_night": None,
     }  # fmt: skip
 
 

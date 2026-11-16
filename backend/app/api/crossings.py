@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from app.analysis.rps import ROAD_CLASS_VEHICLES
 from app.db import get_connection
+from app.etl.train_times import ROAD_PEAK_HOURS, profile_stats
 
 router = APIRouter(tags=["ewidencja"])
 
@@ -96,6 +97,14 @@ class RailFlow(BaseModel):
     evidence_type: str
     method_version: str
     source: str | None
+    # RSA-018: średnia liczba pociągów w każdej godzinie dnia roboczego (0–23)
+    hourly_weekday: list[float] | None = None
+    max_per_hour: float | None = None
+    max_hour: int | None = None
+    in_road_peaks: float | None = None  # pociągi w godzinach szczytu drogowego
+    road_peak_hours: list[int] | None = None
+    road_peak_source: str | None = None  # 'zdm' (profil z licznika) | 'assumed'
+    at_night: float | None = None  # 22:00–6:00
 
 
 class PriorityComponent(BaseModel):
@@ -157,6 +166,7 @@ class RoadCount(BaseModel):
     heavy_share: float | None = None
     pedestrians_max: int | None = None
     cyclists_max: int | None = None
+    hourly_profile: list[int] | None = None  # licznik: średnie pojazdy/h, godziny 0–23
 
 
 class CrossingDetail(BaseModel):
@@ -395,7 +405,9 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
         """,
         (crossing_id,),
     ).fetchone()
+    road_counts = _road_counts(conn, crossing_id)
     if flow is not None:
+        flow |= _hourly_flow(conn, crossing_id, road_counts)
         flow["source"] = (
             conn.execute(
                 "SELECT name FROM system.sources WHERE code = 'gtfs_polish_trains'"
@@ -422,7 +434,7 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
         ).fetchall()
     return CrossingDetail(
         **row,
-        road_counts=_road_counts(conn, crossing_id),
+        road_counts=road_counts,
         priority=priority,
         rail_flow=flow,
         attributes=attributes,
@@ -434,6 +446,42 @@ def crossing_detail(crossing_id: int, conn: Connection) -> CrossingDetail:
 
 
 HEAVY_CLASSES = ("S_C_", "SCP", "BUS")
+
+
+def _road_peak_hours(road_counts: list[dict]) -> tuple[tuple[int, ...], str]:
+    """Szczyt drogowy: 5 najbardziej ruchliwych godzin z licznika ZDM użytego w RPS,
+    a bez niego przyjęte godziny 7–9 i 15–18."""
+    for count in road_counts:
+        profile = count.get("hourly_profile")
+        if count["match_type"] == "direct" and profile:
+            top = sorted(range(24), key=lambda h: profile[h], reverse=True)[:5]
+            return tuple(sorted(top)), "zdm"
+    return ROAD_PEAK_HOURS, "assumed"
+
+
+def _hourly_flow(conn: psycopg.Connection, crossing_id: int, road_counts: list[dict]) -> dict:
+    rows = conn.execute(
+        """
+        SELECT hourly_profile FROM rail.crossing_flow
+        WHERE crossing_id = %s AND evidence_type = 'planned' AND hourly_profile IS NOT NULL
+          AND extract(isodow FROM period_start AT TIME ZONE 'Europe/Warsaw') < 6
+        """,
+        (crossing_id,),
+    ).fetchall()
+    if not rows:
+        return {}
+    profile = [round(sum(r["hourly_profile"][h] for r in rows) / len(rows), 1) for h in range(24)]
+    peaks, origin = _road_peak_hours(road_counts)
+    stats = profile_stats(profile, peaks)
+    return {
+        "hourly_weekday": profile,
+        "max_per_hour": stats["max_per_hour"],
+        "max_hour": stats["max_hour"],
+        "in_road_peaks": stats["in_road_peaks"],
+        "road_peak_hours": list(peaks),
+        "road_peak_source": origin,
+        "at_night": stats["at_night"],
+    }
 
 
 def _road_counts(conn: psycopg.Connection, crossing_id: int) -> list[dict]:
@@ -490,7 +538,7 @@ def _road_counts(conn: psycopg.Connection, crossing_id: int) -> list[dict]:
         else:
             latest = conn.execute(
                 """
-                SELECT vehicles_count, day_type,
+                SELECT vehicles_count, day_type, hourly_profile,
                        to_char(period_start AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD') AS ps,
                        to_char(period_end AT TIME ZONE 'Europe/Warsaw' - interval '1 day',
                                'YYYY-MM-DD') AS pe
@@ -508,6 +556,7 @@ def _road_counts(conn: psycopg.Connection, crossing_id: int) -> list[dict]:
                     "day_type": latest["day_type"] if latest else None,
                     "period_start": latest["ps"] if latest else None,
                     "period_end": latest["pe"] if latest else None,
+                    "hourly_profile": latest["hourly_profile"] if latest else None,
                 }
             )
     return result

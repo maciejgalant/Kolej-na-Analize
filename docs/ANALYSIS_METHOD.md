@@ -59,3 +59,5 @@ Wersja eksperymentalna; wagi i tabele punktowe są założeniami autorskimi, nie
 
 **Czego ta wersja nie robi:** nie liczy urzędowego iloczynu ruchu, nie używa wykonania kursów ani danych o zdarzeniach, nie ocenia widoczności. Pomiary drogowe ZDM wchodzą tylko dla przejazdów z punktem na tej samej ulicy do 300 m; profil godzinowy jest zapisywany, ale jeszcze nie wpływa na wynik.
 
+## 9. Jednoczesność ruchu kolejowego i drogowego (RSA-018, poza RPS)
+Od 2026-11-14 dla każdego przejazdu znany jest planowy profil dobowy pociągów (`gtfs-time-1`, DATA_SOURCES.md). Pokazujemy, ile pociągów przejeżdża w godzinach szczytu drogowego (z licznika ZDM albo przyjętych 7–9 i 15–18) i jaka jest największa liczba pociągów w jednej godzinie (częstość zamykania rogatek). Ten sam iloczyn pociągów i pojazdów jest groźniejszy, gdy oba szczyty się pokrywają, ale wskaźnik **nie wchodzi do RPS**: wymagałby profilu godzinowego ruchu drogowego dla każdego przejazdu, a mamy go tylko z pojedynczych liczników. To kandydat na składnik w kolejnej wersji metody.

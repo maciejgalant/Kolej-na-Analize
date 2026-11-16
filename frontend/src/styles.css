@@ -2089,3 +2089,67 @@ body.is-resizing {
 .road-counts li + li {
   margin-top: 8px;
 }
+
+/* ===== Profil dobowy pociągów (RSA-018) ===== */
+.day-profile {
+  margin: 8px 0 4px;
+}
+
+.day-profile svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.day-profile-bar {
+  fill: #d9570b;
+}
+
+.day-profile-peak {
+  fill: #dbe5f1;
+}
+
+.day-profile-road {
+  fill: none;
+  stroke: var(--navy-700);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.day-profile-axis {
+  fill: var(--slate-600);
+  font-size: 9px;
+}
+
+.day-profile-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  color: var(--slate-600);
+  font-size: 11px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border-radius: 2px;
+}
+
+.swatch-bar {
+  background: #d9570b;
+}
+
+.swatch-peak {
+  background: #dbe5f1;
+  box-shadow: inset 0 0 0 1px #c9d6e5;
+}
+
+.swatch-road {
+  height: 2px;
+  vertical-align: 3px;
+  background: var(--navy-700);
+}
