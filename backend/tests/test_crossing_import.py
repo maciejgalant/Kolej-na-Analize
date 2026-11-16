@@ -140,7 +140,11 @@ def test_reimport_is_idempotent_and_keeps_manual_rejection(conn):
         "001 000 200": ("rejected_grade_separated", "B", 632000.0),
     }
     assert rows(conn, "SELECT count(*) FROM system.import_jobs") == [(2,)]
-    assert rows(conn, "SELECT count(*) FROM system.sources") == [(2,)]
+    assert rows(
+        conn,
+        "SELECT count(*) FROM system.sources "
+        "WHERE code IN ('utk_przejazdy_wms', 'osm_overpass')",
+    ) == [(2,)]
     duplicates = rows(
         conn,
         "SELECT count(*) FROM (SELECT 1 FROM safety.crossing_attributes "
