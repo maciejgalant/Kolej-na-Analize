@@ -303,4 +303,3 @@ def load_demo(conn: psycopg.Connection, today: date | None = None) -> RunSummary
     # Zadania importu noszą etykietę DEMO, żeby pochodzenie było widoczne także w bazie.
     conn.execute("UPDATE system.import_jobs SET snapshot_label = %s", (DEMO_LABEL,))
     return run_analysis(conn, is_demo=True)
-

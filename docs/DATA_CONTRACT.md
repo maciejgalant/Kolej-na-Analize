@@ -79,4 +79,3 @@ Odpowiedź zachowuje `answer`, `model`, `grounded`, `tool_calls`, `disclaimer` i
 Status punktu wykresu: `ok`, `modelled`, `unknown`, `planned`, `measured`. Wartości liczbowe muszą być skończone. Null zachowuje znaczenie braku danych. Nie ma pola pozwalającego modelowi przesłać HTML, kod ani dowolne instrukcje do wykonania. Dane tworzy `assistant/presentation.py` z udanych odczytów narzędzi, a nie z parsowania tekstu LLM. Stare odpowiedzi tekstowe bez `evidence` pozostają obsługiwane przez frontend.
 
 Format przeglądarkowy ma `version: 1`, `active` i listę `conversations`. Rozmowa zawiera metadane, wiadomości z `id`/`parent`, `leaf`, szkic, opcjonalny kontekst i stan mapy. Odpowiedzi z `evidence` są zapisywane przy wiadomościach, więc przyciski starszych wyników działają po odświeżeniu. Ten zapis nie jest synchronizowany między urządzeniami ani kontami. Nie wymaga migracji PostGIS.
-

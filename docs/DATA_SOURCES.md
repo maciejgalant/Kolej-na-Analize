@@ -162,5 +162,3 @@ Karta przejazdu pokazuje średni profil dnia roboczego, godzinę z największą 
 - https://docs.here.com/traffic-api/
 - https://www.openstreetmap.org/copyright
 Linki wskazują kandydatów i dokumentację, nie potwierdzają automatycznie licencji wszystkich zastosowań.
-
-

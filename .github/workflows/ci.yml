@@ -106,5 +106,3 @@ jobs:
           ! docker compose run --rm worker python -m app.worker import-crossings
       - if: always()
         run: docker compose logs --no-color && docker compose down -v
-
-
