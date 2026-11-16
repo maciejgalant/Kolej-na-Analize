@@ -138,4 +138,3 @@ networks:
 volumes:
   postgis_data:
   ollama_models:
-

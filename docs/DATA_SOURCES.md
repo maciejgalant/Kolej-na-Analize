@@ -77,7 +77,9 @@ Uruchomienie (po `import-topology`): `docker compose run --rm worker python -m a
 
 **Pokrycie przejazdów: niewystarczające.** 254 lokalizacje w 128 punktach leżą głównie na trasach wylotowych, mostach i w centrum. Spośród 36 przejazdów drogowych punkt pomiarowy na tej samej ulicy ma trzy: `021 001 656` (Radzymińska, 75 m), `007 012 635` (Wydawnicza, 1,0 km) i `021 005 525` (Łodygowa, 1,2 km). Dla pozostałych najbliższy punkt leży na innej ulicy.
 
-**Decyzja z 2026-11-12 (zmieniona 2026-11-13).** Pierwotnie importu nie budowaliśmy. Pierwszy raport dla punktu przy `021 001 656` pokazał jednak, że model z klasy drogi myli się o rząd wielkości: ZDM klasyfikuje Radzymińską w tym miejscu jako drogę zbiorczą (Z), model przyjmuje dla niej 8 000 pojazdów/dobę, a pomiar z 29.10–12.11.2026 dał średnio ok. 35 000 (oba kierunki). Dlatego pomiary są importowane i tam, gdzie punkt leży blisko przejazdu, zastępują szacunek.
+**Decyzja z 2026-11-12 (zmieniona 2026-11-13).** Pierwotnie importu nie budowaliśmy. Pomiar przy `021 001 656` (punkt 5312, Radzymińska, odcinek Naczelnikowska – Wołomińska; dni miarodajne 16.10–12.11.2026) dał średnio **13 544 pojazdów/dobę** (oba kierunki, szczyt 956 poj./h), a model z klasy drogi przyjmuje dla drogi zbiorczej 8 000 — ok. 1,7 raza mniej. Na wschodnim odcinku tej samej ulicy (punkt 1354, Młodzieńcza – Krynoliny, ok. 3 km od przejazdu) jest 38 175 pojazdów/dobę: natężenie na jednej ulicy zmienia się kilkukrotnie, co pokazuje, że klasa drogi słabo je opisuje. Dlatego pomiary są importowane i tam, gdzie punkt leży blisko przejazdu, zastępują szacunek.
+
+*Korekta 2026-11-14:* pierwsza wersja tego opisu (PR #23) błędnie przypisywała przejazdowi `021 001 656` pomiar z punktu 1354 (ok. 35–38 tys.). Kod importu wybiera punkt według odległości i nie był objęty błędem.
 
 ### Import pomiarów ZDM — RSA-007 (2026-11-13), metoda `zdm-street-1`
 Polecenie: `docker compose run --rm worker python -m app.worker import-road-counts` → `reports/DATA_AUDIT_road.md`. Uruchamiać po `import-topology`, a po imporcie ponownie `run-analysis`.
@@ -119,6 +121,13 @@ Mapa z lat 2019–2022 zawiera w warstwach tylko lokalizacje (liczby są w PDF),
 
 **Demo.** `load-demo` dodaje fikcyjne skrzyżowanie 110 m od DEMO-04 (źródło `demo_intersections`, `is_demo`).
 
+### Pociągi w ciągu doby — RSA-018 (2026-11-14), metoda `gtfs-time-1`
+Liczone przy `import-schedule` z tego samego zbioru GTFS: import czyta dodatkowo `stops.txt` i `stop_times.txt`, ale tylko dla kursów, których trasa przecina Warszawę (strumieniowo). Rozkład podaje godziny tylko na przystankach, więc godzina przejazdu jest wyznaczana tak: przejazd i przystanki kursu są rzutowane na trasę, a czas interpolowany liniowo między odjazdem z przystanku przed przejazdem a przyjazdem do następnego. Dokładność kilku minut wystarcza do przydziału do godziny.
+
+Wynik: `rail.crossing_flow.hourly_profile` — 24 liczby pociągów dla każdego dnia tygodnia odniesienia (dzień kalendarzowy przejazdu; kurs po północy trafia do wczesnych godzin dnia następnego, więc suma profilu może nieznacznie odbiegać od liczby kursów według dnia kursowania) oraz `hourly_unplaced` — kursy bez wyznaczonej godziny (np. przystanki bez czasu).
+
+Karta przejazdu pokazuje średni profil dnia roboczego, godzinę z największą liczbą pociągów, liczbę pociągów w szczycie drogowym i nocą. Szczyt drogowy to 5 najbardziej ruchliwych godzin z licznika ZDM użytego w RPS (`direct`), a bez niego przyjęte godziny rozpoczynające się o 7, 8, 15, 16 i 17. Raport `DATA_AUDIT_trains.md` ma sekcję „Rozkład w ciągu doby”. RPS się nie zmienia (wskaźnik jednoczesności jest kandydatem na przyszły składnik).
+
 ## Komercyjne API ruchu (TomTom, HERE) — decyzja RSA-008 (2026-11-13)
 **NO-GO na etapie konkursu.** Sprawdzone dokumenty:
 - TomTom Traffic API (Flow Segment Data) i HERE Traffic API v7 zwracają prędkość, prędkość swobodną i wskaźnik zatłoczenia (`jamFactor` 0–10), a nie liczbę pojazdów. Nie nadają się do składnika T (zasada jakości 3).
@@ -153,4 +162,3 @@ Mapa z lat 2019–2022 zawiera w warstwach tylko lokalizacje (liczby są w PDF),
 - https://docs.here.com/traffic-api/
 - https://www.openstreetmap.org/copyright
 Linki wskazują kandydatów i dokumentację, nie potwierdzają automatycznie licencji wszystkich zastosowań.
-

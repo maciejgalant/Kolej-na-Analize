@@ -199,6 +199,103 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
 }
 
 const pl = (value: number) => value.toLocaleString("pl-PL");
+const fmt1 = (value: number | null) =>
+  value === null ? "—" : value.toLocaleString("pl-PL", { maximumFractionDigits: 1 });
+
+/** Pociągi w każdej godzinie dnia roboczego; tło = szczyt drogowy, linia = ruch drogowy. */
+function DayProfile({
+  trains,
+  peaks,
+  road,
+}: {
+  trains: number[];
+  peaks: number[];
+  road: number[] | null;
+}) {
+  const W = 288;
+  const H = 96;
+  const pad = { l: 22, b: 16, t: 6 };
+  const plotH = H - pad.b - pad.t;
+  const bar = (W - pad.l) / 24;
+  const max = Math.max(1, ...trains);
+  const roadMax = road ? Math.max(1, ...road) : 1;
+  const y = (v: number) => pad.t + plotH - (v / max) * plotH;
+  const roadPath = road
+    ?.map(
+      (v, h) =>
+        `${h === 0 ? "M" : "L"}${(pad.l + bar * (h + 0.5)).toFixed(1)},${(
+          pad.t + plotH - (v / roadMax) * plotH
+        ).toFixed(1)}`,
+    )
+    .join(" ");
+  const label = trains
+    .map((v, h) => (v > 0 ? `${h}:00 ${fmt1(v)}` : null))
+    .filter(Boolean)
+    .join(", ");
+  return (
+    <figure className="day-profile">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={`Pociągi w kolejnych godzinach dnia roboczego: ${label}`}
+      >
+        {peaks.map((h) => (
+          <rect
+            key={`p${h}`}
+            x={pad.l + bar * h}
+            y={pad.t}
+            width={bar}
+            height={plotH}
+            className="day-profile-peak"
+          />
+        ))}
+        {[0, max].map((v) => (
+          <text key={v} x={pad.l - 4} y={y(v) + 3} className="day-profile-axis" textAnchor="end">
+            {fmt1(v)}
+          </text>
+        ))}
+        {trains.map((v, h) => (
+          <rect
+            key={h}
+            x={pad.l + bar * h + 1}
+            y={y(v)}
+            width={bar - 2}
+            height={Math.max(0, pad.t + plotH - y(v))}
+            rx={1.5}
+            className="day-profile-bar"
+          >
+            <title>{`${h}:00–${h + 1}:00: ${fmt1(v)} poc.`}</title>
+          </rect>
+        ))}
+        {roadPath && <path d={roadPath} className="day-profile-road" />}
+        {[0, 6, 12, 18, 23].map((h) => (
+          <text
+            key={`x${h}`}
+            x={pad.l + bar * (h + 0.5)}
+            y={H - 4}
+            className="day-profile-axis"
+            textAnchor="middle"
+          >
+            {h}
+          </text>
+        ))}
+      </svg>
+      <figcaption className="day-profile-legend">
+        <span>
+          <i className="swatch swatch-bar" /> pociągi/h (dzień roboczy)
+        </span>
+        <span>
+          <i className="swatch swatch-peak" /> szczyt drogowy
+        </span>
+        {road && (
+          <span>
+            <i className="swatch swatch-road" /> ruch drogowy (licznik ZDM, skala względna)
+          </span>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
 
 function RoadCountItem({ count: r }: { count: RoadCount }) {
   const who = r.is_demo ? "Pomiar fikcyjny (demo)" : "ZDM";
@@ -362,6 +459,35 @@ export function CrossingCard({
               <Row label="Sobota">{d.rail_flow.saturday ?? "brak danych"}</Row>
               <Row label="Niedziela">{d.rail_flow.sunday ?? "brak danych"}</Row>
             </dl>
+            {d.rail_flow.hourly_weekday && (
+              <DayProfile
+                trains={d.rail_flow.hourly_weekday}
+                peaks={d.rail_flow.road_peak_hours ?? []}
+                road={
+                  d.road_counts.find((r) => r.match_type === "direct")
+                    ?.hourly_profile ?? null
+                }
+              />
+            )}
+            {d.rail_flow.hourly_weekday && d.rail_flow.max_hour !== null && (
+              <p className="small">
+                Najwięcej pociągów: <strong>{fmt1(d.rail_flow.max_per_hour)}</strong>{" "}
+                w godzinie {d.rail_flow.max_hour}:00–{d.rail_flow.max_hour + 1}:00. W
+                godzinach szczytu drogowego (
+                {d.rail_flow.road_peak_source === "zdm"
+                  ? "według licznika ZDM"
+                  : "przyjęte 7–9 i 15–18"}
+                ): <strong>{fmt1(d.rail_flow.in_road_peaks)}</strong> z{" "}
+                {Math.round(d.rail_flow.weekday_avg)} (
+                {d.rail_flow.weekday_avg > 0
+                  ? Math.round(
+                      (100 * (d.rail_flow.in_road_peaks ?? 0)) /
+                        d.rail_flow.weekday_avg,
+                    )
+                  : 0}
+                %). Nocą (22–6): {fmt1(d.rail_flow.at_night)}.
+              </p>
+            )}
             <p className="muted small">
               Rozkład planowy, tydzień {d.rail_flow.period_start} –{" "}
               {d.rail_flow.period_end}. Tylko pociągi pasażerskie

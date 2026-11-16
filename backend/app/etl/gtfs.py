@@ -1,8 +1,10 @@
 """Otwarty rozkład pociągów pasażerskich w formacie GTFS (mkuran.pl, dane PKP PLK i KM).
 
 Czytane są tylko pliki potrzebne do policzenia kursów: trasy (shapes), kursy (trips),
-linie (routes) i kalendarz (calendar_dates). Geometrie tras pochodzą z odręcznie
-utrzymywanej mapy autora zbioru, a nie z pomiaru geodezyjnego.
+linie (routes) i kalendarz (calendar_dates), a do profilu godzinowego (RSA-018) także
+przystanki (stops) i godziny (stop_times) — tylko dla kursów przez analizowany obszar.
+Geometrie tras pochodzą z odręcznie utrzymywanej mapy autora zbioru, a nie z pomiaru
+geodezyjnego.
 """
 
 import csv
@@ -30,6 +32,13 @@ class Feed:
     # service_id -> dni kursowania
     service_dates: dict[str, set[date]] = field(default_factory=dict)
     rail_trips: int = 0
+    # Do profilu godzinowego (RSA-018); puste, gdy zbiór nie ma stop_times/stops.
+    # shape_id -> [(trip_id, service_id)]
+    trips: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
+    # trip_id -> [(stop_id, przyjazd [s od północy dnia kursu], odjazd [s])] w kolejności
+    stop_times: dict[str, list[tuple[str, int, int]]] = field(default_factory=dict)
+    # stop_id -> (lon, lat)
+    stops: dict[str, tuple[float, float]] = field(default_factory=dict)
 
 
 def _rows(archive: zipfile.ZipFile, name: str):
@@ -39,6 +48,14 @@ def _rows(archive: zipfile.ZipFile, name: str):
 
 def _day(text: str) -> date:
     return datetime.strptime(text.strip(), "%Y%m%d").date()
+
+
+def _seconds(text: str | None) -> int | None:
+    """'25:10:00' → 90 600 (godziny GTFS mogą przekraczać 24 dla kursów po północy)."""
+    if not text or not text.strip():
+        return None
+    hours, minutes, seconds = (int(part) for part in text.strip().split(":"))
+    return hours * 3600 + minutes * 60 + seconds
 
 
 def read_feed(
@@ -69,9 +86,11 @@ def read_feed(
         if row["route_type"].strip() == RAIL_ROUTE_TYPE
     }  # fmt: skip
     trips_by_shape: dict[str, list[str]] = defaultdict(list)
+    trip_list: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for row in _rows(archive, "trips.txt"):
         if row["route_id"] in rail_routes and row.get("shape_id"):
             trips_by_shape[row["shape_id"]].append(row["service_id"])
+            trip_list[row["shape_id"]].append((row["trip_id"], row["service_id"]))
             feed.rail_trips += 1
 
     points: dict[str, list[tuple[int, float, float]]] = defaultdict(list)
@@ -88,6 +107,7 @@ def read_feed(
             if len(line) >= 2:
                 feed.shapes[shape_id] = line
                 feed.trips_by_shape[shape_id] = trips_by_shape[shape_id]
+                feed.trips[shape_id] = trip_list[shape_id]
 
     wanted = {service for services in feed.trips_by_shape.values() for service in services}
     dates: dict[str, set[date]] = defaultdict(set)
@@ -95,7 +115,34 @@ def read_feed(
         if row["service_id"] in wanted and row["exception_type"].strip() == "1":
             dates[row["service_id"]].add(_day(row["date"]))
     feed.service_dates = dict(dates)
+    if {"stop_times.txt", "stops.txt"} <= names:
+        _read_times(archive, feed)
     return feed
+
+
+def _read_times(archive: zipfile.ZipFile, feed: Feed) -> None:
+    """Godziny przystanków dla kursów przez obszar (strumieniowo, bez całego pliku w pamięci)."""
+    wanted = {trip for trips in feed.trips.values() for trip, _service in trips}
+    times: dict[str, list[tuple[int, str, int, int]]] = defaultdict(list)
+    for row in _rows(archive, "stop_times.txt"):
+        if row["trip_id"] not in wanted:
+            continue
+        arrival = _seconds(row.get("arrival_time"))
+        departure = _seconds(row.get("departure_time"))
+        if arrival is None and departure is None:
+            continue  # przystanek bez godziny (nie jest punktem pomiaru czasu)
+        times[row["trip_id"]].append(
+            (int(row["stop_sequence"]), row["stop_id"], arrival if arrival is not None
+             else departure, departure if departure is not None else arrival)
+        )  # fmt: skip
+    used = set()
+    for trip_id, rows in times.items():
+        rows.sort()
+        feed.stop_times[trip_id] = [(stop, arr, dep) for _seq, stop, arr, dep in rows]
+        used.update(stop for _seq, stop, _arr, _dep in rows)
+    for row in _rows(archive, "stops.txt"):
+        if row["stop_id"] in used:
+            feed.stops[row["stop_id"]] = (float(row["stop_lon"]), float(row["stop_lat"]))
 
 
 def reference_week(feed: Feed, today: date) -> list[date]:
@@ -136,7 +183,17 @@ def merge_feeds(feeds: dict[str, Feed]) -> Feed:
             merged.trips_by_shape[f"{name}:{shape_id}"] = [
                 f"{name}:{service}" for service in feed.trips_by_shape[shape_id]
             ]
+            merged.trips[f"{name}:{shape_id}"] = [
+                (f"{name}:{trip}", f"{name}:{service}")
+                for trip, service in feed.trips.get(shape_id, [])
+            ]
         for service, days in feed.service_dates.items():
             merged.service_dates[f"{name}:{service}"] = days
+        for trip, rows in feed.stop_times.items():
+            merged.stop_times[f"{name}:{trip}"] = [
+                (f"{name}:{stop}", arr, dep) for stop, arr, dep in rows
+            ]
+        for stop, point in feed.stops.items():
+            merged.stops[f"{name}:{stop}"] = point
         merged.rail_trips += feed.rail_trips
     return merged

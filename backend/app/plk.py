@@ -74,7 +74,7 @@ class PlkClient:
                 payload = response.json()
                 field = ALLOWED[endpoint]
                 if not isinstance(payload, dict) or not isinstance(
-                    payload.get(field), (list, type(None))
+                    payload.get(field), list | type(None)
                 ):
                     raise ValueError("Unexpected response")
                 if field not in payload:

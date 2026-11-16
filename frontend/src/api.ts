@@ -81,6 +81,7 @@ export interface RoadCount {
   heavy_share: number | null;
   pedestrians_max: number | null;
   cyclists_max: number | null;
+  hourly_profile: number[] | null;
 }
 
 export interface CrossingDetail {
@@ -149,6 +150,13 @@ export interface CrossingDetail {
     evidence_type: string;
     method_version: string;
     source: string | null;
+    hourly_weekday: number[] | null;
+    max_per_hour: number | null;
+    max_hour: number | null;
+    in_road_peaks: number | null;
+    road_peak_hours: number[] | null;
+    road_peak_source: "zdm" | "assumed" | null;
+    at_night: number | null;
   } | null;
 }
 

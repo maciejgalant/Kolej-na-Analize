@@ -64,6 +64,9 @@ docker compose run --rm worker python -m app.worker import-schedule
 ```
 Uruchamiać po imporcie dzielnic i torów. Pobiera otwarty rozkład GTFS (bez klucza), liczy planowe pociągi pasażerskie na każdy przejazd w tygodniu odniesienia i tworzy raport `reports/DATA_AUDIT_trains.md`.
 
+### Pociągi w ciągu doby (RSA-018)
+Liczone razem z `import-schedule` (godziny przystanków z GTFS, interpolacja do punktu przejazdu). Karta przejazdu pokazuje wykres pociągów w kolejnych godzinach dnia roboczego na tle szczytu drogowego, a raport `DATA_AUDIT_trains.md` — sekcję „Rozkład w ciągu doby”. Po aktualizacji uruchom ponownie `import-schedule`.
+
 ### Pomiary ruchu drogowego ZDM (RSA-007)
 ```bash
 docker compose run --rm worker python -m app.worker import-road-counts
