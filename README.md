@@ -100,27 +100,8 @@ API ewidencji: `GET /api/v1/districts`, `GET /api/v1/crossings` (filtry `distric
 - Frontend: `cd frontend && npm ci && npm run dev` (proxy `/api` → `127.0.0.1:8765`)
 - Testy frontendu: `npm test`, `npm run build`; interfejs z atrapą API: `npx playwright install chromium`, następnie `npm run test:e2e` (w katalogu `frontend`).
 
-## Wykorzystanie istniejących projektów
-- [GeoGraph Demo 3](https://github.com/maciejgalant/GeoGraph-demo-03): inspiracja dla FastAPI/PostGIS/Ollama, selektora analiz i Docker Compose.
-- [PSIP MG L1](https://github.com/maciejgalant/PSIP_MG_L1): inspiracja dla importu BDOT10k oraz operacji przestrzennych.
-
-Kod i dane są przenoszone wyłącznie po sprawdzeniu licencji, zależności i pochodzenia. Projekt nie jest oficjalną aplikacją PKP PLK ani PKP Intercity.
-
 ## Zakres MVP
 Warszawa i 18 dzielnic; weryfikowane lokalizacje przejazdów; planowane i (gdy dostępne) potwierdzone przejazdy kolejowe; publiczne pomiary ruchu drogowego; licencjonowane źródła live jako opcjonalne; ranking **priorytetu do dalszej oceny**, mapa i asystent AI odpowiadający na podstawie danych z backendu.
 
-**Data specyfikacji:** 2026-11-11.
-
-
-
-## Nazwa projektu i aktualizacja lokalnej kopii
-Repozytorium: https://github.com/maciejgalant/Kolej-na-Analize.
-
-Po zmianie nazwy repozytorium w istniejącej kopii ustaw adres:
-
-```bash
-git remote set-url origin https://github.com/maciejgalant/Kolej-na-Analize.git
-git pull --ff-only origin main
-```
 
 Nazwa katalogu lokalnego może pozostać dotychczasowa. Identyfikatory Docker Compose, bazy, wolumenów i zapisu rozmów pozostają zgodne z istniejącymi instalacjami; nie trzeba przenosić danych. Szczegóły: [BRANDING.md](docs/BRANDING.md).
