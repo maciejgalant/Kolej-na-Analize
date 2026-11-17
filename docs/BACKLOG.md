@@ -1,5 +1,5 @@
 # Backlog i plan MVP konkursowego (v1.1)
-Data odniesienia: 2026-11-11. Zakładany termin zgłoszenia: 2026-11-22 (potwierdzić w oficjalnym regulaminie tuż przed wysyłką).
+Data odniesienia: 2026-11-11. Termin zgłoszenia: 22.11.2026 do końca dnia, e-mail konkurs-studenci@plk-sa.pl (regulamin z 16.11.2026, §6). Podstawowa forma: prezentacja PPTX/PDF do 20 slajdów lub dokument DOCX/PDF do 15 stron; kod źródłowy i link do demo jako materiały uzupełniające (§5).
 
 | ID | Zadanie | Zależności | Priorytet | Kryterium zakończenia | Stan |
 |---|---|---|---|---|---|
@@ -19,6 +19,7 @@ Data odniesienia: 2026-11-11. Zakładany termin zgłoszenia: 2026-11-22 (potwier
 | RSA-014 | Testy integracyjne, syntetyczny demo-set | 010–013 | P0 | Uruchomienie bez kluczy API | zrobione |
 | RSA-015 | Dokumentacja konkursowa i prezentacja | 010–014 | P0 | Jasne źródła, ograniczenia, wpływ na bezpieczeństwo | do zrobienia |
 | RSA-016 | Scenariusz demo i zgłoszenie | 014,015 | P0 | Kompletny pakiet do wysyłki | do zrobienia |
+| RSA-REL | Wydanie v1.0.0 | 014 | P0 | Licencja, CHANGELOG, zgodne wersje, tag i wydanie na GitHubie | w toku (PR release/v1.0.0) |
 
 ## Harmonogram
 11–12 XI: infrastruktura, dane i rozpoznanie licencji.

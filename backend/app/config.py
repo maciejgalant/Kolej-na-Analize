@@ -6,7 +6,7 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "1.0.0"
 
 
 class Settings(BaseSettings):
