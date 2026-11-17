@@ -1,0 +1,21 @@
+id,date,time,address,street_keys,place,injured
+107395689,2018-10-23,20:16,WARSZAWA PATRIOTÓW,Patriotów,Przejazd kolejowy strzeżony,
+107931584,2019-05-17,21:30,WARSZAWA KSIĘCIA ZIEMOWITA,Księcia Ziemowita,Przejazd kolejowy niestrzeżony,
+108064747,2019-07-27,23:00,WARSZAWA JÓZEFA CHŁOPICKIEGO 53,Chłopickiego,Przejazd kolejowy niestrzeżony,
+108184590,2019-09-26,23:55,WARSZAWA KASPROWICZA 132,Kasprowicza,Przejazd kolejowy niestrzeżony,1
+108495969,2019-12-17,17:15,WARSZAWA JUTRZENKI WYS.PRZYST. SALOMEA01,Jutrzenki,Przejazd kolejowy niestrzeżony,
+108593880,2020-01-24,07:51,WARSZAWA WYCZÓŁKI / ŁĄCZYNY,Wyczółki|Łączyny,Jezdnia,
+109082220,2020-05-26,21:19,WARSZAWA CHŁOPICKIEGO PKP OLSZYNKA,Chłopickiego,Przejazd kolejowy strzeżony,1
+109269154,2020-07-09,00:10,WARSZAWA JÓZEFA CHŁOPICKIEGO 53,Chłopickiego,Jezdnia,
+109899553,2021-02-17,15:23,WARSZAWA JUTRZENKI,Jutrzenki,Przejazd kolejowy niestrzeżony,3
+110312462,2021-07-05,14:30,WARSZAWA PATRIOTÓW 33A,Patriotów,Jezdnia,
+110523870,2021-09-14,14:10,WARSZAWA KAMPINOWSKA,Kampinowska,Jezdnia,
+113473618,2021-11-18,13:12,WARSZAWA CHŁOPICKIEGO 56,Chłopickiego,Przejazd kolejowy niestrzeżony,
+120412525,2022-03-05,21:15,WARSZAWA CHŁOPICKIEGO 51,Chłopickiego,Jezdnia,
+124214510,2022-11-15,18:51,WARSZAWA CHŁOPICKIEGO 5,Chłopickiego,Przejazd kolejowy niestrzeżony,
+125633566,2023-08-03,09:28,WARSZAWA TOROWA PRZYSTANEK WARSZAWA GOCŁAWEK,Torowa,Przejazd kolejowy niestrzeżony,
+125699355,2023-08-06,17:12,WARSZAWA CYRULIKÓW TORY,Cyrulików,Przejazd kolejowy strzeżony,
+125930076,2024-02-10,09:39,WARSZAWA ALEJE JEROZOLIMSKIE 179,Aleje Jerozolimskie,Jezdnia,
+126158944,2024-05-22,11:59,WARSZAWA CHŁOPICKIEGO 44,Chłopickiego,Przejazd kolejowy strzeżony,
+126721951,2024-11-15,20:00,WARSZAWA CHŁOPICKIEGO 53,Chłopickiego,Przejazd kolejowy niestrzeżony,
+127211822,2025-11-18,21:32,WARSZAWA SERWITUTY / JUTRZENKI,Serwituty|Jutrzenki,Przejazd kolejowy niestrzeżony,

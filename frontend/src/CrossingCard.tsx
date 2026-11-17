@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { IncidentHistory } from "./IncidentHistory";
 
 import {
   type CrossingDetail,
@@ -39,15 +40,21 @@ function Section({
   title,
   summary,
   open = false,
+  onOpenChange,
   children,
 }: {
   title: string;
   summary?: string;
   open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }) {
   return (
-    <details className="section" open={open}>
+    <details
+      className="section"
+      open={open}
+      onToggle={(event) => onOpenChange?.(event.currentTarget.open)}
+    >
       <summary>
         <span className="section-title">{title}</span>
         {summary && <span className="section-summary">{summary}</span>}
@@ -111,6 +118,7 @@ function componentNote(
 }
 
 function PriorityBlock({ detail }: { detail: CrossingDetail }) {
+  const [calculationOpen, setCalculationOpen] = useState(false);
   const p = detail.priority;
   if (detail.is_pedestrian)
     return (
@@ -188,11 +196,21 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
             </div>
             <small>
               {c.value === null
-                ? "brak danych"
+                ? c.component === "H"
+                  ? "SEWiK: wykaz częściowy poniżej"
+                  : "brak danych"
                 : c.status === "modelled"
                   ? "model"
                   : "dane dostępne"}
             </small>
+            {c.component === "H" && (
+              <button
+                className="history-open"
+                onClick={() => setCalculationOpen(true)}
+              >
+                Zobacz historię SEWiK
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -201,7 +219,12 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
         <strong>{Math.round(p.completeness_pct)}%</strong>
         <progress max="100" value={p.completeness_pct} />
       </div>
-      <Section title="Jak obliczono RPS" summary="wagi, dane i ograniczenia">
+      <Section
+        title="Jak obliczono RPS"
+        summary="wagi, dane i ograniczenia"
+        open={calculationOpen}
+        onOpenChange={setCalculationOpen}
+      >
         <ul className="components">
           {p.components.map((c) => (
             <li key={c.component}>
@@ -235,8 +258,17 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
                 )}
               </div>
               <div className="muted small">
-                {COMPONENT_STATUS[c.status] ?? c.status}: {componentNote(c)}
+                {c.component === "H" ? (
+                  "Brak punktacji H: historia SEWiK wymaga przypisania zdarzeń do przejazdu."
+                ) : (
+                  <>
+                    {COMPONENT_STATUS[c.status] ?? c.status}: {componentNote(c)}
+                  </>
+                )}
               </div>
+              {c.component === "H" && (
+                <IncidentHistory crossingId={detail.crossing_id} />
+              )}
             </li>
           ))}
         </ul>
