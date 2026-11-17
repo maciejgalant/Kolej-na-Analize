@@ -4,6 +4,8 @@ import type { Attachment, MapState } from "./chat/model";
 import { CrossingCard } from "./CrossingCard";
 import { Dialog } from "./Dialog";
 import { IncidentHistory } from "./IncidentHistory";
+import { IconButton } from "./IconButton";
+import { HistoryIcon } from "./UiIcons";
 import { MapAssistant } from "./MapAssistant";
 import { MapView } from "./MapView";
 import { crossingTitle, CATEGORY_DESCRIPTION } from "./labels";
@@ -124,9 +126,9 @@ export function MapExplorer({
         <span className="map-count" aria-live="polite">
           {visible.length} obiektów
         </span>
-        <button onClick={() => setHistoryOpen(true)}>
-          Historia zdarzeń · SEWiK
-        </button>
+        <IconButton label="Historia zdarzeń · SEWiK" onClick={() => setHistoryOpen(true)}>
+          <HistoryIcon />
+        </IconButton>
         {scope && (
           <button onClick={() => setScope(undefined)}>
             Pokaż wszystkie przejazdy

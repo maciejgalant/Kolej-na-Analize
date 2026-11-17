@@ -191,3 +191,19 @@ export function CrossingSignal() {
     </svg>
   );
 }
+
+export function InfoIcon() {
+  return <ActionIcon><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10v.1" /></ActionIcon>;
+}
+export function StatusIcon() {
+  return <ActionIcon><path d="M3 12h4l3-7 4 14 3-7h4" /></ActionIcon>;
+}
+export function HistoryIcon() {
+  return <ActionIcon><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6m3-3v6l4 2" /></ActionIcon>;
+}
+export function StorageIcon() {
+  return <ActionIcon><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M3 9h18m-13-2h.1m3 0h.1m-4 6h10m-10 3h6" /></ActionIcon>;
+}
+export function StudyIcon() {
+  return <ActionIcon><path d="m2 9 10-5 10 5-10 5L2 9Zm4 2v6c4 3 8 3 12 0v-6m4-2v8" /></ActionIcon>;
+}

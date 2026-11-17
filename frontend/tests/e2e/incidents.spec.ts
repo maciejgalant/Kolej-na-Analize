@@ -76,11 +76,13 @@ test("SEWiK is shown under H as partial street evidence, with unknown casualties
     exact: true,
   });
   await map.getByRole("button", { name: /Testowa, DEMO-7/ }).click();
-  await map.getByText("Jak obliczono RPS", { exact: true }).click();
+  await expect(map.locator(".priority-chart svg")).toBeVisible();
   const history = map.getByRole("region", { name: "Historia zdarzeń SEWiK" });
   await expect(history).toContainText(
     "Nie potwierdzono, że dotyczą tego przejazdu",
   );
+  await expect(history.getByText("WARSZAWA JUTRZENKI", { exact: true })).toBeHidden();
+  await history.getByText("Dane dodatkowe · wpisy i źródło", { exact: true }).click();
   await expect(history).toContainText("Ranni: 3");
   await expect(history).toContainText("Zabici: brak informacji");
   await expect(history).toContainText("109899553");
