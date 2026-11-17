@@ -1,4 +1,5 @@
-import { MapIcon, EditIcon, PinIcon, TrashIcon } from "../UiIcons";
+import { MapIcon, EditIcon, PinIcon, TrashIcon, StorageIcon, StudyIcon } from "../UiIcons";
+import { IconButton } from "../IconButton";
 import { APP_NAME, BRAND_LOGO } from "../brand";
 import { useState } from "react";
 import type { Conversation } from "./model";
@@ -122,6 +123,7 @@ export function ConversationList({
                   <>
                     <button
                       className="conversation-select"
+                      title={c.title}
                       aria-current={c.id === active ? "page" : undefined}
                       onClick={() => onSelect(c.id)}
                     >
@@ -140,33 +142,18 @@ export function ConversationList({
                       </small>
                     </button>
                     <div className="conversation-actions">
-                      <button
-                        aria-label={
-                          c.pinned ? "Odepnij rozmowę" : "Przypnij rozmowę"
-                        }
-                        title={c.pinned ? "Odepnij" : "Przypnij"}
+                      <IconButton
+                        label={c.pinned ? "Odepnij rozmowę" : "Przypnij rozmowę"}
                         aria-pressed={c.pinned}
                         onClick={() => onPin(c.id)}
-                      >
-                        <PinIcon />
-                      </button>
-                      <button
-                        title="Zmień tytuł"
-                        aria-label="Zmień tytuł"
-                        onClick={() => {
-                          setTitle(c.title);
-                          setRenaming(c.id);
-                        }}
-                      >
-                        <EditIcon />
-                      </button>
-                      <button
-                        title="Usuń rozmowę"
-                        aria-label="Usuń rozmowę"
-                        onClick={() => onDelete(c.id)}
-                      >
+                      ><PinIcon /></IconButton>
+                      <IconButton label="Zmień tytuł" onClick={() => {
+                        setTitle(c.title);
+                        setRenaming(c.id);
+                      }}><EditIcon /></IconButton>
+                      <IconButton label="Usuń rozmowę" onClick={() => onDelete(c.id)}>
                         <TrashIcon />
-                      </button>
+                      </IconButton>
                     </div>
                   </>
                 )}
@@ -179,8 +166,8 @@ export function ConversationList({
         <p className="sidebar-empty">Brak pasujących rozmów.</p>
       )}
       <footer className="sidebar-footer">
-        <span className="dot dot-ok" /> Historia w tej przeglądarce
-        <small>Projekt edukacyjny, niezależny</small>
+        <IconButton label="Historia w tej przeglądarce" hint="Rozmowy są zapisane tylko w tej przeglądarce. Wyczyszczenie danych witryny usuwa historię."><StorageIcon /></IconButton>
+        <IconButton label="Projekt edukacyjny, niezależny" hint="Kolej na Analizę — niezależny projekt edukacyjny. Wyniki wspierają dalszą ocenę przejazdów."><StudyIcon /></IconButton>
       </footer>
     </aside>
   );

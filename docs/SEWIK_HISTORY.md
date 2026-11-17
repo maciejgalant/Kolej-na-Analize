@@ -20,7 +20,8 @@ Puste skutki przechowujemy jako NULL, nigdy jako zero. Kategorie miejsca
 - `GET /api/v1/incidents` — cały częściowy wykaz.
 - `GET /api/v1/incidents?crossing_id=…` — wskazówki dopasowane po nazwie ulicy
   z powiązanych odcinków BDOT10k. To nie jest historia potwierdzona dla punktu.
-- W karcie przejazdu wykaz jest pod składnikiem H, w „Jak obliczono RPS”.
+- W karcie przejazdu podsumowanie i wykres wpisów są bezpośrednio w kafelku
+  „Historia zdarzeń”; szczegóły rekordów i źródło są rozwijane.
   Przycisk „Historia zdarzeń · SEWiK” na mapie otwiera wykaz całego miasta.
 - Zgodność ulicy nie zapisuje `crossing_id`, geometrii, `confirmed` ani pewności
   lokalizacji. Dotyczy to szczególnie różnych przejazdów i bocznic przy

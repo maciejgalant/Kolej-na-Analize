@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { IncidentHistory } from "./IncidentHistory";
+import { PriorityChart } from "./PriorityChart";
 
 import {
   type CrossingDetail,
@@ -118,7 +119,6 @@ function componentNote(
 }
 
 function PriorityBlock({ detail }: { detail: CrossingDetail }) {
-  const [calculationOpen, setCalculationOpen] = useState(false);
   const p = detail.priority;
   if (detail.is_pedestrian)
     return (
@@ -178,53 +178,17 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
           </div>
         )}
       </section>
-      <div
-        className="component-overview"
-        aria-label="Składniki priorytetu — podsumowanie"
-      >
-        {p.components.map((c) => (
-          <div className="component-mini" key={c.component}>
-            <span>{COMPONENT_LABEL[c.component]}</span>
-            <strong>{c.value === null ? "—" : Math.round(c.value)}</strong>
-            <div className="mini-track">
-              <i
-                className={c.status === "modelled" ? "modelled" : ""}
-                style={{
-                  width: `${Math.max(0, Math.min(100, c.value ?? 0))}%`,
-                }}
-              />
-            </div>
-            <small>
-              {c.value === null
-                ? c.component === "H"
-                  ? "SEWiK: wykaz częściowy poniżej"
-                  : "brak danych"
-                : c.status === "modelled"
-                  ? "model"
-                  : "dane dostępne"}
-            </small>
-            {c.component === "H" && (
-              <button
-                className="history-open"
-                onClick={() => setCalculationOpen(true)}
-              >
-                Zobacz historię SEWiK
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
+      <PriorityChart components={p.components} />
+      <section className="history-component">
+        <header><strong>Historia zdarzeń</strong><span>SEWiK</span></header>
+        <IncidentHistory crossingId={detail.crossing_id} compact />
+      </section>
       <div className="completeness-line">
         <span>Kompletność składników</span>
         <strong>{Math.round(p.completeness_pct)}%</strong>
         <progress max="100" value={p.completeness_pct} />
       </div>
-      <Section
-        title="Jak obliczono RPS"
-        summary="wagi, dane i ograniczenia"
-        open={calculationOpen}
-        onOpenChange={setCalculationOpen}
-      >
+      <Section title="Dane dodatkowe o RPS" summary="wagi, źródła i ograniczenia">
         <ul className="components">
           {p.components.map((c) => (
             <li key={c.component}>
@@ -237,26 +201,6 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
                 </span>
                 <span>{c.value === null ? "—" : Math.round(c.value)}</span>
               </div>
-              <div
-                className="bar"
-                role="img"
-                aria-label={
-                  c.value === null
-                    ? `${COMPONENT_LABEL[c.component]}: brak danych`
-                    : `${COMPONENT_LABEL[c.component]}: ${Math.round(c.value)} na 100`
-                }
-              >
-                {c.value !== null && (
-                  <span
-                    className={
-                      c.status === "modelled"
-                        ? "bar-fill bar-modelled"
-                        : "bar-fill"
-                    }
-                    style={{ width: `${c.value}%` }}
-                  />
-                )}
-              </div>
               <div className="muted small">
                 {c.component === "H" ? (
                   "Brak punktacji H: historia SEWiK wymaga przypisania zdarzeń do przejazdu."
@@ -266,9 +210,6 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
                   </>
                 )}
               </div>
-              {c.component === "H" && (
-                <IncidentHistory crossingId={detail.crossing_id} />
-              )}
             </li>
           ))}
         </ul>
