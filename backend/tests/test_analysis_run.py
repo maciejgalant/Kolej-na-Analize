@@ -1,4 +1,4 @@
-"""Przebieg RPS na PostGIS: dane wejściowe z geometrii, zapis i raport."""
+"""Przebieg WPO na PostGIS: dane wejściowe z geometrii, zapis i raport."""
 
 import os
 

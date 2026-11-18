@@ -36,7 +36,7 @@ export function IncidentHistory({ crossingId, compact = false }: { crossingId?: 
       {candidates && (
         <p className="small">
           Poniższe wpisy pasują nazwą ulicy. Nie potwierdzono, że dotyczą tego
-          przejazdu. Nie są używane w RPS.
+          przejazdu. Nie są używane w WPO.
         </p>
       )}
       {!data.records.length ? (

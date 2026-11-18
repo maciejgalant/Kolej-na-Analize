@@ -310,7 +310,7 @@ export function App() {
       >
         <h3>Co pokazuje ranking</h3>
         <p>
-          RPS to eksperymentalny priorytet do dalszej oceny, a nie prognoza
+          WPO (Wskaźnik Priorytetu Oceny) to eksperymentalny priorytet do dalszej oceny, a nie prognoza
           wypadków ani urzędowa klasyfikacja przejazdów. Łączy ekspozycję,
           poziom zabezpieczeń wynikający z kategorii i geometrię skrzyżowania.
         </p>

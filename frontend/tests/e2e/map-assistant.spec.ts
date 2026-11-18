@@ -81,7 +81,7 @@ test("map chat cancellation discards late replies and selection resets context",
     .getByRole("button", { name: "Otwórz tymczasowy czat na mapie" })
     .click();
   await map
-    .getByRole("button", { name: "Wyjaśnij wynik RPS", exact: true })
+    .getByRole("button", { name: "Wyjaśnij wynik WPO", exact: true })
     .click();
   await expect(map.locator(".map-chat-pending")).toBeVisible();
   await map

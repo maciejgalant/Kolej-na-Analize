@@ -93,8 +93,8 @@ def build_evidence(
                             f"B: {result['b'].get('numer')}",
                             "Status B",
                             "Różnica A−B",
-                            "Wkład do RPS A",
-                            "Wkład do RPS B",
+                            "Wkład do WPO A",
+                            "Wkład do WPO B",
                         ],
                         rows=[
                             [
@@ -145,7 +145,7 @@ def build_evidence(
                     [
                         f"A: {a.get('numer')}; B: {b.get('numer')}.",
                         result["uwaga"],
-                        "Różnica RPS A−B: "
+                        "Różnica WPO A−B: "
                         + (
                             str(result["roznica_rps_a_minus_b"])
                             if result.get("roznica_rps_a_minus_b") is not None
@@ -244,7 +244,7 @@ def build_evidence(
                     "Dzielnica",
                     "Kategoria",
                     "Pozycja",
-                    "RPS",
+                    "WPO",
                     "Pociągi / dzień roboczy (plan)",
                 ],
                 rows=[
@@ -286,7 +286,7 @@ def build_evidence(
         if detail.priority:
             evidence.charts.append(
                 Chart(
-                    title=f"Składniki RPS — {card.title}",
+                    title=f"Składniki WPO — {card.title}",
                     unit="pkt / 100",
                     points=[
                         Point(label=COMPONENTS[c.component], value=c.value, status=c.status)

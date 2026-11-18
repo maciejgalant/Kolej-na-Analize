@@ -12,7 +12,7 @@ Data odniesienia: 2026-11-11. Termin zgłoszenia: 22.11.2026 do końca dnia, e-m
 | RSA-007 | Dane ZDM i jakość dopasowania do odcinków | 003,005 | P0 | Raport stanowisk i zasięgu | zrobione (APR, #23) |
 | RSA-008 | Licencja i próbny adapter Traffic API | 002 | P1 | GO/NO-GO z udokumentowanymi prawami | zamknięte: NO-GO (TomTom, HERE) |
 | RSA-009 | Matchowanie kursów i ruchu do przejazdu | 004–007 | P0 | Testy topologii, czasu i deduplikacji | zrobione (plan) |
-| RSA-010 | RPS, brakujące dane i analiza wrażliwości | 009 | P0 | Wersja metody i walidacja | zrobione (rps-0.5-exp) |
+| RSA-010 | WPO, brakujące dane i analiza wrażliwości | 009 | P0 | Wersja metody i walidacja | zrobione (rps-0.5-exp) |
 | RSA-011 | API dla przejazdów i rankingów | 003,010 | P0 | Kontrakt OpenAPI i testy | zrobione |
 | RSA-012 | Interfejs analityczny w stylistyce kolejowej | 011 | P0 | Mapa, filtry, karty i wykresy | rozszerzony o interfejs rozmów; porównanie dzielnic w tabeli, osobny dashboard porównawczy poza tym etapem |
 | RSA-013 | Qwen: wybór bezpiecznych funkcji i wyjaśnienia | 011 | P0 | Test 5 intencji i odmowy przy brakach | zrobione |

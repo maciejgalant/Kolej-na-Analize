@@ -121,7 +121,7 @@ export function MapAssistant({
             {!turns.length && (
               <div className="map-chat-suggestions">
                 {[
-                  "Wyjaśnij wynik RPS",
+                  "Wyjaśnij wynik WPO",
                   crossing
                     ? "Jakie dane są dostępne dla tego przejazdu?"
                     : "Jak korzystać z mapy?",

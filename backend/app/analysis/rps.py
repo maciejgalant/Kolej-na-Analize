@@ -1,10 +1,10 @@
-"""Wskaźnik priorytetu do dalszej oceny (RPS) — wersja eksperymentalna `rps-0.5-exp`.
+"""Wskaźnik Priorytetu Oceny (WPO) — wersja eksperymentalna `rps-0.5-exp`.
 
-RPS to autorski *priorytet do dalszej oceny*, a nie prawdopodobieństwo wypadku ani
+WPO to autorski *priorytet do dalszej oceny*, a nie prawdopodobieństwo wypadku ani
 urzędowa klasyfikacja przejazdu. Wagi i tabele poniżej są założeniami roboczymi,
 niezwalidowanymi; każda zmiana wymaga nowej wersji metody.
 
-    RPS = 0,40·T + 0,30·P + 0,20·G + 0,10·H      (składniki w skali 0–100)
+    WPO = 0,40·T + 0,30·P + 0,20·G + 0,10·H      (składniki w skali 0–100)
 
 T — ekspozycja: planowe pociągi pasażerskie na dobę × pojazdy na dobę, w skali
     logarytmicznej względem stałego poziomu odniesienia. Pojazdy: pomiar ZDM (APR), gdy

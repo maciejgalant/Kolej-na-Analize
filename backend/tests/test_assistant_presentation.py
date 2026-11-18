@@ -191,5 +191,5 @@ def test_text_only_response_stays_compatible(client, monkeypatch):
         "chat",
         lambda *_args, **_kwargs: service.AssistantReply(answer="Opis metody", model="test"),
     )
-    body = client.post("/api/v1/assistant/chat", json={"message": "Co to RPS?"}).json()
+    body = client.post("/api/v1/assistant/chat", json={"message": "Co to WPO?"}).json()
     assert body["answer"] == "Opis metody" and body["evidence"]["map_ids"] == []

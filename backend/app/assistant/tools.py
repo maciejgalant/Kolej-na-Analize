@@ -237,7 +237,7 @@ def get_data_quality(
         "przejazdy": rows,
         "uwaga": "Lista do przeglądu danych: najpierw brak analizy lub najniższa kompletność, "
         "następnie więcej składników modelowanych. To nie ranking bezpieczeństwa ani pomiar "
-        "wiarygodności. Przejścia kategorii E są poza rankingiem RPS z założenia. "
+        "wiarygodności. Przejścia kategorii E są poza rankingiem WPO z założenia. "
         "Kompletność opisuje dostępność składników, nie ich aktualność. "
         "Do potwierdzenia aktualności sprawdź okresy w źródłach.",
     }
@@ -274,7 +274,7 @@ def get_method(conn: psycopg.Connection) -> dict:
     ).fetchone()
     return {
         "przebieg": run,
-        "wzor": "RPS = 0,40*T + 0,30*P + 0,20*G + 0,10*H (średnia po dostępnych składnikach)",
+        "wzor": "WPO = 0,40*T + 0,30*P + 0,20*G + 0,10*H (średnia po dostępnych składnikach)",
         "skladniki": {
             "T": "ekspozycja: planowe pociągi pasażerskie x pojazdy na dobę (pomiar ZDM, gdy "
             "punkt pomiarowy jest na ulicy przejazdu do 300 m; inaczej szacunek z klasy drogi)",
@@ -302,7 +302,7 @@ NUMBER = {"type": "string", "description": "Numer przejazdu z ewidencji, np. '02
 REGISTRY: dict[str, tuple[Callable[..., dict], str, dict]] = {
     "get_ranking": (
         get_ranking,
-        "Ranking przejazdów drogowych według priorytetu RPS. Opcjonalnie tylko jedna dzielnica.",
+        "Ranking przejazdów drogowych według WPO. Opcjonalnie tylko jedna dzielnica.",
         _schema(
             {
                 "district": {"type": "string", "description": "Nazwa dzielnicy, np. 'Wola'."},
@@ -313,7 +313,7 @@ REGISTRY: dict[str, tuple[Callable[..., dict], str, dict]] = {
     ),
     "get_crossing": (
         get_crossing,
-        "Szczegóły jednego przejazdu: kategoria, dzielnica, pociągi, RPS, składniki, ostrzeżenia.",
+        "Szczegóły jednego przejazdu: kategoria, dzielnica, pociągi, WPO, składniki, ostrzeżenia.",
         _schema({"number": NUMBER}, ["number"]),
     ),
     "compare_crossings": (
@@ -328,12 +328,12 @@ REGISTRY: dict[str, tuple[Callable[..., dict], str, dict]] = {
     ),
     "get_method": (
         get_method,
-        "Opis metody RPS: wzór, składniki, wagi, okres danych i ograniczenia.",
+        "Opis metody WPO: wzór, składniki, wagi, okres danych i ograniczenia.",
         _schema({}, []),
     ),
     "get_data_quality": (
         get_data_quality,
-        "Braki i jakość danych: kompletność RPS, modelowane składniki, źródło ruchu. "
+        "Braki i jakość danych: kompletność WPO, modelowane składniki, źródło ruchu. "
         "Dla jednego numeru albo dzielnicy; bez argumentów dla Warszawy. "
         "Użyj przy pytaniach o niepełne dane, niepewność lub co należy zweryfikować.",
         _schema(

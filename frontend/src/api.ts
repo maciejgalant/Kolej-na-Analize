@@ -51,7 +51,7 @@ export interface CrossingProperties {
   warnings: number;
   /** Średnia planowa liczba pociągów pasażerskich w dzień roboczy; null = brak danych. */
   trains_weekday: number | null;
-  /** Pozycja i wynik RPS z ostatniego przebiegu; null = poza rankingiem lub brak przebiegu. */
+  /** Pozycja i wynik WPO z ostatniego przebiegu; null = poza rankingiem lub brak przebiegu. */
   rank: number | null;
   rps: number | null;
   /** Nazwa ulicy przejazdu z BDOT10k; null = brak nazwanej jezdni w pobliżu. */

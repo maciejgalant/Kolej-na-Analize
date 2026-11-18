@@ -90,7 +90,7 @@ Polecenie: `docker compose run --rm worker python -m app.worker import-road-coun
 
 **Okres i typ dni.** Domyślnie 28 dni kończących się wczoraj, tylko dni ZDM typu „miarodajny” (dzień roboczy bez zakłóceń). Opcje `--days` i `--end`.
 
-**Dopasowanie do przejazdu.** Ulica przejazdu = nazwy jezdni BDOT10k do 15 m od punktu (bez nich: jezdnie powiązane do 30 m), porównywane po normalizacji („ul. Radzymińska” = „Radzymińska”). Punkt ZDM musi leżeć na tej samej ulicy do 1,5 km. Najbliższy taki punkt do 300 m ma typ `direct` i jego średnia dobowa wchodzi do RPS (`vehicles_source = measured`). Pozostałe mają typ `validation` i służą tylko do porównania z modelem, bo po drodze mogą być skrzyżowania. Punkt na innej ulicy nie jest przypisywany, nawet tuż obok przejazdu (zasada jakości 4).
+**Dopasowanie do przejazdu.** Ulica przejazdu = nazwy jezdni BDOT10k do 15 m od punktu (bez nich: jezdnie powiązane do 30 m), porównywane po normalizacji („ul. Radzymińska” = „Radzymińska”). Punkt ZDM musi leżeć na tej samej ulicy do 1,5 km. Najbliższy taki punkt do 300 m ma typ `direct` i jego średnia dobowa wchodzi do WPO (`vehicles_source = measured`). Pozostałe mają typ `validation` i służą tylko do porównania z modelem, bo po drodze mogą być skrzyżowania. Punkt na innej ulicy nie jest przypisywany, nawet tuż obok przejazdu (zasada jakości 4).
 
 **Zapis.** `road.stations` (dopasowane punkty), `road.crossing_stations` (przejazd ↔ punkt, odległość, typ, wersja metody), `road.measurements` (`vehicles/day`, oba kierunki, typ dni, liczba dni, profil godzinowy w `hourly_profile`). Powtórny import aktualizuje rekordy zamiast je dublować.
 
@@ -113,7 +113,7 @@ Mapa z lat 2019–2022 zawiera w warstwach tylko lokalizacje (liczby są w PDF),
 
 **Co zapisujemy.** Godziny pomiaru jako `road.measurements` (`vehicles/hour`, kierunek `all` = wszystkie wloty) ze strukturą pojazdów (`composition`), pieszymi i rowerzystami.
 
-**Jak używamy.** Liczby dotyczą całego skrzyżowania w kilku godzinach jednego dnia, a nie ruchu przez przejazd w ciągu doby, więc **nie zmieniają RPS**. Karta przejazdu pokazuje szczyt, udział pojazdów ciężkich, pieszych i rowerzystów. Raport porównuje szacunek z klasy drogi z górnym ograniczeniem „szczyt / 0,08” (założony udział najbardziej ruchliwej godziny w ruchu doby; APR na Radzymińskiej: 7%) i oznacza przejazdy, dla których model je przekracza.
+**Jak używamy.** Liczby dotyczą całego skrzyżowania w kilku godzinach jednego dnia, a nie ruchu przez przejazd w ciągu doby, więc **nie zmieniają WPO**. Karta przejazdu pokazuje szczyt, udział pojazdów ciężkich, pieszych i rowerzystów. Raport porównuje szacunek z klasy drogi z górnym ograniczeniem „szczyt / 0,08” (założony udział najbardziej ruchliwej godziny w ruchu doby; APR na Radzymińskiej: 7%) i oznacza przejazdy, dla których model je przekracza.
 
 **Licencja.** Jak APR: informacja sektora publicznego ZDM (`zdm-apr-psi`), atrybucja „Zarząd Dróg Miejskich w Warszawie”.
 
@@ -126,7 +126,7 @@ Liczone przy `import-schedule` z tego samego zbioru GTFS: import czyta dodatkowo
 
 Wynik: `rail.crossing_flow.hourly_profile` — 24 liczby pociągów dla każdego dnia tygodnia odniesienia (dzień kalendarzowy przejazdu; kurs po północy trafia do wczesnych godzin dnia następnego, więc suma profilu może nieznacznie odbiegać od liczby kursów według dnia kursowania) oraz `hourly_unplaced` — kursy bez wyznaczonej godziny (np. przystanki bez czasu).
 
-Karta przejazdu pokazuje średni profil dnia roboczego, godzinę z największą liczbą pociągów, liczbę pociągów w szczycie drogowym i nocą. Szczyt drogowy to 5 najbardziej ruchliwych godzin z licznika ZDM użytego w RPS (`direct`), a bez niego przyjęte godziny rozpoczynające się o 7, 8, 15, 16 i 17. Raport `DATA_AUDIT_trains.md` ma sekcję „Rozkład w ciągu doby”. RPS się nie zmienia (wskaźnik jednoczesności jest kandydatem na przyszły składnik).
+Karta przejazdu pokazuje średni profil dnia roboczego, godzinę z największą liczbą pociągów, liczbę pociągów w szczycie drogowym i nocą. Szczyt drogowy to 5 najbardziej ruchliwych godzin z licznika ZDM użytego w WPO (`direct`), a bez niego przyjęte godziny rozpoczynające się o 7, 8, 15, 16 i 17. Raport `DATA_AUDIT_trains.md` ma sekcję „Rozkład w ciągu doby”. WPO się nie zmienia (wskaźnik jednoczesności jest kandydatem na przyszły składnik).
 
 ## Komercyjne API ruchu (TomTom, HERE) — decyzja RSA-008 (2026-11-13)
 **NO-GO na etapie konkursu.** Sprawdzone dokumenty:

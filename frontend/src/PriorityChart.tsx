@@ -7,7 +7,7 @@ export function PriorityChart({ components }: { components: Components }) {
     `${COMPONENT_LABEL[c.component]}, waga ${Math.round(c.weight * 100)}%: ${c.value === null ? "brak punktacji" : `${c.value} na 100`}`
   ).join("; ");
   return <figure className="priority-chart">
-    <figcaption>Jak obliczono RPS <small>składniki · skala 0–100</small></figcaption>
+    <figcaption>Jak obliczono WPO <small>składniki · skala 0–100</small></figcaption>
     <svg viewBox={`0 0 320 ${components.length * 48 + 4}`} role="img" aria-label={description}>
       {components.map((c, i) => <g key={c.component} transform={`translate(0 ${i * 48})`}>
         <text x="0" y="15" className="priority-chart-label">{COMPONENT_LABEL[c.component]} · {Math.round(c.weight * 100)}%</text>

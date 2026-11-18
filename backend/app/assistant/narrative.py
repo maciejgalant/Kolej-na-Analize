@@ -26,17 +26,17 @@ def number(value) -> str:
 
 
 def ranking_text(rows: list[dict]) -> str:
-    lines = ["Przejazdy z najwyższym priorytetem (RPS) według rankingu:"]
+    lines = ["Przejazdy z najwyższym priorytetem (WPO) według rankingu:"]
     for i, row in enumerate(rows, 1):
         lines.append(
             f"{i}. **Numer:** {row['numer']}, "
             f"**Dzielnica:** {row.get('dzielnica') or 'brak danych'}, "
             f"**Kategoria:** {row.get('kategoria') or 'brak danych'}, "
-            f"**RPS:** {number(row.get('rps'))}"
+            f"**WPO:** {number(row.get('rps'))}"
         )
     lines += [
         "Wszystkie dane dotyczą przejazdów z kursami pasażerskimi w rozkładzie. "
-        "RPS to priorytet do dalszej oceny, nie oznacza niebezpieczności.",
+        "WPO to priorytet do dalszej oceny, nie oznacza niebezpieczności.",
         f"Czy chcesz więcej szczegółów o tych {len(rows)} przejazdach?",
     ]
     return "\n\n".join(lines)
@@ -76,7 +76,7 @@ def detail_text(rows: list[dict]) -> str:
             contribution = available[key]["wartosc"] * available[key]["waga"] / total_weight
             explanation = (
                 f" Największy wkład do wyniku ma {COMPONENT_NAMES.get(key, key)} "
-                f"— około {number(round(contribution, 1))} pkt RPS "
+                f"— około {number(round(contribution, 1))} pkt WPO "
                 "po uwzględnieniu wag dostępnych składników."
             )
         traffic_source = (
@@ -85,7 +85,7 @@ def detail_text(rows: list[dict]) -> str:
         angle = "brak danych" if g.get("angle_deg") is None else number(g["angle_deg"]) + "°"
         lines.append(
             f"{i}. **{row['numer']} — {row.get('dzielnica') or 'brak dzielnicy'}**\n"
-            f"RPS {number(row.get('rps'))}; kategoria {row.get('kategoria') or 'brak danych'}. "
+            f"WPO {number(row.get('rps'))}; kategoria {row.get('kategoria') or 'brak danych'}. "
             f"Pociągi pasażerskie / dzień roboczy (plan): "
             f"{number(row.get('pociagi_pasazerskie_dzien_roboczy_plan'))}. "
             f"Pojazdy / dobę: {number(vehicles)} ({traffic_source}). "
@@ -132,6 +132,6 @@ def recommendation_text(rows: list[dict]) -> str:
     lines.append(
         "Te propozycje nie potwierdzają usterki ani nie przesądzają o przebudowie. "
         "Najpierw należy zweryfikować dane i warunki lokalne; "
-        "sama zmiana RPS nie dowodzi poprawy bezpieczeństwa."
+        "sama zmiana WPO nie dowodzi poprawy bezpieczeństwa."
     )
     return "\n\n".join(lines)

@@ -75,7 +75,7 @@ def test_attached_crossing_takes_precedence_over_old_ranking(monkeypatch):
             http,
             "http://model",
             "test",
-            "Dlaczego taka wartość RPS?",
+            "Dlaczego taka wartość WPO?",
             attached_crossing=row(7),
             analysis_crossing_ids=[1, 2, 3, 4, 5],
         )

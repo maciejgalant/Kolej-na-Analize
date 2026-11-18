@@ -6,7 +6,7 @@ Dopasowanie punktu pomiarowego do przejazdu:
    („ul. Radzymińska” = „Radzymińska”).
 2. Punkt ZDM musi leżeć na tej samej ulicy i nie dalej niż MAX_M od przejazdu.
 3. Najbliższy taki punkt do DIRECT_M dostaje typ `direct`: jego średnia dobowa zastępuje
-   w RPS szacunek z klasy drogi. Pozostałe mają typ `validation` i służą tylko do
+   w WPO szacunek z klasy drogi. Pozostałe mają typ `validation` i służą tylko do
    porównania z modelem, bo między punktem a przejazdem mogą być skrzyżowania, które
    zmieniają natężenie.
 
@@ -343,7 +343,7 @@ def build_road_report(
                 crossing.street_label or "?",
                 f"{match.point_id} ({report.section if report else '?'})",
                 f"{match.distance_m:.0f}",
-                "pomiar w RPS" if match.match_type == "direct" else "walidacja",
+                "pomiar w WPO" if match.match_type == "direct" else "walidacja",
                 _int(measured),
                 "—" if report is None or report.peak_hour is None else f"{report.peak_hour}:00",
                 f"{crossing.road_class or '?'} → {_int(model)}",
@@ -361,11 +361,11 @@ def build_road_report(
         "`worker import-road-counts`.",
         "## Pokrycie",
         f"Przejazdów drogowych w rankingu: **{len(crossings)}**. Z punktem ZDM na tej samej "
-        f"ulicy do {_dec(MAX_M / 1000)} km: **{len(covered)}**, w tym z pomiarem użytym w RPS "
+        f"ulicy do {_dec(MAX_M / 1000)} km: **{len(covered)}**, w tym z pomiarem użytym w WPO "
         f"(do {DIRECT_M:.0f} m): **{len(direct)}**. Punktów ZDM w danych: "
         f"{summary.stations_seen}.",
         "## Pomiar a model z klasy drogi",
-        "Kolumna „model” to szacunek RPS z klasy jezdni BDOT10k (pojazdy/dobę), „pomiar / "
+        "Kolumna „model” to szacunek WPO z klasy jezdni BDOT10k (pojazdy/dobę), „pomiar / "
         "model” — ile razy pomiar jest większy od szacunku.",
         _table(
             [
@@ -383,7 +383,7 @@ def build_road_report(
         ),  # fmt: skip
         "## Zasady i ograniczenia",
         f"- Punkt przypisywany jest tylko na tej samej ulicy. Typ „walidacja” (dalej niż "
-        f"{DIRECT_M:.0f} m albo nie najbliższy) nie zmienia RPS: między punktem a przejazdem "
+        f"{DIRECT_M:.0f} m albo nie najbliższy) nie zmienia WPO: między punktem a przejazdem "
         "mogą być skrzyżowania.",
         "- Wartość to średnia dobowa dla obu kierunków łącznie, z dni wybranego typu.",
         "- Kilka punktów nie wystarcza do kalibracji tabeli klas drogi; porównanie pokazuje "
@@ -393,7 +393,7 @@ def build_road_report(
         mean = sum(r for _, r in ratios) / len(ratios)
         parts.insert(
             -4,
-            f"Średnio pomiar / model dla przejazdów z pomiarem w RPS: **{_dec(mean)}×** "
+            f"Średnio pomiar / model dla przejazdów z pomiarem w WPO: **{_dec(mean)}×** "
             f"(n = {len(ratios)}).",
         )
     return "\n\n".join(parts) + "\n"

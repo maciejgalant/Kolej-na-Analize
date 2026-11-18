@@ -78,7 +78,7 @@ export const evidence = {
   tables: [
     {
       title: "Ranking testowy",
-      columns: ["Przejazd", "RPS"],
+      columns: ["Przejazd", "WPO"],
       rows: [["DEMO-7", 50]],
     },
   ],
@@ -93,7 +93,7 @@ export const evidence = {
     },
   ],
   sources: ["Źródło demonstracyjne"],
-  notes: ["RPS to priorytet do dalszej oceny."],
+  notes: ["WPO to priorytet do dalszej oceny."],
   map_ids: [7],
 };
 export const reply = (answer = "Wynik analizy przejazdu DEMO-7.") => ({

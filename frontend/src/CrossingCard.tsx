@@ -150,7 +150,7 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
             <div
               className="score-dial"
               role="img"
-              aria-label={`Priorytet RPS ${p.rps.toFixed(1)} na 100`}
+              aria-label={`Priorytet WPO ${p.rps.toFixed(1)} na 100`}
             >
               <svg viewBox="0 0 104 104" aria-hidden="true">
                 <circle className="dial-track" cx="52" cy="52" r="44" />
@@ -165,7 +165,7 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
               </svg>
               <div>
                 <strong>{fmt1(p.rps)}</strong>
-                <small>RPS / 100</small>
+                <small>WPO / 100</small>
               </div>
             </div>
             <div className="priority-hero-copy">
@@ -188,7 +188,7 @@ function PriorityBlock({ detail }: { detail: CrossingDetail }) {
         <strong>{Math.round(p.completeness_pct)}%</strong>
         <progress max="100" value={p.completeness_pct} />
       </div>
-      <Section title="Dane dodatkowe o RPS" summary="wagi, źródła i ograniczenia">
+      <Section title="Dane dodatkowe o WPO" summary="wagi, źródła i ograniczenia">
         <ul className="components">
           {p.components.map((c) => (
             <li key={c.component}>

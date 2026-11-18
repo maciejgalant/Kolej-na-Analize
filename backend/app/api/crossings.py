@@ -22,7 +22,7 @@ LATEST_RUN_SQL = (
     "ORDER BY finished_at DESC, run_id DESC LIMIT 1"
 )
 DISCLAIMER = (
-    "RPS to autorski priorytet do dalszej oceny, a nie prognoza wypadków ani urzędowa "
+    "WPO to autorski priorytet do dalszej oceny, a nie prognoza wypadków ani urzędowa "
     "klasyfikacja przejazdów. Wagi i tabele punktowe są eksperymentalne i niezwalidowane."
 )
 
@@ -116,7 +116,7 @@ class PriorityComponent(BaseModel):
 
 
 class Priority(BaseModel):
-    """Wynik RPS z ostatniego zakończonego przebiegu; to priorytet oceny, nie prognoza."""
+    """Wynik WPO z ostatniego zakończonego przebiegu; to priorytet oceny, nie prognoza."""
 
     run_id: int
     method_version: str
@@ -449,7 +449,7 @@ HEAVY_CLASSES = ("S_C_", "SCP", "BUS")
 
 
 def _road_peak_hours(road_counts: list[dict]) -> tuple[tuple[int, ...], str]:
-    """Szczyt drogowy: 5 najbardziej ruchliwych godzin z licznika ZDM użytego w RPS,
+    """Szczyt drogowy: 5 najbardziej ruchliwych godzin z licznika ZDM użytego w WPO,
     a bez niego przyjęte godziny 7–9 i 15–18."""
     for count in road_counts:
         profile = count.get("hourly_profile")

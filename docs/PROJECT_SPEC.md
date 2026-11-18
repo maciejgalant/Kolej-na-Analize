@@ -18,10 +18,10 @@ Projekt powstał na konkurs PKP PLK „Kolej na bezpieczeństwo” (II edycja).
 2. 18 dzielnic Warszawy; ewidencja przejazdów z warstwy UTK z kontrolą w OpenStreetMap i statusem weryfikacji; skrzyżowania bezkolizyjne odrzucone, ale zachowane w ewidencji.
 3. Planowy ruch pasażerski z otwartego GTFS, także rozkład w ciągu doby. Rzeczywiste wykonanie rozkładu (API PKP PLK) jest podłączone w backendzie, ale nie zasila rankingu.
 4. Publiczne pomiary ruchu drogowego ZDM (punkty APR i skrzyżowania), dopasowane do przejazdów z jawną metodą dopasowania; bez pomiaru szacunek z klasy drogi.
-5. Eksperymentalny wskaźnik priorytetu RPS z rankingiem, analizą wrażliwości wag i kompletnością składników ([ANALYSIS_METHOD.md](ANALYSIS_METHOD.md)).
+5. Eksperymentalny Wskaźnik Priorytetu Oceny (WPO) z rankingiem, analizą wrażliwości wag i kompletnością składników ([ANALYSIS_METHOD.md](ANALYSIS_METHOD.md)).
 6. Interfejs rozmów z historią, mapą w oknie modalnym, kartą przejazdu i wykresami ([FRONTEND_DESIGN.md](FRONTEND_DESIGN.md)).
 7. Asystent AI na lokalnym modelu, który wywołuje wyłącznie dozwolone funkcje odczytu i odpowiada tylko na podstawie ich wyników ([ASSISTANT_CAPABILITIES.md](ASSISTANT_CAPABILITIES.md)).
-8. Częściowa historia zdarzeń SEWiK przy przejazdach, bez wpływu na RPS ([SEWIK_HISTORY.md](SEWIK_HISTORY.md)).
+8. Częściowa historia zdarzeń SEWiK przy przejazdach, bez wpływu na WPO ([SEWIK_HISTORY.md](SEWIK_HISTORY.md)).
 9. Zestaw demonstracyjny, jawnie oznaczony w interfejsie i API.
 
 ## Poza zakresem

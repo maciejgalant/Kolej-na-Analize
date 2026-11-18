@@ -5,11 +5,12 @@ Sekcja wersji jest treścią wydania na GitHubie (workflow `release.yml`).
 
 ## [Unreleased]
 
+### Zmieniono
+- Wskaźnik RPS nazywa się teraz **Wskaźnik Priorytetu Oceny (WPO)** w interfejsie, odpowiedziach asystenta, raportach i dokumentacji. Metoda, wagi i wyniki są bez zmian; identyfikatory w kodzie, bazie i API (`rps`, wersja metody `rps-0.5-exp`) zostają, więc nie ma migracji. Raport analizy to teraz `reports/WPO_report.md`.
+- Logo zmniejszone do 1100×367 px (214 KB zamiast 760 KB), bez utraty kolorów.
+
 ### Usunięto
 - Nieużywane komponenty `FloatingWindow` i `RailPanel` po przebudowie interfejsu oraz około 1100 linii martwych reguł CSS i nieużywanych animacji.
-
-### Zmieniono
-- Logo zmniejszone do 1100×367 px (214 KB zamiast 760 KB), bez utraty kolorów.
 
 ## [1.0.0] - 2026-11-17
 

@@ -21,13 +21,13 @@ def quality_summary(row: dict) -> dict:
         "okres_pomiaru": traffic.get("measurement") if measured and vehicles is not None else None,
         "brak_analizy": not bool(components),
         "poza_rankingiem": row.get("pozycja") is None,
-        "uwaga": "Kompletność to dostępność składników RPS, nie pewność ani ocena bezpieczeństwa. "
+        "uwaga": "Kompletność to dostępność składników WPO, nie pewność ani ocena bezpieczeństwa. "
         "Brak danych nie oznacza braku zagrożeń. Ruch kolejowy obejmuje plan pasażerski.",
     }
 
 
 def comparison(a: dict, b: dict) -> dict:
-    """A minus B. Contributions use the same available-weight normalization as RPS."""
+    """A minus B. Contributions use the same available-weight normalization as WPO."""
 
     def total_weight(row):
         return sum(
@@ -70,5 +70,5 @@ def comparison(a: dict, b: dict) -> dict:
         "jakosc_b": quality_summary(b),
         "uwaga": "Różnica to A minus B. Wkłady uwzględniają dostępne wagi osobno dla każdego "
         "przejazdu. Różne braki danych ograniczają porównywalność; nie są zerowymi wynikami. "
-        "Wyższy RPS to priorytet do dalszej oceny, nie prawdopodobieństwo wypadku.",
+        "Wyższy WPO to priorytet do dalszej oceny, nie prawdopodobieństwo wypadku.",
     }
