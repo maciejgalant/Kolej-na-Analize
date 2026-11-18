@@ -38,7 +38,7 @@ services:
     networks: [railsafe]
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:${OLLAMA_IMAGE_TAG:-latest}
     restart: unless-stopped
     # Bez portu na hoście: model jest dostępny tylko dla backendu w sieci kontenerów.
     volumes:
@@ -54,7 +54,7 @@ services:
   # Jednorazowe pobranie modelu (kilka GB przy pierwszym uruchomieniu).
   # Mapa i backend działają także wtedy, gdy pobieranie jeszcze trwa lub się nie uda.
   ollama-pull:
-    image: ollama/ollama:latest
+    image: ollama/ollama:${OLLAMA_IMAGE_TAG:-latest}
     restart: "no"
     depends_on:
       ollama:

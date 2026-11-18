@@ -1,0 +1,40 @@
+name: Release
+
+# Wydanie powstaje po wypchnięciu tagu vX.Y.Z (instrukcja: docs/RELEASE.md).
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wersja w tagu, backendzie i frontendzie jest ta sama
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          backend=$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' backend/app/config.py)
+          frontend=$(node -p "require('./frontend/package.json').version")
+          echo "tag=$tag backend=$backend frontend=$frontend"
+          test "$tag" = "$backend" && test "$tag" = "$frontend"
+
+      - name: Notatki wydania z CHANGELOG.md
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          awk -v v="$tag" '
+            $0 ~ "^## \\[" v "\\]" {on=1; next}
+            on && /^## \[/ {exit}
+            on && /^\[[^]]+\]: / {exit}
+            on {print}
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "Brak sekcji [$tag] w CHANGELOG.md"; exit 1; }
+          cat notes.md
+
+      - name: Utwórz wydanie
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "Kolej na Analizę $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

@@ -6,7 +6,7 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Status: **ewidencja przejazdów, planowy ruch pociągów, pomiary ruchu drogowego ZDM, eksperymentalny ranking RPS z mapą i asystent AI na lokalnym modelu**. Nie traktować rankingów demonstracyjnych jako oficjalnych ocen ryzyka wypadku.
+> Wersja **1.0.0** (17.11.2026): ewidencja przejazdów, planowy ruch pociągów, pomiary ruchu drogowego ZDM, eksperymentalny ranking RPS z mapą i asystent AI na lokalnym modelu. Zmiany: [CHANGELOG.md](CHANGELOG.md). Rankingu nie należy traktować jako oficjalnej oceny ryzyka wypadku.
 
 ## Dokumentacja
 - [Integracja API PKP PLK i konfiguracja klucza](docs/PKP_API.md)
@@ -17,7 +17,10 @@ Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Ap
 - [Kontrakt danych i migracje](docs/DATA_CONTRACT.md)
 - [Metodyka oceny i walidacja](docs/ANALYSIS_METHOD.md)
 - [Frontend i system wizualny](docs/FRONTEND_DESIGN.md)
+- [Historia zdarzeń SEWiK](docs/SEWIK_HISTORY.md)
+- [Nazwa i identyfikacja wizualna](docs/BRANDING.md)
 - [Backlog i harmonogram](docs/BACKLOG.md)
+- [Wydania i lista kontrolna](docs/RELEASE.md)
 
 ## Uruchomienie lokalne
 Wymagany Docker z Compose v2.
@@ -34,6 +37,17 @@ docker compose ps           # wszystkie usługi powinny być "healthy"
 | Backend, healthcheck | http://localhost:8765/api/v1/health |
 | Backend, OpenAPI | http://localhost:8765/api/v1/docs |
 | PostGIS | localhost:55432 (zmienna `POSTGIS_HOST_PORT`) |
+
+Najszybciej sprawdzisz działanie na [zestawie demonstracyjnym](#zestaw-demonstracyjny-bez-internetu-rsa-014). Dane rzeczywiste ładuje się zadaniami workera w tej kolejności (każde opisane niżej):
+
+```bash
+docker compose run --rm worker python -m app.worker import-crossings
+docker compose run --rm worker python -m app.worker import-topology
+docker compose run --rm worker python -m app.worker import-schedule
+docker compose run --rm worker python -m app.worker import-road-counts
+docker compose run --rm worker python -m app.worker import-intersection-counts   # opcjonalnie
+docker compose run --rm worker python -m app.worker run-analysis
+```
 
 Przy pierwszym uruchomieniu usługa `ollama-pull` pobiera model (`OLLAMA_MODEL`, kilka GB). Do tego czasu healthcheck zwraca `degraded`, a mapa i backend działają normalnie. Worker: `docker compose run --rm worker`.
 
@@ -90,8 +104,6 @@ Głównym ekranem jest rozmowa z lokalnym modelem Qwen (Ollama), z historią w l
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 
-Po wykonaniu obu importów (niżej) aplikacja pokazuje ewidencję przejazdów: mapę z kategoriami, granice dzielnic, filtry, listę i kartę przejazdu. Dane o ruchu, ranking i asystent AI są w kolejnych zadaniach [backlogu](docs/BACKLOG.md).
-
 API ewidencji: `GET /api/v1/districts`, `GET /api/v1/crossings` (filtry `district_id`, `bbox`, `verification_status`, `category`, `limit`, `offset`) i `GET /api/v1/crossings/{id}`. Geometrie są zwracane jako GeoJSON w WGS84; domyślnie tylko przejazdy zweryfikowane w granicach Warszawy.
 
 ### Praca nad kodem
@@ -103,5 +115,5 @@ API ewidencji: `GET /api/v1/districts`, `GET /api/v1/crossings` (filtry `distric
 ## Zakres MVP
 Warszawa i 18 dzielnic; weryfikowane lokalizacje przejazdów; planowane i (gdy dostępne) potwierdzone przejazdy kolejowe; publiczne pomiary ruchu drogowego; licencjonowane źródła live jako opcjonalne; ranking **priorytetu do dalszej oceny**, mapa i asystent AI odpowiadający na podstawie danych z backendu.
 
-
-Nazwa katalogu lokalnego może pozostać dotychczasowa. Identyfikatory Docker Compose, bazy, wolumenów i zapisu rozmów pozostają zgodne z istniejącymi instalacjami; nie trzeba przenosić danych. Szczegóły: [BRANDING.md](docs/BRANDING.md).
+## Licencja
+Kod: licencja [MIT](LICENSE), © 2026 Maciej Galant. Dane pobierane przez zadania importu (UTK, OpenStreetMap, PRG, BDOT10k, GTFS, ZDM) oraz zapisany w migracji 0010 wykaz SEWiK podlegają warunkom swoich źródeł, opisanym w [DATA_SOURCES.md](docs/DATA_SOURCES.md); wymagana jest m.in. atrybucja OpenStreetMap (ODbL) i ZDM. Praca zgłoszona do konkursu „Kolej na bezpieczeństwo” jest dodatkowo objęta licencją dla PKP PLK S.A. na zasadach §10 regulaminu konkursu.
