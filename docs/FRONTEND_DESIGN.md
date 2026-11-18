@@ -1,84 +1,64 @@
-# Frontend Kolej na Analizę — aplikacja rozmów (v2, 2026-11-15)
+# Frontend Kolej na Analizę
+
+Stan na wersję 1.0.0. Interfejs to aplikacja rozmów z asystentem; mapa i karty przejazdów są otwierane z rozmowy.
 
 ## Układ i stylistyka
-Głównym ekranem jest rozmowa. Po lewej znajduje się zwijany panel historii, a po prawej aktywny wątek. Mapa nie jest tłem aplikacji: użytkownik otwiera ją w dużym oknie modalnym nad rozmową. Projekt obejmuje obecnie komputer, od szerokości 820 px; osobny układ telefonu pozostaje poza tym etapem.
+- Po lewej zwijany granatowy panel historii z przyciskiem „Mapa przejazdów”; gdy panel jest zwinięty, przycisk mapy zostaje w nagłówku. Po prawej aktywna rozmowa z polem pytania przy dolnej krawędzi.
+- Kolory: granat `#102b4e`, pomarańcz `#d9570b`, biel ([BRANDING.md](BRANDING.md)). Oznaczenie danych demonstracyjnych jest bursztynowe i widoczne w aplikacji oraz w oknie mapy.
+- Układ dla komputera od 820 px szerokości; osobnego układu na telefon nie ma.
+- Asystenta oznacza piktogram postaci ze słuchawką i podpis „Asystent AI”. Podczas oczekiwania na model i ładowania mapy pulsują światła sygnalizacji przejazdu; to nie jest procentowy postęp.
+- Przejścia trwają 180 ms; `prefers-reduced-motion` wyłącza animacje, także okna mapy i przycisków.
+- Przyciski z ikonami mają nazwy dostępności i podpowiedzi.
 
-Granat `#102b4e`, biel i pomarańcz `#d9570b`, jasne obrysy i czytelna typografia. Pytania użytkownika znajdują się w dymkach po prawej, a odpowiedzi asystenta zajmują kolumnę wiadomości. Pole pytania jest przy dolnej krawędzi obszaru rozmowy. Nowy wątek pokazuje powitanie, trzy przykładowe pytania i przycisk „Otwórz mapę”. Aplikacja zachowuje oznaczenie niezależnego projektu edukacyjnego.
-
-## Historia i gałęzie
-- Nowa rozmowa, automatyczny tytuł z pierwszego pytania, ręczna zmiana nazwy, wyszukiwanie po tytułach i wiadomościach, przypinanie oraz usuwanie po potwierdzeniu.
-- Historia jest zapisywana tylko w `localStorage`, pod kluczem `railsafe.chat.v1`. Nie ma kont ani zapisu rozmów po stronie serwera. Wyczyszczenie danych witryny usuwa historię.
-- Wiadomości tworzą drzewo (`id`, `parent`), a `leaf` wskazuje aktywną gałąź. Edycja pytania dodaje alternatywę z tym samym rodzicem. Ponowienie odpowiedzi dodaje alternatywną odpowiedź pod tym samym pytaniem. Poprzednie wiadomości i ich dalszy ciąg zostają zachowane.
-- Przełącznik wersji przy wiadomości otwiera wybraną alternatywę i jej najnowszą kontynuację. Do modelu trafia wyłącznie historia aktywnej gałęzi, ograniczona do ośmiu wiadomości zgodnie z API.
+## Historia i gałęzie rozmów
+- Nowa rozmowa, automatyczny tytuł z pierwszego pytania, zmiana nazwy, wyszukiwanie po tytułach i treści, przypinanie i usuwanie z potwierdzeniem. Lista jest pogrupowana: przypięte, dzisiaj, wczoraj, starsze.
+- Zapis tylko w `localStorage`, klucz `railsafe.chat.v1`. Nie ma kont ani zapisu na serwerze; wyczyszczenie danych witryny usuwa historię.
+- Wiadomości tworzą drzewo (`id`, `parent`), `leaf` wskazuje aktywną gałąź. Edycja pytania i ponowienie odpowiedzi tworzą alternatywy; poprzednie wersje i ich dalszy ciąg zostają. Przełącznik wersji otwiera wybraną alternatywę.
+- Do modelu trafia tylko historia aktywnej gałęzi, najwyżej 8 wiadomości, oraz identyfikatory przejazdów z ostatniej analizy w tej gałęzi. Prośba o szczegóły odczytuje ponownie te same przejazdy; jawnie dołączony przejazd ma pierwszeństwo.
 - Szkic pytania, dołączony przejazd i stan mapy są zapisywane osobno dla każdej rozmowy.
-- Uszkodzony lub nieznany format historii nie jest nadpisywany. Użytkownik widzi komunikat, a bieżąca sesja działa bez zapisu. Błąd zapisu, np. przekroczenie pojemności przeglądarki, również jest sygnalizowany.
+- Uszkodzona lub nieznana historia nie jest nadpisywana: użytkownik widzi komunikat, a sesja działa bez zapisu. Błąd zapisu (np. brak miejsca) też jest sygnalizowany.
 
 ## Rozmowa z modelem
-Kopiowanie odpowiedzi, edycja pytania, ponowienie, informacja o oczekiwaniu z licznikiem oraz przycisk zatrzymania. Enter wysyła wiadomość, Shift+Enter dodaje wiersz. Błąd odpowiedzi można ponowić. Jedna rozmowa może mieć jedno aktywne żądanie; inne rozmowy działają niezależnie. Wynik jest przypisywany do identyfikatora rozmowy i wiadomości, także po przełączeniu wątku.
+- Enter wysyła, Shift+Enter dodaje wiersz. Kopiowanie wiadomości (z potwierdzeniem „Skopiowano”), edycja, ponowienie, licznik czasu oczekiwania i przycisk zatrzymania.
+- Jedna rozmowa ma najwyżej jedno aktywne żądanie; wynik trafia do swojej rozmowy i wiadomości także po przełączeniu wątku.
+- Zatrzymanie przerywa oczekiwanie i ignoruje spóźniony wynik; interfejs mówi wprost, że model mógł jeszcze liczyć. Po odświeżeniu strony niedokończona wiadomość ma status przerwanej i można ją ponowić. Odpowiedzi nie są strumieniowane.
+- Nowy wątek pokazuje powitanie, przykładowe pytania i przycisk mapy. Pod ostatnią odpowiedzią są propozycje dalszych pytań. „Porównaj przejazdy” otwiera wybór dwóch obiektów z ewidencji i wysyła pytanie z ich numerami.
 
-Zatrzymanie anuluje żądanie klienta i ignoruje późniejszy wynik. Synchroniczny backend/Ollama może jeszcze kończyć inferencję — interfejs mówi wprost o przerwaniu oczekiwania. Po odświeżeniu niedokończona wiadomość otrzymuje status przerwanej i może zostać ponowiona. Nie wprowadzono strumieniowania odpowiedzi.
+## Wyniki w odpowiedzi
+Odpowiedź to tekst i opcjonalny obiekt `evidence`, budowany przez backend z wyników funkcji odczytu. Interfejs nie wyciąga liczb ani identyfikatorów z tekstu modelu.
 
-## Karty, tabele, wykresy i źródła
-Odpowiedź zawiera tekst oraz opcjonalny, walidowany obiekt `evidence`, budowany przez backend z wyników bezpiecznych funkcji. Interfejs nie wyciąga identyfikatorów ani liczb z tekstu modelu.
-
-- Klikalne karty przejazdów otwierają szczegóły w oknie mapy.
-- Tabele pokazują odczytane przejazdy, ranking/porównanie lub liczby przejazdów w dzielnicach.
-- Wykresy pokazują planowy ruch pasażerski, a przy pytaniu o konkretny przejazd również składniki RPS, dostępne natężenie drogowe i rozkład dzień roboczy/sobota/niedziela.
-- Brak wartości to „Brak danych”, a nie zero. Dane planowe, pomiary i wartości modelowane mają opisy; wartości modelowane dodatkowo kreskowanie. Wykres ma opis dla czytnika ekranu i rozwijaną tabelę wartości.
-- Źródła, okresy, wyjaśnienia, kompletność i ograniczenia znajdują się w rozwijanej sekcji. RPS nie jest przedstawiany jako prawdopodobieństwo wypadku.
-- Tekst modelu jest escapowany przez React; obsługiwane są akapity, nowe wiersze i pogrubienie. Surowy HTML nie jest renderowany.
-
-Na tym etapie wystarcza kopiowanie tekstu: brak eksportów CSV/PNG i importu/eksportu historii.
+- Pierwszy akapit odpowiedzi jest wyróżniony. Ranking domyślnie pokazuje pięć pozycji.
+- Karty przejazdów pokazują RPS jako priorytet do dalszej oceny, pozycję w rankingu i ruch pasażerski; kliknięcie otwiera szczegóły w oknie mapy.
+- Tabele: ranking, porównanie, liczby przejazdów w dzielnicach.
+- Wykresy: planowy ruch pasażerski, składniki RPS, natężenie drogowe, dzień roboczy/sobota/niedziela. Brak wartości to „Brak danych”, nie zero; wartości modelowane są opisane i kreskowane. Każdy wykres ma opis dla czytnika ekranu i rozwijaną tabelę wartości.
+- Karty, wykresy, źródła, okresy i ograniczenia są w sekcjach rozwijanych; przycisk „Pokaż na mapie” jest widoczny od razu.
+- Tekst modelu jest wyświetlany przez React bez surowego HTML; obsługiwane są akapity, nowe wiersze i pogrubienie.
+- Eksportu CSV/PNG oraz importu i eksportu historii nie ma; wystarcza kopiowanie.
 
 ## Okno mapy
-- Ręczne otwarcie przywraca centrum, przybliżenie, podkład, dzielnicę i kategorię zapisane w tej rozmowie.
-- „Pokaż na mapie” jest propozycją działania. Mapa nie otwiera się automatycznie. Przycisk pokazuje tylko obiekty odczytane dla konkretnej odpowiedzi i dopasowuje do nich widok. Resetuje filtry dzielnicy i kategorii, aby nie ukryły tych obiektów.
-- W takim widoku przycisk „Pokaż wszystkie przejazdy” usuwa ograniczenie do obiektów odpowiedzi; pozostałe filtry nadal działają.
-- Filtry: dzielnica i kategoria A–F. Podkłady: szary, kolorowy i ortofotomapa. Zachowane są piktogramy kategorii, legenda i informacje o jakości.
-- Kliknięcie punktu otwiera szczegóły w bocznej części tego samego okna.
-- „Zapytaj o ten przejazd” zamyka mapę, dołącza usuwalną etykietę przejazdu do pola pytania i ustawia fokus. Nie wysyła pytania samoczynnie.
-- Mapa wykorzystuje aktualną ewidencję. Gdy obiekt ze starszej odpowiedzi nie jest już dostępny, pojawia się informacja o brakujących obiektach.
-- Natywny `dialog` zapewnia modalność, obsługę Escape i ograniczenie fokusu. Po zmianie rozmiaru Leaflet przelicza kontener.
+- Natywny `dialog`: modalność, Escape, ograniczenie fokusu, animacja otwarcia i zamknięcia. Ręczne otwarcie przywraca widok, podkład i filtry zapisane w rozmowie.
+- „Pokaż na mapie” nie otwiera mapy samoczynnie. Pokazuje tylko obiekty z danej odpowiedzi, dopasowuje do nich widok i zeruje filtry; „Pokaż wszystkie przejazdy” zdejmuje to ograniczenie. Numer etykiety odpowiada kolejności w odpowiedzi.
+- Filtry: dzielnica i kategoria A–F. Podkłady: kolorowy (domyślny), szary i ortofotomapa. Piktogramy kategorii i legenda.
+- Kliknięcie punktu otwiera kartę przejazdu w bocznej części okna: wskaźnik RPS, kompletność składników, miniwykresy składników, ruch kolejowy i drogowy, rozkład w ciągu doby oraz historia zdarzeń SEWiK przy wykresach RPS. Wagi, źródła i szczegóły techniczne są rozwijane.
+- „Zapytaj o ten przejazd” zamyka mapę, dołącza usuwalną etykietę przejazdu do pola pytania i ustawia fokus, bez wysyłania.
+- Asystent na mapie: kliknięcie przejazdu pokazuje propozycję pomocy, bez zapytania do modelu. Po otwarciu panelu pytania idą przez to samo API z `crossing_id`. Ta rozmowa jest tylko w pamięci: zamknięcie mapy albo wybór innego przejazdu ją usuwa i przerywa żądanie; zwinięcie panelu ją zachowuje.
+- Gdy obiekt ze starszej odpowiedzi nie jest już w ewidencji, pojawia się informacja o brakujących obiektach.
+- Przy niedostępnym modelu mapa i karty działają; stany braku danych, błędu i ponowienia są widoczne.
 
-Pasek danych demonstracyjnych jest widoczny w aplikacji i w oknie mapy. Przy niedostępnym modelu można nadal korzystać z mapy i kart przejazdów. Stany braku danych, błędu pobierania i ponowienia są widoczne.
+## Kod
+| Plik | Rola |
+|---|---|
+| `App.tsx` | połączenie widoków, stan usług, pobieranie ewidencji |
+| `Assistant.tsx` | rozmowa, edycja, wersje, pole pytania |
+| `chat/model.ts`, `chat/useConversations.ts` | drzewo wiadomości, walidacja, zapis, żądania |
+| `chat/ConversationList.tsx`, `chat/AnswerContent.tsx`, `chat/AnalysisShortcuts.tsx` | historia, wyniki odpowiedzi, porównanie przejazdów |
+| `MapExplorer.tsx`, `MapView.tsx`, `MapAssistant.tsx` | okno mapy, warstwy Leaflet, asystent na mapie |
+| `CrossingCard.tsx`, `PriorityChart.tsx`, `IncidentHistory.tsx` | karta przejazdu, składniki RPS, historia SEWiK |
+| `Dialog.tsx`, `IconButton.tsx`, `UiIcons.tsx`, `CategoryPin.tsx`, `pictograms.ts` | wspólne elementy i ikony |
+| `api.ts`, `basemaps.ts`, `labels.ts`, `brand.ts` | typy i wywołania API, podkłady, etykiety, nazwa i logo |
+| `styles.css`, `chat.css`, `presentation.css` | style bazowe i mapy, rozmowy, kart i wykresów |
 
-## Podział kodu i sprawdzanie
-- `App.tsx`: połączenie widoków, stan usług i pobieranie ewidencji.
-- `Assistant.tsx`: rozmowa, edycja, wersje i pole pytania.
-- `chat/model.ts`, `chat/useConversations.ts`: drzewo, walidacja, zapis i żądania.
-- `chat/ConversationList.tsx`, `chat/AnswerContent.tsx`: historia i wyniki.
-- `MapExplorer.tsx`, `MapView.tsx`, `CrossingCard.tsx`: mapa i szczegóły.
-- `chat.css`: wygląd nowego obszaru rozmów; wspólne style mapy/kart pozostają w `styles.css`.
-
-`npm test` sprawdza logikę i trwałość historii. `npm run build` sprawdza typy i kompilację. `npm run test:e2e` uruchamia scenariusze Playwright z kontrolowanym API i fikcyjnymi danymi; nie jest to test prawdziwego modelu ani serwerów podkładów. Przy pierwszym uruchomieniu: `npx playwright install chromium`. Opcjonalnie `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` wskazuje istniejącą przeglądarkę. Testy działają również w CI.
-
-
-## Dopracowanie interfejsu — 2026-11-15
-Główny przycisk „Mapa przejazdów” znajduje się w granatowym panelu rozmów. Gdy panel jest zwinięty, przycisk mapy pozostaje dostępny w nagłówku. Zachowano otwieranie mapy z powitania i wyników odpowiedzi; usunięto powtórzony przycisk z pola wpisywania.
-
-Asystenta oznacza wektorowy piktogram uśmiechniętej postaci ze słuchawką. Podczas oczekiwania na model i ładowania mapy wyświetla się sygnalizacja przejazdu z naprzemiennie pulsującymi światłami. Animacja respektuje `prefers-reduced-motion` i nie jest przedstawiana jako procentowy postęp inferencji.
-
-Wiadomości użytkownika i asystenta można kopiować przyciskiem z ikoną dwóch kartek. Po udanym zapisie do schowka pojawia się znacznik i krótkie „Skopiowano”; błędy schowka mają komunikat tekstowy. Przyciski mają nazwy dostępności i podpowiedzi.
-
-Rama aplikacji, karty i okno mapy mają łagodniejsze zaokrąglenia. Pole pytania ma częściowo przezroczyste tło z rozmyciem, bez zmniejszania krycia tekstu. Subtelne tła, cienie i stany hover/focus porządkują interfejs; ograniczenie animacji wyłącza również dekoracyjne ruchy przycisków.
-# Dopracowanie rozmów i asystent na mapie
-
-Rozmowy są grupowane jako przypięte, dzisiejsze, wczorajsze i starsze. Akcje edycji,
-ponowienia odpowiedzi, przypinania i usuwania mają spójne ikony SVG z etykietami
-dostępności i podpowiedziami. Podpis przy awatarze brzmi „Asystent AI”.
-
-Karty wyróżniają liczbowy priorytet RPS (do dalszej oceny, bez sugerowania
-prawdopodobieństwa wypadku), pozycję w rankingu i ruch pasażerski. Pierwszy akapit
-odpowiedzi jest wyróżniony, źródła pozostają rozwijane, a pod ostatnią odpowiedzią
-znajdują się propozycje dalszych pytań. Nagłówek pozostaje widoczny przy przewijaniu.
-Oznaczenie danych demonstracyjnych ma bursztynowy kolor. Przejścia trwają 180 ms
-i są wyłączone przy ograniczeniu ruchu.
-
-Mapa ma niezależny czat tymczasowy. Kliknięcie przejazdu pokazuje uprzejmą propozycję
-pomocy; samo kliknięcie nie wysyła żądania do LLM. Użytkownik otwiera panel i zadaje
-pytanie albo wybiera sugestię. Zapytanie korzysta z tego samego walidowanego API,
-przekazuje crossing_id i maksymalnie osiem poprzednich wiadomości. Pod odpowiedzią
-można sprawdzić jej podstawę i źródła. Dostępne jest zatrzymanie i komunikat błędu.
-Historia pozostaje wyłącznie w pamięci panelu: zamknięcie mapy lub zmiana wybranego
-przejazdu usuwa ją i anuluje aktywne żądanie. Zwinięcie panelu zachowuje rozmowę.
-Dotychczasowy przycisk „Zapytaj o ten przejazd” nadal dołącza obiekt do głównej rozmowy.
+## Testy
+- `npm test`: logika i trwałość historii.
+- `npm run build`: typy i kompilacja.
+- `npm run test:e2e`: scenariusze Playwright z kontrolowanym API i fikcyjnymi danymi (bez prawdziwego modelu i serwerów podkładów). Pierwsze uruchomienie: `npx playwright install chromium`; opcjonalnie `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` wskazuje istniejącą przeglądarkę. Testy działają też w CI.

@@ -9,15 +9,15 @@ Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Ap
 > Wersja **1.0.0** (17.11.2026): ewidencja przejazdów, planowy ruch pociągów, pomiary ruchu drogowego ZDM, eksperymentalny ranking RPS z mapą i asystent AI na lokalnym modelu. Zmiany: [CHANGELOG.md](CHANGELOG.md). Rankingu nie należy traktować jako oficjalnej oceny ryzyka wypadku.
 
 ## Dokumentacja
-- [Integracja API PKP PLK i konfiguracja klucza](docs/PKP_API.md)
-- [Porównania, jakość danych i krótkie rozmowy](docs/ASSISTANT_CAPABILITIES.md)
-- [Założenia i wymagania](docs/PROJECT_SPEC.md)
-- [Architektura i model danych](docs/ARCHITECTURE.md)
+- [Specyfikacja: cel, zakres i kryteria akceptacji](docs/PROJECT_SPEC.md)
+- [Architektura: usługi, API, asystent, bezpieczeństwo](docs/ARCHITECTURE.md)
+- [Asystent AI: zasady, funkcje i ograniczenia](docs/ASSISTANT_CAPABILITIES.md)
+- [Interfejs: rozmowy, mapa i karta przejazdu](docs/FRONTEND_DESIGN.md)
+- [Metodyka wskaźnika RPS i walidacja](docs/ANALYSIS_METHOD.md)
 - [Źródła danych, jakość i licencje](docs/DATA_SOURCES.md)
 - [Kontrakt danych i migracje](docs/DATA_CONTRACT.md)
-- [Metodyka oceny i walidacja](docs/ANALYSIS_METHOD.md)
-- [Frontend i system wizualny](docs/FRONTEND_DESIGN.md)
 - [Historia zdarzeń SEWiK](docs/SEWIK_HISTORY.md)
+- [Integracja API PKP PLK i konfiguracja klucza](docs/PKP_API.md)
 - [Nazwa i identyfikacja wizualna](docs/BRANDING.md)
 - [Backlog i harmonogram](docs/BACKLOG.md)
 - [Wydania i lista kontrolna](docs/RELEASE.md)
@@ -100,7 +100,7 @@ docker compose run --rm worker python -m app.worker run-analysis
 Uruchamiać po imporcie rozkładu. Liczy eksperymentalny wskaźnik RPS dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/RPS_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
 
 ### Asystent AI (RSA-013)
-Głównym ekranem jest rozmowa z lokalnym modelem Qwen (Ollama), z historią w lewym panelu. Mapa otwiera się ręcznie lub przyciskiem „Pokaż na mapie” w odpowiedzi. Z karty przejazdu można dołączyć obiekt do kolejnego pytania. Historia, gałęzie i stan mapy są zapisywane wyłącznie w tej przeglądarce, bez logowania. Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez sześć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Głównym ekranem jest rozmowa z lokalnym modelem Qwen (Ollama), z historią w lewym panelu. Mapa otwiera się ręcznie lub przyciskiem „Pokaż na mapie” w odpowiedzi. Z karty przejazdu można dołączyć obiekt do kolejnego pytania. Historia, gałęzie i stan mapy są zapisywane wyłącznie w tej przeglądarce, bez logowania. Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez sześć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ASSISTANT_CAPABILITIES.md](docs/ASSISTANT_CAPABILITIES.md).
 
 Schemat bazy tworzy przy starcie usługa `migrate` (`alembic upgrade head`). Cofnięcie migracji jest wyłącznie ręczne: `docker compose run --rm migrate alembic downgrade -1`.
 

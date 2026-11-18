@@ -1,52 +1,52 @@
-# Kolej na Analizę — specyfikacja projektu (v1.0)
-Data: 2026-11-11. Status: projekt; decyzje techniczne do weryfikacji w spike'ach danych.
+# Kolej na Analizę — specyfikacja projektu
 
-## 1. Cel i problem
-Aplikacja identyfikuje przejazdy kolejowo-drogowe na terenie m.st. Warszawy wymagające **dalszej oceny bezpieczeństwa** na podstawie ekspozycji na ruch kolejowy i drogowy oraz dostępnych informacji o infrastrukturze. Nie prognozuje bez walidacji prawdopodobieństwa wypadku. Nie stanowi urzędowej klasyfikacji przejazdów.
+Stan na wersję 1.0.0 (17.11.2026). Zmiany: [CHANGELOG.md](../CHANGELOG.md), zadania: [BACKLOG.md](BACKLOG.md).
 
-## 2. Użytkownicy i przypadki użycia
-- Analityk: wybiera dzielnicę, okres, rodzaj danych i przegląda ranking oraz mapę.
-- Badacz: wyświetla składniki wskaźnika, pochodzenie i kompletność danych, porównuje okresy.
-- Jury konkursowe: uruchamia demonstrację w localhost i wykonuje przygotowany scenariusz.
-- Użytkownik AI: pyta „Pokaż przejazdy o najwyższym priorytecie na Woli”, „Porównaj Wolę z Bemowem” lub „Wyjaśnij wynik tego przejazdu”.
+## Cel i problem
+Aplikacja wskazuje przejazdy kolejowo-drogowe w m.st. Warszawie, które wymagają **dalszej oceny bezpieczeństwa**. Podstawą jest ekspozycja na ruch kolejowy i drogowy oraz dostępne informacje o infrastrukturze. Aplikacja nie prognozuje prawdopodobieństwa wypadku i nie jest urzędową klasyfikacją przejazdów.
 
-## 3. Zakres MVP
-1. Docker Compose: frontend, backend, PostGIS, Ollama i zadania importu.
-2. 18 dzielnic Warszawy; ewidencja przejazdów ze statusem weryfikacji, bez mylenia skrzyżowań bezkolizyjnych z przejazdami.
-3. Import rozkładowych i, gdy możliwe, wykonanych kursów pasażerskich; status danych i czas odświeżenia.
-4. Import pomiarów drogowych (publicznych); adapter ruchu live wyłącznie przy zgodnej licencji.
-5. Powiązanie danych ruchu z konkretnym przejazdem, identyfikowalne metody dopasowania i poziom pewności.
-6. Ranking priorytetu do dalszej oceny, mapa, karta przejazdu, wykresy i filtry.
-7. AI wywołuje *dozwolone funkcje*, nie generuje i nie uruchamia dowolnego SQL; odpowiedzi tylko z wyników backendu.
-8. Zapis wyników autorskich analiz i dozwolonych metadanych; retencja danych zewnętrznych zgodna z umową.
+Projekt powstał na konkurs PKP PLK „Kolej na bezpieczeństwo” (II edycja).
 
-## 4. Poza MVP
-Predykcja wypadków, pełna historia ruchu live, wszystkie pociągi towarowe, komercyjny routing, automatyczna klasyfikacja prawna, oficjalne zalecenia modernizacji, analiza sygnału CCTV.
+## Użytkownicy i przypadki użycia
+- **Analityk**: przegląda ranking i mapę, filtruje po dzielnicy i kategorii, otwiera kartę przejazdu.
+- **Badacz**: sprawdza składniki wskaźnika, pochodzenie i kompletność danych oraz analizę wrażliwości wag.
+- **Jury konkursowe**: uruchamia aplikację lokalnie na zestawie demonstracyjnym, bez internetu i kluczy API.
+- **Użytkownik asystenta AI**: pyta np. „Pokaż przejazdy o najwyższym priorytecie na Woli”, „Porównaj dwa przejazdy”, „Które przejazdy w Wawrze mają niepełne dane?”.
 
-## 5. Wymagania niefunkcjonalne
-- Usługi HTTP i baza na 127.0.0.1; kontenery w prywatnej sieci; klucze tylko w .env/secrets; bez commitowania sekretów.
-- Samodzielne uruchomienie demonstracyjne przy wyłączonych dostawcach API z jawnie oznaczonymi danymi demonstracyjnymi.
-- Wyniki deterministyczne i wersjonowane: data, okres, algorytm, wersja wsadu, jednostka, źródło.
-- Mapy i API odrzucają niefiltrowane operacje masowe, zabezpieczają parametry i wykluczają SQL z LLM.
-- Brak danych ≠ zero ruchu i brak zagrożenia; informacja o pokryciu obowiązkowa.
-- Przyjazność klawiaturze, kontrast, odpowiedni układ na ekranie laptopa.
+## Zakres wersji 1.0.0
+1. Lokalny stos Docker Compose: PostGIS, FastAPI, frontend, Ollama, zadania importu i analizy.
+2. 18 dzielnic Warszawy; ewidencja przejazdów z warstwy UTK z kontrolą w OpenStreetMap i statusem weryfikacji; skrzyżowania bezkolizyjne odrzucone, ale zachowane w ewidencji.
+3. Planowy ruch pasażerski z otwartego GTFS, także rozkład w ciągu doby. Rzeczywiste wykonanie rozkładu (API PKP PLK) jest podłączone w backendzie, ale nie zasila rankingu.
+4. Publiczne pomiary ruchu drogowego ZDM (punkty APR i skrzyżowania), dopasowane do przejazdów z jawną metodą dopasowania; bez pomiaru szacunek z klasy drogi.
+5. Eksperymentalny wskaźnik priorytetu RPS z rankingiem, analizą wrażliwości wag i kompletnością składników ([ANALYSIS_METHOD.md](ANALYSIS_METHOD.md)).
+6. Interfejs rozmów z historią, mapą w oknie modalnym, kartą przejazdu i wykresami ([FRONTEND_DESIGN.md](FRONTEND_DESIGN.md)).
+7. Asystent AI na lokalnym modelu, który wywołuje wyłącznie dozwolone funkcje odczytu i odpowiada tylko na podstawie ich wyników ([ASSISTANT_CAPABILITIES.md](ASSISTANT_CAPABILITIES.md)).
+8. Częściowa historia zdarzeń SEWiK przy przejazdach, bez wpływu na RPS ([SEWIK_HISTORY.md](SEWIK_HISTORY.md)).
+9. Zestaw demonstracyjny, jawnie oznaczony w interfejsie i API.
 
-## 6. Kryteria akceptacji MVP
-- `docker compose up -d --build` uruchamia pełne demo; healthchecki działają.
-- Dane mają geometrię w EPSG:2180, unikalne identyfikatory i kontrolę duplikatów.
-- Filtrowanie Woli zwraca tylko zweryfikowane obiekty w obrębie dzielnicy; rekordy na granicy mają jednoznaczną regułę przypisania.
-- Każdy wynik rankingu zawiera źródło, datę, wersję algorytmu i status jakości.
-- AI odpowiada na ranking, filtr, porównanie, wyjaśnienie i wybrane okresy; potrafi przyznać brak danych.
-- Brak dostępu do komercyjnego API nie blokuje mapy ani zestawu demonstracyjnego.
+## Poza zakresem
+Predykcja wypadków, ruch towarowy, ruch drogowy na żywo (zrezygnowano z TomTom na rzecz pomiarów ZDM), automatyczna klasyfikacja prawna, zalecenia modernizacji, analiza obrazu z kamer, układ na telefon, konta użytkowników i zapis rozmów na serwerze.
 
-## 7. Ryzyka i punkty decyzyjne
-- Niezweryfikowana kompletność rejestru przejazdów i kategorii w Warszawie.
-- Rozkład/realizacja pasażerska nie reprezentuje całego ruchu (zwłaszcza towarowego).
-- Przypisanie publicznego licznika drogowego do przejazdu wymaga walidacji odcinka; sama bliskość geometryczna nie wystarcza.
-- API prędkości nie jest licznikiem pojazdów na godzinę.
-- Prawa do cache'owania i pochodnych analiz Traffic API trzeba potwierdzić dla konkretnych usług i planu.
-- Termin konkursu: zweryfikować aktualne wymagania, załączniki i terminy przed zgłoszeniem.
+## Wymagania niefunkcjonalne
+- Usługi HTTP i baza nasłuchują tylko na 127.0.0.1; Ollama nie ma portu na hoście. Klucze wyłącznie w `.env`, nigdy we frontendzie ani w repozytorium.
+- Aplikacja działa bez dostawców zewnętrznych na zestawie demonstracyjnym.
+- Wyniki są odtwarzalne: każdy przebieg analizy zapisuje okres, wersję metody, wagi, źródła i status jakości.
+- Model językowy nie pisze SQL i nie ma dostępu do bazy; API waliduje parametry i ogranicza wielkość odpowiedzi.
+- Brak danych nie oznacza zera ruchu ani braku zagrożenia; kompletność jest zawsze pokazana.
+- Obsługa klawiaturą, kontrast, ograniczenie animacji (`prefers-reduced-motion`), układ dla laptopa od 820 px szerokości.
 
-## 8. Wykorzystane projekty
-GeoGraph Demo 3: wzorce Docker/PostGIS/FastAPI/Ollama i katalogu analiz. PSIP MG L1: wzorce importu BDOT10k i analiz przestrzennych. Nowe repo nie narusza źródłowych projektów.
+## Kryteria akceptacji
+Sprawdzane automatycznie w CI (backend z PostGIS, frontend z Playwright, stos Compose z zestawem demo):
+- `docker compose up -d --build` uruchamia aplikację, a `/api/v1/health` raportuje stan bazy, modelu i zestawu danych.
+- Geometrie w EPSG:2180, unikalne identyfikatory i kontrola duplikatów wymuszane przez bazę ([DATA_CONTRACT.md](DATA_CONTRACT.md)).
+- Filtr dzielnicy zwraca tylko zweryfikowane przejazdy w jej granicach; przejazd na granicy ma jednoznaczną regułę przypisania.
+- Każdy wynik rankingu ma źródło, okres, wersję metody i status jakości.
+- Asystent obsługuje ranking, szczegóły, porównanie, jakość danych, metodę i listę dzielnic; przyznaje brak danych i odmawia pytań spoza zakresu.
+- Brak klucza API PKP PLK i niedostępność modelu nie blokują mapy ani rankingu.
 
+## Ograniczenia i ryzyka
+- Kompletność ewidencji zależy od rejestru UTK; rozbieżności z OSM są raportowane, nie poprawiane automatycznie.
+- Ruch kolejowy obejmuje tylko plan pasażerski.
+- Punkt pomiarowy ZDM na tej samej ulicy mają tylko 3 z 36 przejazdów drogowych; pozostałe korzystają z szacunku.
+- Warunki ponownego wykorzystania części danych (GTFS, ZDM) nie są potwierdzone ([DATA_SOURCES.md](DATA_SOURCES.md)).
+- Mały lokalny model (4 mld parametrów) może źle dobrać funkcję; bez karty graficznej odpowiedź trwa minuty.

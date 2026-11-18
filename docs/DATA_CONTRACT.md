@@ -1,6 +1,6 @@
 # Kontrakt danych i migracje (v1.0, RSA-003)
 
-Uszczegółowienie sekcji „Schematy PostGIS” z [ARCHITECTURE.md](ARCHITECTURE.md). Źródłem prawdy są migracje w `backend/migrations/versions/`; ten dokument opisuje reguły, których muszą się trzymać importy (RSA-004…009), analizy (RSA-010) i API (RSA-011).
+Uzupełnienie sekcji „Baza danych” z [ARCHITECTURE.md](ARCHITECTURE.md#baza-danych). Źródłem prawdy są migracje w `backend/migrations/versions/`; ten dokument opisuje reguły, których muszą się trzymać importy (RSA-004…009), analizy (RSA-010) i API (RSA-011).
 
 ## Reguły wspólne
 1. **Układ współrzędnych:** każda geometria w EPSG:2180; baza odrzuca inny SRID.
