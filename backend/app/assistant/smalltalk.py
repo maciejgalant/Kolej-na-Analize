@@ -22,10 +22,11 @@ def conversational_reply(message: str, attached: bool = False) -> str | None:
         return "Do zobaczenia! Wróć, gdy zechcesz przyjrzeć się kolejnym przejazdom."
     if text in {"co potrafisz", "co umiesz", "jak mozesz pomoc", "pomoc", "pomoz mi"}:
         return (
-            "Mogę pokazać ranking przejazdów w Warszawie, porównać dwa przejazdy, wyjaśnić RPS "
+            "Mogę pokazać ranking przejazdów w Warszawie, porównać dwa przejazdy, wyjaśnić WPO "
             "i wskazać braki oraz modelowane dane. Wybierz przejazd na mapie albo użyj przycisku "
             "Porównaj przejazdy. Możesz też zapytać: Które przejazdy w Wawrze mają niepełne dane? "
-            "RPS oznacza priorytet do dalszej oceny, a nie prawdopodobieństwo wypadku."
+            "WPO (Wskaźnik Priorytetu Oceny) oznacza priorytet do dalszej oceny, "
+            "a nie prawdopodobieństwo wypadku."
         )
     if text in {"jak sie masz", "co slychac"}:
         return "Jestem gotowy do pomocy przy analizie przejazdów. Od czego zaczynamy?"

@@ -8,7 +8,7 @@ Dopasowanie: skrzyżowanie leży na ulicy przejazdu (nazwy po normalizacji, jak 
 i nie dalej niż MAX_M od niego; przejazd dostaje najbliższe takie skrzyżowanie.
 
 Liczby opisują CAŁE skrzyżowanie (wszystkie wloty) w pojedynczych godzinach, a nie
-ruch przez przejazd w ciągu doby. Dlatego nie zastępują natężenia w RPS. Służą do:
+ruch przez przejazd w ciągu doby. Dlatego nie zastępują natężenia w WPO. Służą do:
 udziału pojazdów ciężkich, liczby pieszych i rowerzystów oraz górnego ograniczenia
 natężenia na wlocie, z którym porównujemy szacunek z klasy drogi.
 """
@@ -53,7 +53,7 @@ VEHICLE_CLASSES = {
 }
 HEAVY = ("S_C_", "SCP", "BUS")
 # ZAŁOŻENIE: najbardziej ruchliwa godzina to ok. 8% ruchu dobowego (pomiar APR na
-# Radzymińskiej: 7%). Służy tylko do górnego ograniczenia w raporcie, nie do RPS.
+# Radzymińskiej: 7%). Służy tylko do górnego ograniczenia w raporcie, nie do WPO.
 PEAK_SHARE = 0.08
 
 SUMMARY_FIELDS = (
@@ -447,7 +447,7 @@ def build_report(summary: IntersectionSummary, crossings: list[rc.CrossingStreet
                 "(wszystkie wloty). Udział ciężkich: samochody ciężarowe, z przyczepą i "
                 "autobusy. „Górna granica” ≈ szczyt / "
                 f"{PEAK_SHARE:.2f} — rząd wielkości ruchu dobowego całego węzła, więc ruch "
-                "na jednym wlocie (przez przejazd) jest mniejszy. ⚠ = szacunek RPS z klasy "
+                "na jednym wlocie (przez przejazd) jest mniejszy. ⚠ = szacunek WPO z klasy "
                 "drogi przekracza tę granicę, czyli model zawyża natężenie.",
                 _table(
                     [
@@ -460,7 +460,7 @@ def build_report(summary: IntersectionSummary, crossings: list[rc.CrossingStreet
                         "Ciężkie",
                         "Piesi max [/h]",
                         "Rowerzyści max [/h]",
-                        "Model RPS [poj./dobę]",
+                        "Model WPO [poj./dobę]",
                         "Górna granica [poj./dobę]",
                     ],
                     rows,
@@ -469,7 +469,7 @@ def build_report(summary: IntersectionSummary, crossings: list[rc.CrossingStreet
                 "## Zasady i ograniczenia",
                 "- Pomiar dotyczy kilku godzin jednego dnia (zwykle szczyty i międzyszczyt), "
                 "a nie średniej z wielu dni.",
-                "- Liczby obejmują wszystkie wloty skrzyżowania; RPS nadal używa pomiaru APR "
+                "- Liczby obejmują wszystkie wloty skrzyżowania; WPO nadal używa pomiaru APR "
                 "albo szacunku z klasy drogi.",
                 "- Skrzyżowanie jest przypisywane tylko na tej samej ulicy co przejazd.",
             ]

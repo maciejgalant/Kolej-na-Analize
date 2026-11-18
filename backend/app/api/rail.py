@@ -1,4 +1,4 @@
-"""Station-level live context. Does not alter crossing evidence or RPS."""
+"""Station-level live context. Does not alter crossing evidence or WPO."""
 
 from datetime import date
 from functools import lru_cache

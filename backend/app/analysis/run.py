@@ -1,4 +1,4 @@
-"""Przebieg analizy RPS: dane wejściowe z PostGIS → `analysis.*` (RSA-010).
+"""Przebieg analizy WPO: dane wejściowe z PostGIS → `analysis.*` (RSA-010).
 
 Zakres: zweryfikowane przejazdy drogowe (kategorie inne niż E) w granicach Warszawy.
 Przejścia dla pieszych są w ewidencji i na mapie, ale poza rankingiem.
@@ -287,13 +287,13 @@ def build_run_report(conn: psycopg.Connection, summary: RunSummary) -> str:
     unranked = [r for r in rows if r[0] is None]
     stable = sum(1 for r in ranked if r[6] - r[5] <= 1)
     parts = [
-        "# Raport przebiegu RPS (RSA-010)",
+        "# Raport przebiegu WPO (RSA-010)",
         f"Przebieg nr {summary.run_id}, metoda `{rps.METHOD_VERSION}`, okres danych o ruchu "
         f"{summary.period[0]} – {summary.period[1]}. Raport tworzony przez `worker run-analysis`.",
-        "**RPS to priorytet do dalszej oceny w przyjętej metodzie, a nie prognoza wypadków "
+        "**WPO to priorytet do dalszej oceny w przyjętej metodzie, a nie prognoza wypadków "
         "ani urzędowa klasyfikacja. Wagi i tabele są eksperymentalne i niezwalidowane.**",
         "## Metoda w skrócie",
-        "- `RPS = 0,40·T + 0,30·P + 0,20·G + 0,10·H`; średnia ważona po dostępnych składnikach.",
+        "- `WPO = 0,40·T + 0,30·P + 0,20·G + 0,10·H`; średnia ważona po dostępnych składnikach.",
         "- T: planowe pociągi pasażerskie × pojazdy na dobę (pomiar ZDM, gdy punkt leży na "
         "ulicy przejazdu blisko niego; w pozostałych przypadkach szacunek z klasy drogi), skala "
         "logarytmiczna. P: kategoria przejazdu. G: liczba torów i kąt skrzyżowania. "
@@ -305,7 +305,7 @@ def build_run_report(conn: psycopg.Connection, summary: RunSummary) -> str:
         f"Obiektów ocenianych: **{summary.scored}**, z pozycją: **{summary.ranked}**, "
         f"w tym stabilnych (zakres do 1 pozycji): **{stable}**.",
         _table(
-            ["Poz.", "Numer", "Kat.", "Dzielnica", "RPS", "Zakres", "T", "P", "G", "Kompl. %"],
+            ["Poz.", "Numer", "Kat.", "Dzielnica", "WPO", "Zakres", "T", "P", "G", "Kompl. %"],
             [[r[0], r[1], r[2] or "?", r[3], fmt(r[4]), f"{r[5]}–{r[6]}", fmt(r[8]), fmt(r[9]),
               fmt(r[10]), fmt(r[7])] for r in ranked],
         ),

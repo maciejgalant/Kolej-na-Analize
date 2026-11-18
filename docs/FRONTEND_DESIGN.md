@@ -28,9 +28,9 @@ Stan na wersję 1.0.0. Interfejs to aplikacja rozmów z asystentem; mapa i karty
 Odpowiedź to tekst i opcjonalny obiekt `evidence`, budowany przez backend z wyników funkcji odczytu. Interfejs nie wyciąga liczb ani identyfikatorów z tekstu modelu.
 
 - Pierwszy akapit odpowiedzi jest wyróżniony. Ranking domyślnie pokazuje pięć pozycji.
-- Karty przejazdów pokazują RPS jako priorytet do dalszej oceny, pozycję w rankingu i ruch pasażerski; kliknięcie otwiera szczegóły w oknie mapy.
+- Karty przejazdów pokazują WPO jako priorytet do dalszej oceny, pozycję w rankingu i ruch pasażerski; kliknięcie otwiera szczegóły w oknie mapy.
 - Tabele: ranking, porównanie, liczby przejazdów w dzielnicach.
-- Wykresy: planowy ruch pasażerski, składniki RPS, natężenie drogowe, dzień roboczy/sobota/niedziela. Brak wartości to „Brak danych”, nie zero; wartości modelowane są opisane i kreskowane. Każdy wykres ma opis dla czytnika ekranu i rozwijaną tabelę wartości.
+- Wykresy: planowy ruch pasażerski, składniki WPO, natężenie drogowe, dzień roboczy/sobota/niedziela. Brak wartości to „Brak danych”, nie zero; wartości modelowane są opisane i kreskowane. Każdy wykres ma opis dla czytnika ekranu i rozwijaną tabelę wartości.
 - Karty, wykresy, źródła, okresy i ograniczenia są w sekcjach rozwijanych; przycisk „Pokaż na mapie” jest widoczny od razu.
 - Tekst modelu jest wyświetlany przez React bez surowego HTML; obsługiwane są akapity, nowe wiersze i pogrubienie.
 - Eksportu CSV/PNG oraz importu i eksportu historii nie ma; wystarcza kopiowanie.
@@ -39,7 +39,7 @@ Odpowiedź to tekst i opcjonalny obiekt `evidence`, budowany przez backend z wyn
 - Natywny `dialog`: modalność, Escape, ograniczenie fokusu, animacja otwarcia i zamknięcia. Ręczne otwarcie przywraca widok, podkład i filtry zapisane w rozmowie.
 - „Pokaż na mapie” nie otwiera mapy samoczynnie. Pokazuje tylko obiekty z danej odpowiedzi, dopasowuje do nich widok i zeruje filtry; „Pokaż wszystkie przejazdy” zdejmuje to ograniczenie. Numer etykiety odpowiada kolejności w odpowiedzi.
 - Filtry: dzielnica i kategoria A–F. Podkłady: kolorowy (domyślny), szary i ortofotomapa. Piktogramy kategorii i legenda.
-- Kliknięcie punktu otwiera kartę przejazdu w bocznej części okna: wskaźnik RPS, kompletność składników, miniwykresy składników, ruch kolejowy i drogowy, rozkład w ciągu doby oraz historia zdarzeń SEWiK przy wykresach RPS. Wagi, źródła i szczegóły techniczne są rozwijane.
+- Kliknięcie punktu otwiera kartę przejazdu w bocznej części okna: WPO, kompletność składników, miniwykresy składników, ruch kolejowy i drogowy, rozkład w ciągu doby oraz historia zdarzeń SEWiK przy wykresach WPO. Wagi, źródła i szczegóły techniczne są rozwijane.
 - „Zapytaj o ten przejazd” zamyka mapę, dołącza usuwalną etykietę przejazdu do pola pytania i ustawia fokus, bez wysyłania.
 - Asystent na mapie: kliknięcie przejazdu pokazuje propozycję pomocy, bez zapytania do modelu. Po otwarciu panelu pytania idą przez to samo API z `crossing_id`. Ta rozmowa jest tylko w pamięci: zamknięcie mapy albo wybór innego przejazdu ją usuwa i przerywa żądanie; zwinięcie panelu ją zachowuje.
 - Gdy obiekt ze starszej odpowiedzi nie jest już w ewidencji, pojawia się informacja o brakujących obiektach.
@@ -53,7 +53,7 @@ Odpowiedź to tekst i opcjonalny obiekt `evidence`, budowany przez backend z wyn
 | `chat/model.ts`, `chat/useConversations.ts` | drzewo wiadomości, walidacja, zapis, żądania |
 | `chat/ConversationList.tsx`, `chat/AnswerContent.tsx`, `chat/AnalysisShortcuts.tsx` | historia, wyniki odpowiedzi, porównanie przejazdów |
 | `MapExplorer.tsx`, `MapView.tsx`, `MapAssistant.tsx` | okno mapy, warstwy Leaflet, asystent na mapie |
-| `CrossingCard.tsx`, `PriorityChart.tsx`, `IncidentHistory.tsx` | karta przejazdu, składniki RPS, historia SEWiK |
+| `CrossingCard.tsx`, `PriorityChart.tsx`, `IncidentHistory.tsx` | karta przejazdu, składniki WPO, historia SEWiK |
 | `Dialog.tsx`, `IconButton.tsx`, `UiIcons.tsx`, `CategoryPin.tsx`, `pictograms.ts` | wspólne elementy i ikony |
 | `api.ts`, `basemaps.ts`, `labels.ts`, `brand.ts` | typy i wywołania API, podkłady, etykiety, nazwa i logo |
 | `styles.css`, `chat.css`, `presentation.css` | style bazowe i mapy, rozmowy, kart i wykresów |

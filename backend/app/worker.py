@@ -311,7 +311,7 @@ def import_road_counts_command(args: argparse.Namespace) -> int:
     _write_report(report, args.report, log)
     direct = sum(1 for m in summary.matches if m.match_type == "direct")
     log(
-        f"zapisano pomiarów: {summary.written}; przejazdów z pomiarem w RPS: {direct}. "
+        f"zapisano pomiarów: {summary.written}; przejazdów z pomiarem w WPO: {direct}. "
         "Uruchom ponownie run-analysis, żeby ranking uwzględnił pomiary."
     )
     return 0
@@ -475,11 +475,11 @@ def main(argv: list[str] | None = None) -> int:
         help="ścieżka raportu Markdown",
     )
     commands.add_parser("load-demo", help="syntetyczny zestaw demonstracyjny (RSA-014)")
-    analysis = commands.add_parser("run-analysis", help="wskaźnik RPS i ranking (RSA-010)")
+    analysis = commands.add_parser("run-analysis", help="WPO i ranking (RSA-010)")
     analysis.add_argument(
         "--report",
         type=Path,
-        default=Path("/reports/RPS_report.md"),
+        default=Path("/reports/WPO_report.md"),
         help="ścieżka raportu Markdown",
     )
     args = parser.parse_args(argv)

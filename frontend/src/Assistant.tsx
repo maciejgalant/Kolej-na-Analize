@@ -54,7 +54,7 @@ export function Assistant({
   const last = path[path.length - 1];
   const suggestions = [
     "Które przejazdy mają najwyższy priorytet?",
-    "Co oznacza wskaźnik RPS?",
+    "Co oznacza WPO?",
     "W których dzielnicach są przejazdy?",
   ];
   useEffect(() => {
@@ -453,7 +453,7 @@ export function Assistant({
             </div>
           </form>
           <p className="composer-footnote">
-            Lokalny model może się mylić. RPS oznacza priorytet do dalszej
+            Lokalny model może się mylić. WPO oznacza priorytet do dalszej
             oceny, a nie prawdopodobieństwo wypadku.
           </p>
         </div>

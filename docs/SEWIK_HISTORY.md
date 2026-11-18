@@ -26,7 +26,7 @@ Puste skutki przechowujemy jako NULL, nigdy jako zero. Kategorie miejsca
 - Zgodność ulicy nie zapisuje `crossing_id`, geometrii, `confirmed` ani pewności
   lokalizacji. Dotyczy to szczególnie różnych przejazdów i bocznic przy
   Chłopickiego. Wpisy „jezdnia” wymagają oddzielnej weryfikacji.
-- H pozostaje unknown, waga nominalna 10%; wartości RPS i kompletność nie zmieniają się.
+- H pozostaje unknown, waga nominalna 10%; wartości WPO i kompletność nie zmieniają się.
   Nawet brak dopasowanych wpisów nie dowodzi zerowej liczby wypadków.
 
 Przed punktacją H trzeba odczytać szczegóły rekordów, zweryfikować współrzędne,

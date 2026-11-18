@@ -6,14 +6,14 @@
 
 Projekt edukacyjny przygotowywany do konkursu „Kolej na bezpieczeństwo”. Aplikacja lokalna (Docker Compose, FastAPI, PostGIS, Leaflet, Ollama/Qwen) ma łączyć dane kolejowe, drogowe i charakterystyki przejazdów, prezentować mapę, ranking oraz uzasadnienia wyników poprzez asystenta AI.
 
-> Wersja **1.0.0** (17.11.2026): ewidencja przejazdów, planowy ruch pociągów, pomiary ruchu drogowego ZDM, eksperymentalny ranking RPS z mapą i asystent AI na lokalnym modelu. Zmiany: [CHANGELOG.md](CHANGELOG.md). Rankingu nie należy traktować jako oficjalnej oceny ryzyka wypadku.
+> Wersja **1.0.0** (17.11.2026): ewidencja przejazdów, planowy ruch pociągów, pomiary ruchu drogowego ZDM, eksperymentalny ranking według Wskaźnika Priorytetu Oceny (WPO) z mapą i asystent AI na lokalnym modelu. Zmiany: [CHANGELOG.md](CHANGELOG.md). Rankingu nie należy traktować jako oficjalnej oceny ryzyka wypadku.
 
 ## Dokumentacja
 - [Specyfikacja: cel, zakres i kryteria akceptacji](docs/PROJECT_SPEC.md)
 - [Architektura: usługi, API, asystent, bezpieczeństwo](docs/ARCHITECTURE.md)
 - [Asystent AI: zasady, funkcje i ograniczenia](docs/ASSISTANT_CAPABILITIES.md)
 - [Interfejs: rozmowy, mapa i karta przejazdu](docs/FRONTEND_DESIGN.md)
-- [Metodyka wskaźnika RPS i walidacja](docs/ANALYSIS_METHOD.md)
+- [Metodyka WPO i walidacja](docs/ANALYSIS_METHOD.md)
 - [Źródła danych, jakość i licencje](docs/DATA_SOURCES.md)
 - [Kontrakt danych i migracje](docs/DATA_CONTRACT.md)
 - [Historia zdarzeń SEWiK](docs/SEWIK_HISTORY.md)
@@ -93,11 +93,11 @@ docker compose run --rm worker python -m app.worker import-intersection-counts
 ```
 Pobiera z publicznych warstw ArcGIS ZDM pomiary na 254 skrzyżowaniach (2023–2026) i przypisuje przejazdom najbliższe skrzyżowanie na tej samej ulicy do 300 m. Karta przejazdu pokazuje natężenie w szczycie (całe skrzyżowanie), udział ciężarówek i autobusów, pieszych i rowerzystów. Ranking się nie zmienia: to pomiary kilku godzin dla całego węzła. Raport: `reports/DATA_AUDIT_intersections.md`.
 
-### Analiza priorytetów RPS (RSA-010)
+### Analiza priorytetów WPO (RSA-010)
 ```bash
 docker compose run --rm worker python -m app.worker run-analysis
 ```
-Uruchamiać po imporcie rozkładu. Liczy eksperymentalny wskaźnik RPS dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/RPS_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
+Uruchamiać po imporcie rozkładu. Liczy eksperymentalny Wskaźnik Priorytetu Oceny (WPO) dla zweryfikowanych przejazdów drogowych, zapisuje przebieg w bazie i tworzy raport `reports/WPO_report.md`. Ranking i składniki są od razu widoczne w aplikacji. Metoda: [ANALYSIS_METHOD.md](docs/ANALYSIS_METHOD.md), sekcja 8.
 
 ### Asystent AI (RSA-013)
 Głównym ekranem jest rozmowa z lokalnym modelem Qwen (Ollama), z historią w lewym panelu. Mapa otwiera się ręcznie lub przyciskiem „Pokaż na mapie” w odpowiedzi. Z karty przejazdu można dołączyć obiekt do kolejnego pytania. Historia, gałęzie i stan mapy są zapisywane wyłącznie w tej przeglądarce, bez logowania. Asystent odpowiada wyłącznie na podstawie danych aplikacji, pobieranych przez sześć bezpiecznych funkcji tylko do odczytu, i pokazuje, które dane sprawdził. Wymaga pobranego modelu (`OLLAMA_MODEL`, stan widać w panelu „Stan usług") oraz wykonanego `run-analysis`. Na samym procesorze odpowiedź trwa minuty; z kartą NVIDIA włącz dodatek `docker-compose.gpu.yml` (instrukcja w tym pliku i w `.env.example`). Szczegóły: [ASSISTANT_CAPABILITIES.md](docs/ASSISTANT_CAPABILITIES.md).

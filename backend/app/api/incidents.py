@@ -11,7 +11,7 @@ router = APIRouter(tags=["historia zdarzeń"])
 NOTICE = (
     "Częściowy wykaz przepisany ze zrzutu SEWiK przekazanego 16.11.2026. "
     "Nie jest pełną statystyką Warszawy. Puste skutki oznaczają brak informacji, nie zero. "
-    "Wpisy nie zmieniają RPS; przypisanie do przejazdów wymaga weryfikacji."
+    "Wpisy nie zmieniają WPO; przypisanie do przejazdów wymaga weryfikacji."
 )
 
 

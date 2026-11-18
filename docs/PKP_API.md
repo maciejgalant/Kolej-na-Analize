@@ -49,7 +49,7 @@ odpowiedzi na dysku ani w bazie. Limity dostawcy nadal są nadrzędne.
 
 Panel prezentuje rzeczywiste dane także przy demonstracyjnej bazie przejazdów;
 jest opisany oddzielnie i nie łączy ich z fikcyjnymi obiektami. Nie zmienia rankingu
-RPS ani liczników GTFS/WKD. Potwierdzenie na stacji nie oznacza potwierdzenia
+WPO ani liczników GTFS/WKD. Potwierdzenie na stacji nie oznacza potwierdzenia
 na konkretnym przejeździe. Brak pełnego pokrycia ruchu towarowego/manewrowego.
 Historia wypadków i incydentów pozostaje poza zakresem tej integracji.
 

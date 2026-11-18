@@ -1,4 +1,4 @@
-"""Pomiary ruchu ZDM (APR): klient, parsowanie, dopasowanie do przejazdów i użycie w RPS.
+"""Pomiary ruchu ZDM (APR): klient, parsowanie, dopasowanie do przejazdów i użycie w WPO.
 
 Wszystkie odpowiedzi serwera są sztuczne (FakeZdm); testy nie łączą się z ZDM.
 Struktura odpowiedzi odpowiada publicznemu narzędziu ZDM, liczby są wymyślone.
@@ -287,7 +287,7 @@ def test_file_import_stores_measurements_and_feeds_rps(conn, tmp_path):  # noqa:
     ).fetchone()[0]
     assert "Zarząd Dróg Miejskich" in licence
 
-    assert "pomiar w RPS" in report and "walidacja" in report
+    assert "pomiar w WPO" in report and "walidacja" in report
     assert "12\u00a0000" in report and "4,8×" in report  # droga lokalna: model 2 500
     run_analysis(conn)
     components = {

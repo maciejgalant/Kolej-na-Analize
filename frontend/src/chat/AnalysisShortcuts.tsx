@@ -56,7 +56,7 @@ export function AnalysisShortcuts({
             const second = options.find((c) => String(c.id) === b);
             if (!disabled && first && second && a !== b) {
               onSend(
-                `Porównaj przejazdy o numerach „${first.properties.name}” i „${second.properties.name}”. Wyjaśnij różnice RPS, wkłady składników i jakość danych.`,
+                `Porównaj przejazdy o numerach „${first.properties.name}” i „${second.properties.name}”. Wyjaśnij różnice WPO, wkłady składników i jakość danych.`,
               );
               setComparing(false);
             }

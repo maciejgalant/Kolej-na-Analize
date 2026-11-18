@@ -25,7 +25,7 @@ Uzupełnienie sekcji „Baza danych” z [ARCHITECTURE.md](ARCHITECTURE.md#baza-
 | `analysis.runs.status`, `system.import_jobs.status` | `running`, `completed`/`succeeded`, `failed` |
 | `analysis.components.component` | `T`, `P`, `G`, `H` |
 | `analysis.components.status` | `ok`, `modelled`, `unknown` |
-| `road.crossing_stations.match_type` | `direct` (pomiar zastępuje model w RPS), `validation` (tylko porównanie), `intersection` (skrzyżowanie: karta i raport, bez wpływu na RPS) |
+| `road.crossing_stations.match_type` | `direct` (pomiar zastępuje model w WPO), `validation` (tylko porównanie), `intersection` (skrzyżowanie: karta i raport, bez wpływu na WPO) |
 
 ## Reguły wymuszane przez bazę
 - Przejazd o statusie innym niż `unverified` musi mieć `verified_at`. API i ranking używają wyłącznie `verified`; skrzyżowania bezkolizyjne zostają w ewidencji jako `rejected_grade_separated`, żeby nie wracały przy kolejnym imporcie.

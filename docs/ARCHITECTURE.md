@@ -1,6 +1,6 @@
 # Architektura techniczna
 
-Stan na wersję 1.0.0. Schemat bazy i reguły danych: [DATA_CONTRACT.md](DATA_CONTRACT.md); źródła: [DATA_SOURCES.md](DATA_SOURCES.md); metoda RPS: [ANALYSIS_METHOD.md](ANALYSIS_METHOD.md); asystent: [ASSISTANT_CAPABILITIES.md](ASSISTANT_CAPABILITIES.md); interfejs: [FRONTEND_DESIGN.md](FRONTEND_DESIGN.md).
+Stan na wersję 1.0.0. Schemat bazy i reguły danych: [DATA_CONTRACT.md](DATA_CONTRACT.md); źródła: [DATA_SOURCES.md](DATA_SOURCES.md); metoda WPO: [ANALYSIS_METHOD.md](ANALYSIS_METHOD.md); asystent: [ASSISTANT_CAPABILITIES.md](ASSISTANT_CAPABILITIES.md); interfejs: [FRONTEND_DESIGN.md](FRONTEND_DESIGN.md).
 
 ## System
 ```mermaid
@@ -35,8 +35,8 @@ Wszystkie usługi są w prywatnej sieci `railsafe`. Karta NVIDIA dla modelu: dod
 | `import-topology` | dzielnice (PRG), tory i jezdnie (BDOT10k), weryfikacja geometryczna |
 | `import-schedule` | planowy ruch pociągów z GTFS, także rozkład w ciągu doby |
 | `import-road-counts` | pomiary ZDM w punktach APR |
-| `import-intersection-counts` | pomiary ZDM na skrzyżowaniach (karta i raport, bez wpływu na RPS) |
-| `run-analysis` | wskaźnik RPS, ranking, analiza wrażliwości, raport |
+| `import-intersection-counts` | pomiary ZDM na skrzyżowaniach (karta i raport, bez wpływu na WPO) |
+| `run-analysis` | WPO, ranking, analiza wrażliwości, raport |
 | `load-demo` | syntetyczny zestaw demonstracyjny bez internetu |
 
 Importy, które pobierają dane z sieci, przyjmują też zapisane wcześniej odpowiedzi (`--osm-file`, pliki JSON ZDM), żeby dało się je powtórzyć bez dostępu do źródła.
@@ -52,7 +52,7 @@ Wszystkie ścieżki z prefiksem `/api/v1`. Pełny kontrakt: `http://127.0.0.1:87
 | `GET /health` | wersja, tryb demo, stan bazy (rewizja schematu) i modelu |
 | `GET /districts` | granice dzielnic (GeoJSON) |
 | `GET /crossings` | ewidencja z filtrami dzielnicy, obszaru (`bbox`), kategorii i statusu weryfikacji; `limit` do 500 |
-| `GET /crossings/{id}` | karta przejazdu: atrybuty, ruch kolejowy i drogowy, składniki RPS, źródła |
+| `GET /crossings/{id}` | karta przejazdu: atrybuty, ruch kolejowy i drogowy, składniki WPO, źródła |
 | `GET /analysis/latest` | ostatni zakończony przebieg analizy |
 | `GET /incidents` | historia zdarzeń SEWiK, opcjonalnie dla jednego przejazdu (`crossing_id`) |
 | `GET /rail/status`, `/stations`, `/operations`, `/disruptions`, `/schedules` | odczyt z API PKP PLK z pamięcią podręczną w procesie i lokalnym limitem zapytań, bez zapisu na dysku; `status` pokazuje, czy klucz jest ustawiony, pozostałe bez klucza zwracają 503 |

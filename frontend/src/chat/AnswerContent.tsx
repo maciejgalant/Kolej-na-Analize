@@ -54,7 +54,7 @@ export function AnswerContent({
             <strong>Załączam mapę z analizowanymi przejazdami.</strong>
             <p>
               Otwórz lokalizacje oznaczone numerami w kolejności tej odpowiedzi
-              oraz ich wyniki RPS.
+              oraz ich wyniki WPO.
             </p>
           </div>
           <button
@@ -97,7 +97,7 @@ export function AnswerContent({
                 </span>
                 <span className="card-score">
                   <span>
-                    Priorytet RPS <small>do dalszej oceny</small>
+                    Priorytet WPO <small>do dalszej oceny</small>
                   </span>
                   <b>{value(c.rps)}</b>
                   {c.rps !== null && <small>/ 100</small>}

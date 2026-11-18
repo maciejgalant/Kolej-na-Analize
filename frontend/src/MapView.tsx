@@ -49,7 +49,7 @@ function markerIcon(
   });
   const rps = p.rps !== null && Number.isFinite(p.rps) ? p.rps : null;
   const label = analysisNumber
-    ? `<span class="analysis-marker-label"><b>#${analysisNumber}</b><span>RPS ${rps === null ? "—" : rps.toLocaleString("pl-PL", { maximumFractionDigits: 1 })}</span><i style="--rps:${rps === null ? 0 : Math.max(0, Math.min(100, rps))}%"></i></span>`
+    ? `<span class="analysis-marker-label"><b>#${analysisNumber}</b><span>WPO ${rps === null ? "—" : rps.toLocaleString("pl-PL", { maximumFractionDigits: 1 })}</span><i style="--rps:${rps === null ? 0 : Math.max(0, Math.min(100, rps))}%"></i></span>`
     : "";
   return L.divIcon({
     className: analysisNumber ? "analysis-marker" : "",
@@ -63,7 +63,7 @@ function markerLabel(feature: CrossingFeature): string {
   const p = feature.properties;
   const parts = [p.street, crossingTitle(p), categoryLabel(p.category)];
   if (p.rank !== null) parts.push(`pozycja ${p.rank} w rankingu`);
-  if (p.rps !== null) parts.push(`RPS ${p.rps.toLocaleString("pl-PL")}`);
+  if (p.rps !== null) parts.push(`WPO ${p.rps.toLocaleString("pl-PL")}`);
   return parts.filter(Boolean).join(", ");
 }
 
@@ -315,7 +315,7 @@ export function MapView({
             <span>niezweryfikowany (przerywana obwódka)</span>
           </div>
           <p className="legend-note">
-            W analizie: numer przy znaku odpowiada kolejności odpowiedzi, a RPS
+            W analizie: numer przy znaku odpowiada kolejności odpowiedzi, a WPO
             oznacza priorytet do dalszej oceny. Uwagi o danych są w szczegółach
             przejazdu.
           </p>
