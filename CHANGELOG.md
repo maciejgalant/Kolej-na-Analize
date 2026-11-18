@@ -5,6 +5,12 @@ Sekcja wersji jest treścią wydania na GitHubie (workflow `release.yml`).
 
 ## [Unreleased]
 
+### Usunięto
+- Nieużywane komponenty `FloatingWindow` i `RailPanel` po przebudowie interfejsu oraz około 1100 linii martwych reguł CSS i nieużywanych animacji.
+
+### Zmieniono
+- Logo zmniejszone do 1100×367 px (214 KB zamiast 760 KB), bez utraty kolorów.
+
 ## [1.0.0] - 2026-11-17
 
 Pierwsze wydanie: wersja zgłoszeniowa do konkursu PKP PLK „Kolej na bezpieczeństwo” (II edycja).

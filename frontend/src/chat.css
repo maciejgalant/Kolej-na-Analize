@@ -416,21 +416,7 @@ button:disabled {
   align-items: center;
   margin: 0 8px 30px;
 }
-.rail-mark,
-.welcome-symbol {
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  background: var(--orange);
-  color: #fff;
-  font-weight: 800;
-}
-.rail-mark {
-  width: 42px;
-  height: 42px;
-  font-size: 25px;
-  transform: skew(-5deg);
-}
+
 .sidebar-brand strong {
   font-size: 21px;
   letter-spacing: -0.5px;
@@ -656,13 +642,7 @@ button:disabled {
   max-width: 740px;
   margin: auto;
 }
-.welcome-symbol {
-  width: 54px;
-  height: 54px;
-  font-size: 31px;
-  margin-bottom: 28px;
-  box-shadow: 0 8px 28px #d9570b26;
-}
+
 .eyebrow {
   font-size: 10px;
   font-weight: 700;
@@ -815,10 +795,7 @@ button:disabled {
   font-size: 13px;
   color: var(--slate-600);
 }
-.answer-pending .spinner {
-  width: 18px;
-  height: 18px;
-}
+
 .composer-area {
   padding: 0 36px 15px;
   background: linear-gradient(#ffffff00, #fff 20%);
