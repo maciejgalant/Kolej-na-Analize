@@ -29,17 +29,7 @@
 .incident-history a {
   font-size: 12px;
 }
-.history-open {
-  grid-column: 1 / -1;
-  font-size: 11px;
-  padding: 6px;
-  text-align: left;
-  color: #234f78;
-  background: #f5f8fc;
-  border: 1px solid #d7e2ee;
-  border-radius: 7px;
-  cursor: pointer;
-}
+
 .map-dialog[open] {
   animation: map-arrive 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -183,56 +173,7 @@
   line-height: 1.6;
   margin-bottom: 0;
 }
-.component-overview {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.component-mini {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid #e0e7f0;
-  border-radius: 12px;
-  background: white;
-}
-.component-mini > span {
-  font-size: 11px;
-  color: #51657d;
-}
-.component-mini > strong {
-  font-size: 14px;
-  color: #153458;
-}
-.component-mini > small {
-  grid-column: 1 / -1;
-  font-size: 9px;
-  color: #728299;
-}
-.mini-track {
-  height: 5px;
-  background: #edf2f8;
-  border-radius: 5px;
-  grid-column: 1 / -1;
-  overflow: hidden;
-}
-.mini-track i {
-  display: block;
-  height: 100%;
-  background: #376c9d;
-  border-radius: inherit;
-}
-.mini-track i.modelled {
-  background: repeating-linear-gradient(
-    120deg,
-    #376c9d,
-    #376c9d 4px,
-    #83afcf 4px,
-    #83afcf 7px
-  );
-}
+
 .completeness-line {
   display: grid;
   grid-template-columns: 1fr auto;
